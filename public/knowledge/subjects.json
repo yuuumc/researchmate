@@ -1,0 +1,20 @@
+[
+  {
+    "id": "microelectronics",
+    "name": "微电子",
+    "description": "半导体物理 / 长三角微电子院校",
+    "textbookPath": "/knowledge/textbook/半导体物理.json",
+    "graphPath": "/knowledge/textbook/半导体物理-图谱.json",
+    "graphSubject": "半导体物理",
+    "universityPath": "/knowledge/university/长三角微电子.json"
+  },
+  {
+    "id": "cs",
+    "name": "计算机",
+    "description": "数据结构 / CS 院校",
+    "textbookPath": "/knowledge/textbook/数据结构.json",
+    "graphPath": "/knowledge/textbook/数据结构-图谱.json",
+    "graphSubject": "数据结构",
+    "universityPath": "/knowledge/university/CS院校.json"
+  }
+]

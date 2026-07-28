@@ -30,6 +30,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 //   1. 只启动一个进程（vite dev），无需 vercel CLI 或额外 Node 服务
 //   2. .env 中的 DEEPSEEK_API_KEY 直接注入 process.env，被 api/chat.js 读取
 //   3. 生产环境由 Vercel serverless function 接管，行为一致
+//
+// v2.0 升级：支持 SSE 流式透传（mockRes.write + flushHeaders）
 // ============================================================
 function apiChatDevPlugin() {
   return {
@@ -64,7 +66,7 @@ function apiChatDevPlugin() {
           const chatURL = pathToFileURL(chatPath).href
           const handler = (await import(`${chatURL}?t=${Date.now()}`)).default
 
-          // 适配 serverless handler 签名
+          // 适配 serverless handler 签名（SSE 透传支持）
           const mockReq = {
             method: 'POST',
             body: JSON.parse(bodyStr || '{}')
@@ -76,19 +78,40 @@ function apiChatDevPlugin() {
               return this
             },
             json(data) {
-              res.setHeader('Content-Type', 'application/json; charset=utf-8')
+              if (!res.headersSent) {
+                res.setHeader('Content-Type', 'application/json; charset=utf-8')
+              }
               res.end(JSON.stringify(data))
             },
             end(data) {
               res.end(data)
-            }
+            },
+            // v2.0 SSE 流式支持
+            write(chunk) {
+              return res.write(chunk)
+            },
+            flushHeaders() {
+              if (typeof res.flushHeaders === 'function') res.flushHeaders()
+            },
+            // 可读性属性（handler 可能会读）
+            get writableEnded() { return res.writableEnded },
+            get destroyed() { return res.destroyed }
           }
           await handler(mockReq, mockRes)
+          // 注意：SSE 路径下 handler 内部已 res.end()，这里不需要再 end
         } catch (e) {
           console.error('[vite:api-chat-dev] error:', e)
-          res.statusCode = 500
-          res.setHeader('Content-Type', 'application/json; charset=utf-8')
-          res.end(JSON.stringify({ error: 'middleware_error', message: String(e) }))
+          if (!res.headersSent) {
+            res.statusCode = 500
+            res.setHeader('Content-Type', 'application/json; charset=utf-8')
+            res.end(JSON.stringify({ error: 'middleware_error', message: String(e) }))
+          } else {
+            // SSE 已开始，尝试发送 error 事件后结束
+            try {
+              res.write(`event: error\ndata: ${JSON.stringify({ error: 'middleware_error', message: String(e) })}\n\n`)
+              res.end()
+            } catch (_) { /* noop */ }
+          }
         }
       })
     }

@@ -1,20 +1,20 @@
 // ============================================================
-// 主控编排器（对应原工作流 N2 意图识别）
+// 主控编排器（v2.0 SSE 流式版）
 // ============================================================
 // 职责：
 //   1. 加载学生画像
-//   2. 意图识别（调用 DeepSeek） —— 与「默认 tutor 预热」并行
+//   2. 意图识别（调 LLM） —— 与「默认 tutor 预热」并行
 //   3. 路由到对应 Agent
 //   4. 兜底：意图识别失败 → 默认走 concept（专业导师）
-//
-// v1 正式版升级（v1正式版.txt §六）：
-//   接入 Agent Trace 事件系统，记录全过程时间线
-//   Router → Profile → Agent → Profile Update
 //
 // v1.5 升级（H2 评审保命）：
 //   「2x 串行 LLM → 并行」：intent 识别 + tutor 预热 Promise.all 并发执行
 //   节省单轮延迟约 50%（如果命中 concept 走默认）
 //   兜底：intent 失败 → 默认 concept；双失败 → 串行 tutor 兜底
+//
+// v2.0 升级：
+//   透传 onToken 到 Agent — 配合 /api/chat SSE，首 token 延迟 < 2s
+//   不修改 5 Agent 业务逻辑（仅让 Agent 可选地走 runLLMStream）
 // ============================================================
 
 import { tutorAgent } from './agents/tutor'
@@ -52,7 +52,6 @@ const INTENT_LABELS = {
   cascade: '级联（诊断→规划）'
 }
 
-// 备考阶段中文标签
 const STAGE_LABELS = {
   initial: '起步',
   basic: '基础',
@@ -78,11 +77,16 @@ async function recognizeIntent(userInput) {
 }
 
 /**
- * 主控路由（v1.5 并行版）
+ * 主控路由（v2.0 流式版）
  * @param {string} userInput - 学生原始输入
+ * @param {object} [options] - v2.0 新增
+ * @param {(chunk: {delta: string, latencyMs: number}) => void} [options.onToken] - 流式 token 回调
+ * @param {AbortSignal} [options.signal] - 取消信号
  * @returns {Promise<object>} { intent, content, raw, agent }
  */
-export async function route(userInput) {
+export async function route(userInput, options = {}) {
+  const { onToken = null, signal = null } = options || {}
+
   if (!userInput || !userInput.trim()) {
     return { error: 'empty_input', agent: 'router' }
   }
@@ -110,17 +114,23 @@ export async function route(userInput) {
 
   // 2. v1.5 升级：意图识别 + tutor 预热 并行
   //    tutor 是最常见的 intent（concept），预先开 LLM 调用
-  //    如果命中 concept → 用预热结果（省一次 LLM round-trip，延迟 ↓50%）
-  //    如果命中其他 intent → 丢弃预热结果，调用对应 Agent
-  //    任何一方失败 → 互不阻塞；双失败 → 串行 tutor 兜底
+  //    v2.0 升级：tutor 预热走流式 → 首 token 延迟 < 2s
   const routerStepIdx = traceStore.addStep('router', '识别意图（+ tutor 预热）…')
+
+  // 包装 onToken 到 tutor 预热（不影响 intent 识别，intent 是 JSON 一次性返回更稳）
+  const tutorPreCallback = onToken
+    ? (chunk) => {
+        // tutor 预热的流式：拼一个 partial 字段让 UI 显示「正在输入」
+        try { onToken({ ...chunk, phase: 'prewarm_tutor' }) } catch (_) { /* noop */ }
+      }
+    : null
 
   const intentPromise = recognizeIntent(userInput).catch((e) => {
     console.warn('[router] intent recognition failed:', e.message)
     return { __error: e, __value: 'concept' }
   })
 
-  const tutorPromise = tutorAgent(userInput, profile).catch((e) => {
+  const tutorPromise = tutorAgent(userInput, profile, { onToken: tutorPreCallback, signal }).catch((e) => {
     console.warn('[router] tutor prewarm failed:', e.message)
     return { __error: e, __value: null }
   })
@@ -137,7 +147,7 @@ export async function route(userInput) {
   if (intentError && tutorError) {
     console.warn('[router] both intent and tutor failed, falling back to serial tutor call')
     try {
-      const fallbackResult = await tutorAgent(userInput, profile)
+      const fallbackResult = await tutorAgent(userInput, profile, { onToken, signal })
       const updateStepIdx = traceStore.addStep('profile_update', '更新学生画像…')
       try {
         updateProfileAfterResponse('concept', fallbackResult, profile)
@@ -172,6 +182,7 @@ export async function route(userInput) {
 
   // 3. 路由到对应 Agent（带 trace）
   //    关键优化：如果 intent=concept 且 tutor 预热成功 → 直接用预热结果
+  //    v2.0 升级：传 onToken 给最终 Agent
   let result
   const agentStepIdx = traceStore.addStep(intentForNext, getAgentStartDetail(intentForNext))
 
@@ -183,26 +194,25 @@ export async function route(userInput) {
     try {
       switch (intentForNext) {
         case 'concept':
-          // 预热失败但 intent=concept → 再调一次 tutor
-          result = await tutorAgent(userInput, profile)
+          result = await tutorAgent(userInput, profile, { onToken, signal })
           break
         case 'diagnose':
-          result = await diagnoseAgent(userInput, profile)
+          result = await diagnoseAgent(userInput, profile, { onToken, signal })
           break
         case 'plan':
-          result = await plannerAgent(userInput, profile)
+          result = await plannerAgent(userInput, profile, { onToken, signal })
           break
         case 'admission':
-          result = await admissionAgent(userInput, profile)
+          result = await admissionAgent(userInput, profile, { onToken, signal })
           break
         case 'research':
-          result = await researchAgent(userInput, profile)
+          result = await researchAgent(userInput, profile, { onToken, signal })
           break
         case 'cascade':
-          result = await cascadeDiagnoseToPlan(userInput, profile)
+          result = await cascadeDiagnoseToPlan(userInput, profile, { onToken, signal })
           break
         default:
-          result = await tutorAgent(userInput, profile)
+          result = await tutorAgent(userInput, profile, { onToken, signal })
       }
       traceStore.updateStep(agentStepIdx, 'done', {
         detail: getAgentDoneDetail(intentForNext, result)

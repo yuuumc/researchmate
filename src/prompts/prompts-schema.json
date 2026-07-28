@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "prompts-manifest",
+  "description": "Prompt 版本管理 manifest。改动本文件 + git commit + push main 即可 1 分钟灰度。",
+  "type": "object",
+  "required": ["version", "agents"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "manifest schema 版本（与 Prompt 内容版本独立）"
+    },
+    "updated_at": { "type": "string", "format": "date" },
+    "owner": { "type": "string" },
+    "default_audience": { "enum": ["student", "teacher"] },
+    "default_version": { "type": "string" },
+    "agents": {
+      "type": "object",
+      "patternProperties": {
+        "^(tutor|diagnose|planner|admission|research)$": {
+          "type": "object",
+          "required": ["v1_baseline", "v2"],
+          "properties": {
+            "v1_baseline": { "type": "string" },
+            "v2": {
+              "type": "object",
+              "patternProperties": {
+                "^(student|teacher)$": {
+                  "type": "object",
+                  "required": ["active", "versions"],
+                  "properties": {
+                    "active": { "type": "string" },
+                    "versions": {
+                      "type": "object",
+                      "patternProperties": {
+                        "^[0-9]+\\.[0-9]+\\.[0-9]+$": {
+                          "type": "object",
+                          "required": ["file", "traffic"],
+                          "properties": {
+                            "file": { "type": "string" },
+                            "sha": { "type": "string" },
+                            "created_at": { "type": "string", "format": "date" },
+                            "changelog": { "type": "string" },
+                            "traffic": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1,
+                              "description": "灰度比例（0-1）。回滚 = traffic=0；全量 = traffic=1"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

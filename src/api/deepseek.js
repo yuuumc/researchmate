@@ -1,24 +1,25 @@
 // ============================================================
-// DeepSeek API 前端封装（v1 改造版）
+// DeepSeek API 前端封装（v2.0 SSE 流式版）
 // ============================================================
+// 模式：
+//   - callDeepSeek(prompt, userInput, options) → Promise<string>（v1.5 JSON 模式，向后兼容）
+//   - callDeepSeekStream(prompt, userInput, options, onToken) → Promise<string>（v2.0 SSE 模式）
+//   - callDeepSeekReasoner(...) → reasoner 模型（用于 4 层根因）
+//   - callDeepSeekReasonerStream(...) → reasoner 流式
+//
 // 安全：前端只调 /api/chat 同源代理，不持有 API Key
-// 详见 v1 §5.3 / v3 §翻车点 11
 // ============================================================
 
 import axios from 'axios'
 
 const client = axios.create({
-  // 空字符串 = 同源（推荐生产用）；本地 dev 通过 vite proxy 转发到 vercel dev
   baseURL: import.meta.env.VITE_API_BASE || '',
   headers: { 'Content-Type': 'application/json' },
-  timeout: 30000 // 30s，DeepSeek 偶尔较慢
+  timeout: 30000
 })
 
 /**
- * 调用 DeepSeek（通过 /api/chat 代理）
- * @param {string} prompt - system prompt
- * @param {string} userInput - 用户输入
- * @param {object} options - { model, temperature, max_tokens }
+ * JSON 模式（v1.5 兼容路径）
  * @returns {Promise<string>} 模型回复内容
  */
 export async function callDeepSeek(prompt, userInput, options = {}) {
@@ -36,7 +37,6 @@ export async function callDeepSeek(prompt, userInput, options = {}) {
     })
     return data.content
   } catch (e) {
-    // 统一错误格式
     const msg = e.response?.data?.error || e.message || 'unknown_error'
     console.error('[deepseek] call failed:', msg)
     throw new Error(`AI_SERVICE_ERROR: ${msg}`)
@@ -44,11 +44,140 @@ export async function callDeepSeek(prompt, userInput, options = {}) {
 }
 
 /**
- * 调用 deepseek-reasoner（推理模型，v3 用于 4 层根因链诊断）
+ * Reasoner 模型（JSON 模式）
  */
 export async function callDeepSeekReasoner(prompt, userInput, options = {}) {
-  return callDeepSeek(prompt, userInput, {
-    ...options,
-    model: 'deepseek-reasoner'
-  })
+  return callDeepSeek(prompt, userInput, { ...options, model: 'deepseek-reasoner' })
+}
+
+// ============================================================
+// SSE 流式（v2.0 新增）
+// ============================================================
+
+/**
+ * SSE 流式调用（v2.0 新增）
+ * @param {string} prompt - system prompt
+ * @param {string} userInput - 用户输入
+ * @param {object} options - { model, temperature, max_tokens }
+ * @param {(chunk: {delta: string, latencyMs: number}) => void} onToken - 每个 token 片段回调
+ * @param {object} signal - AbortController.signal（用于取消）
+ * @returns {Promise<string>} 完整内容
+ */
+export async function callDeepSeekStream(prompt, userInput, options = {}, onToken = null, signal = null) {
+  const {
+    model = 'deepseek-chat',
+    temperature = 0.7,
+    max_tokens = 2000
+  } = options
+
+  // 基础 URL：与 JSON 模式一致（同源 /api/chat 代理）
+  const baseURL = import.meta.env.VITE_API_BASE || ''
+  const url = `${baseURL}/api/chat`
+
+  let response
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        userInput,
+        options: { model, temperature, max_tokens, stream: true }
+      }),
+      signal
+    })
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      throw new Error('AI_SERVICE_ERROR: aborted_by_caller')
+    }
+    console.error('[deepseek] stream fetch failed:', e.message)
+    // 降级：非流式
+    console.warn('[deepseek] stream 降级为非流式')
+    return await callDeepSeek(prompt, userInput, options)
+  }
+
+  if (!response.ok) {
+    let errMsg = `HTTP ${response.status}`
+    try {
+      const errJson = await response.json()
+      errMsg = errJson.error || errMsg
+    } catch (_) { /* noop */ }
+    console.error('[deepseek] stream HTTP error:', errMsg)
+    throw new Error(`AI_SERVICE_ERROR: ${errMsg}`)
+  }
+
+  if (!response.body) {
+    console.warn('[deepseek] 无 response.body，降级为非流式')
+    return await callDeepSeek(prompt, userInput, options)
+  }
+
+  // 解析 SSE 流
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder('utf-8')
+  let buffer = ''
+  let totalContent = ''
+  let firstTokenAt = null
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const events = buffer.split('\n\n')
+      buffer = events.pop() || ''
+
+      for (const evt of events) {
+        const lines = evt.split('\n')
+        for (const line of lines) {
+          const trimmed = line.trim()
+          if (!trimmed || !trimmed.startsWith('data:')) continue
+          const payload = trimmed.slice(5).trim()
+          if (payload === '[DONE]') {
+            return totalContent
+          }
+          try {
+            const parsed = JSON.parse(payload)
+            // 错误事件
+            if (parsed.error) {
+              throw new Error(`AI_SERVICE_ERROR: ${parsed.error} - ${parsed.message || ''}`)
+            }
+            // token 增量
+            const delta = parsed.choices?.[0]?.delta?.content || ''
+            if (delta) {
+              if (firstTokenAt === null) firstTokenAt = Date.now()
+              totalContent += delta
+              if (typeof onToken === 'function') {
+                try {
+                  onToken({ delta, latencyMs: Date.now() - (firstTokenAt || Date.now()) })
+                } catch (cbErr) {
+                  console.error('[deepseek] onToken 回调异常:', cbErr.message)
+                }
+              }
+            }
+          } catch (parseErr) {
+            if (parseErr.message?.startsWith('AI_SERVICE_ERROR:')) {
+              throw parseErr
+            }
+            // 忽略心跳等非 JSON 行
+          }
+        }
+      }
+    }
+    return totalContent
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      throw new Error('AI_SERVICE_ERROR: aborted_by_caller')
+    }
+    throw e
+  } finally {
+    try { reader.releaseLock() } catch (_) { /* noop */ }
+  }
+}
+
+/**
+ * Reasoner 模型（流式）
+ */
+export async function callDeepSeekReasonerStream(prompt, userInput, options = {}, onToken = null, signal = null) {
+  return callDeepSeekStream(prompt, userInput, { ...options, model: 'deepseek-reasoner' }, onToken, signal)
 }

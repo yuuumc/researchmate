@@ -1,15 +1,14 @@
 // ============================================================
-// 学习诊断 Agent（对应原工作流 N5，4 层根因链）
+// 学习诊断 Agent（v2.0 SSE 版）
 // ============================================================
-// v1 基础版：表面 / 直接 / 根因 / 补强
-// v2 升级：4 层根因链结构化（表面 / 直接 / 中间 / 根本）
-//
-// v1.5 升级：继承 BaseAgent，trace 自动埋点；用 reasoner 模型做根因推理
+// v1：4 层根因链（表面 / 直接 / 中间 / 根本）
+// v1.5：继承 BaseAgent，trace 自动埋点；用 reasoner 模型
+// v2.0：支持流式 + 取消
 // ============================================================
 
 import { profileToContext } from '../profileLoader'
 import { DIAGNOSE_PROMPT } from '@/prompts/index'
-import { traceAgent, runLLM, parseStructured } from './BaseAgent'
+import { traceAgent, runLLM, callLLM, parseStructured } from './BaseAgent'
 
 const FALLBACK_STRUCTURE = {
   score: null,
@@ -21,21 +20,27 @@ const FALLBACK_STRUCTURE = {
   remediation: ''
 }
 
-export const diagnoseAgent = traceAgent('diagnose', async function diagnoseCore(userInput, profile) {
+export const diagnoseAgent = traceAgent('diagnose', async function diagnoseCore(userInput, profile, ctx = {}) {
+  const onToken = ctx?.onToken || null
+  const signal = ctx?.signal || null
+
   const prompt = `${DIAGNOSE_PROMPT}
 
 # 学生画像
 ${profileToContext(profile)}
 `
 
-  // reasoner 模型做根因推理（v3 §v3.4 Week 2 P0）
-  const { content: raw } = await runLLM(
+  // reasoner 模型做根因推理（v2.0：接 ctx.onToken → 流式）
+  const result = await callLLM(
     'diagnose',
     prompt,
     userInput,
     { temperature: 0.3, max_tokens: 2500 },
-    true // useReasoner
+    true, // useReasoner
+    onToken,
+    signal
   )
+  const raw = result.content
 
   // 尝试解析结构化字段
   const structured = extractDiagnosisStructure(raw, userInput)
@@ -50,7 +55,6 @@ ${profileToContext(profile)}
 
 /**
  * 从 LLM 输出中抽取结构化字段
- * LLM 应该返回 JSON 块（v2 升级为强制 JSON-only）
  */
 function extractDiagnosisStructure(raw, userInput) {
   const parsed = parseStructured(raw, null)
@@ -65,7 +69,6 @@ function extractDiagnosisStructure(raw, userInput) {
       remediation: parsed.remediation || ''
     }
   }
-  // 兜底：从输入抽取分数
   return {
     ...FALLBACK_STRUCTURE,
     score: extractScoreFromInput(userInput)
@@ -74,7 +77,6 @@ function extractDiagnosisStructure(raw, userInput) {
 
 function extractScoreFromInput(input) {
   if (!input) return null
-  // 匹配"考了 55 分" / "55 分" / "score 55"
   const m = input.match(/(\d{1,3})\s*分/)
   if (m) {
     const score = parseInt(m[1], 10)

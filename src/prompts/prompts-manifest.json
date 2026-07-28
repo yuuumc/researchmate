@@ -1,0 +1,161 @@
+{
+  "$schema": "./prompts-schema.json",
+  "version": "2.0.0",
+  "updated_at": "2026-07-28",
+  "owner": "agent_4knrthsb4k8ze6q",
+  "note": "v2.0 多用户 SaaS：5 Agent × (student/teacher) 双受众。改任意字段后 commit + 推 main，1 分钟内 Vercel 部署完毕即可灰度。",
+  "default_audience": "student",
+  "default_version": "2.0.0",
+  "agents": {
+    "tutor": {
+      "v1_baseline": "1.5.0",
+      "v2": {
+        "student": {
+          "active": "2.0.0",
+          "versions": {
+            "2.0.0": {
+              "file": "src/prompts/v2/tutor/student.md",
+              "sha": "PENDING",
+              "created_at": "2026-07-28",
+              "changelog": "新增多用户隔离头（student_id 注入）、防跨班混淆硬约束",
+              "traffic": 1.0
+            }
+          }
+        },
+        "teacher": {
+          "active": "2.0.0",
+          "versions": {
+            "2.0.0": {
+              "file": "src/prompts/v2/tutor/teacher.md",
+              "sha": "PENDING",
+              "created_at": "2026-07-28",
+              "changelog": "新增 class_id / class_name 注入、教师视角的学情汇总表达",
+              "traffic": 1.0
+            }
+          }
+        }
+      }
+    },
+    "diagnose": {
+      "v1_baseline": "1.5.0",
+      "v2": {
+        "student": {
+          "active": "2.0.0",
+          "versions": {
+            "2.0.0": {
+              "file": "src/prompts/v2/diagnose/student.md",
+              "sha": "PENDING",
+              "created_at": "2026-07-28",
+              "changelog": "score 字段强校验（与学生输入一致）、防教师越权查看",
+              "traffic": 1.0
+            }
+          }
+        },
+        "teacher": {
+          "active": "2.0.0",
+          "versions": {
+            "2.0.0": {
+              "file": "src/prompts/v2/diagnose/teacher.md",
+              "sha": "PENDING",
+              "created_at": "2026-07-28",
+              "changelog": "班级诊断聚合（聚合弱点的统计视角）、脱敏学生姓名",
+              "traffic": 1.0
+            }
+          }
+        }
+      }
+    },
+    "planner": {
+      "v1_baseline": "1.5.0",
+      "v2": {
+        "student": {
+          "active": "2.0.0",
+          "versions": {
+            "2.0.0": {
+              "file": "src/prompts/v2/planner/student.md",
+              "sha": "PENDING",
+              "created_at": "2026-07-28",
+              "changelog": "周计划绑定学生能力星、目标院校、时间窗",
+              "traffic": 1.0
+            }
+          }
+        },
+        "teacher": {
+          "active": "2.0.0",
+          "versions": {
+            "2.0.0": {
+              "file": "src/prompts/v2/planner/teacher.md",
+              "sha": "PENDING",
+              "created_at": "2026-07-28",
+              "changelog": "班级周计划（统计视角）、教师可批注/调整",
+              "traffic": 1.0
+            }
+          }
+        }
+      }
+    },
+    "admission": {
+      "v1_baseline": "1.5.0",
+      "v2": {
+        "student": {
+          "active": "2.0.0",
+          "versions": {
+            "2.0.0": {
+              "file": "src/prompts/v2/admission/student.md",
+              "sha": "PENDING",
+              "created_at": "2026-07-28",
+              "changelog": "新增学生侧隐私保护（不向教师泄漏具体志愿）",
+              "traffic": 1.0
+            }
+          }
+        },
+        "teacher": {
+          "active": "2.0.0",
+          "versions": {
+            "2.0.0": {
+              "file": "src/prompts/v2/admission/teacher.md",
+              "sha": "PENDING",
+              "created_at": "2026-07-28",
+              "changelog": "教师侧看班级择校分布（脱敏个人志愿）、可推送群体建议",
+              "traffic": 1.0
+            }
+          }
+        }
+      }
+    },
+    "research": {
+      "v1_baseline": "1.5.0",
+      "v2": {
+        "student": {
+          "active": "2.0.0",
+          "versions": {
+            "2.0.0": {
+              "file": "src/prompts/v2/research/student.md",
+              "sha": "PENDING",
+              "created_at": "2026-07-28",
+              "changelog": "保留 OpenAlex 引用核对、防导师越权推荐（不推具体导师）",
+              "traffic": 1.0
+            }
+          }
+        },
+        "teacher": {
+          "active": "2.0.0",
+          "versions": {
+            "2.0.0": {
+              "file": "src/prompts/v2/research/teacher.md",
+              "sha": "PENDING",
+              "created_at": "2026-07-28",
+              "changelog": "教师侧看班级研究方向分布、不输出学生姓名（脱敏）",
+              "traffic": 1.0
+            }
+          }
+        }
+      }
+    }
+  },
+  "rollback": {
+    "kpi": "Prompt 改一行 → 1 分钟内灰度 / 回滚",
+    "mechanism": "manifest.json 改 active 字段 + traffic 字段 → git commit → Vercel 部署 ≤60s",
+    "emergency_rollback": "把 traffic 改为 0 + 改 active 指向 v1_baseline"
+  }
+}
