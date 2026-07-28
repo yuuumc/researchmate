@@ -8,6 +8,9 @@ import App from './App.vue'
 import './styles/main.css'
 import { bootstrapSubject } from './utils/subjectLoader'
 import { useSubjectStore } from './stores/subject'
+import { useAuthStore } from './stores/auth'
+import { supabase, isSupabaseConfigured } from './services/supabase'
+import { setAuthReady } from './utils/authReady'
 
 // ============================================================
 // 学科运行时加载（v2.0 学科路由）
@@ -27,6 +30,51 @@ import { useSubjectStore } from './stores/subject'
 //   - localStorage 已有偏好则继续生效
 // ============================================================
 
+// ============================================================
+// Auth bootstrap（v2.5）
+// ============================================================
+// - 拉 session → 同步到 auth store
+// - 订阅 onAuthStateChange，后续登录/退出自动更新 store
+// - 登录后调 loadTeacherClasses 拿业务真相（双源）
+// - 调 setAuthReady() 解锁 router guard
+// ============================================================
+
+async function bootstrapAuth() {
+  const auth = useAuthStore()
+  if (!isSupabaseConfigured) {
+    // 优雅降级：未配置就不动 auth store，setAuthReady 解锁路由
+    setAuthReady()
+    return
+  }
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    auth.setSession(session?.user || null)
+    if (auth.isAuthenticated) {
+      // 不阻塞 setAuthReady；teacherClasses 是教师路由的判定输入
+      auth.loadTeacherClasses().catch((e) => {
+        console.warn('[main] bootstrap loadTeacherClasses 失败：', e)
+      })
+    }
+  } catch (e) {
+    console.error('[main] bootstrap getSession 失败：', e)
+  } finally {
+    setAuthReady()
+  }
+
+  // 订阅后续变化
+  supabase.auth.onAuthStateChange((_event, session) => {
+    const u = session?.user || null
+    auth.setSession(u)
+    if (auth.isAuthenticated) {
+      auth.loadTeacherClasses().catch((e) => {
+        console.warn('[main] onAuthStateChange loadTeacherClasses 失败：', e)
+      })
+    } else {
+      auth.clearSession()
+    }
+  })
+}
+
 const app = createApp(App)
 app.use(createPinia())
 app.use(router)
@@ -36,6 +84,9 @@ app.mount('#app')
 
 // 异步启动（不阻塞首屏）
 async function bootstrap() {
+  // 0. Auth bootstrap（解锁路由守卫）
+  await bootstrapAuth()
+
   // 1. 读 URL 参数
   const urlParams = new URLSearchParams(window.location.search)
   const urlSubject = urlParams.get('subject')
@@ -46,7 +97,6 @@ async function bootstrap() {
     await subjectStore.init(urlSubject)
     if (subjectStore.isReady) {
       const s = subjectStore.current
-      const stats = { textbook: '?', university: '?', graph: '?' }
       console.info(
         `[main] 学科: ${s.name} (${subjectStore.currentId}, source=${subjectStore.lastSource})`
       )

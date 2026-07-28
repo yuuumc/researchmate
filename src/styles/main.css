@@ -38,6 +38,18 @@
   --color-info: #4d9de0;
   --color-info-bg: #e6f1fb;
 
+  /* === Design Token v2 · 同步状态 5 色 + 角色 2 色 === */
+  /* 来源：docs/ui-v2/README.md（2026-07-28） */
+  --sync-idle: #7a8ba3;          /* 待同步（灰） */
+  --sync-syncing: #4d9de0;       /* 同步中（钢蓝） */
+  --sync-success: #00d4aa;       /* 已同步（青绿） */
+  --sync-conflict: #ff6b6b;      /* 冲突（珊瑚红） */
+  --sync-offline: #b0b8c4;       /* 离线（深灰） */
+  --role-student: #4d9de0;       /* 学生主色（钢蓝） */
+  --role-student-bg: #e6f1fb;
+  --role-teacher: #1e3a5f;       /* 教师主色（墨蓝） */
+  --role-teacher-bg: #eaeef5;
+
   /* === 文字 === */
   --color-fg-primary: #0f1e33;
   --color-fg-secondary: #3d5a80;
