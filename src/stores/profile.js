@@ -176,6 +176,27 @@ export const useProfileStore = defineStore('profile', {
       this.updateProfile({ exam_date: date })
     },
 
+    // === v2.0 新增（多用户 SaaS · 数据层）===
+
+    /**
+     * 登录后把 profile.user_id 对齐到 auth.users.id
+     * 首次登录用 auth.id 覆盖本地临时 uuid
+     * @param {string} authUserId - Supabase auth.users.id (UUID)
+     * @param {object} [meta] - 可选 metadata: { phone, name, role, avatar_url }
+     */
+    bindAuthUser(authUserId, meta = {}) {
+      if (!authUserId) {
+        console.warn('[profile] bindAuthUser called without authUserId')
+        return
+      }
+      const updates = { user_id: authUserId }
+      if (meta.phone) updates.phone = meta.phone
+      if (meta.name) updates.name = meta.name
+      if (meta.role) updates.role = meta.role
+      if (meta.avatar_url) updates.avatar_url = meta.avatar_url
+      this.updateProfile(updates)
+    },
+
     // === 原有 actions（向后兼容） ===
 
     addWeakTopic(topic) {
