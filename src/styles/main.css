@@ -1,0 +1,222 @@
+/* ============================================================
+   研芯通 · 知识图谱风设计系统 v2.0
+   ============================================================
+   美学基调：浅灰底 + 流动节点连线 + 卡片悬浮层叠 + 衬线学术感
+   核心隐喻：知识网络 / Agent 星座 / 思维路径
+   ============================================================ */
+
+/* === 字体加载（Noto Serif SC 仅 2 个字重，控制体积）=== */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* === 主色调 · 墨蓝学术系 === */
+  --color-ink-900: #0f1e33;      /* 最深墨蓝，标题/主文字 */
+  --color-ink-700: #1e3a5f;      /* 主品牌色，节点/链接 */
+  --color-ink-500: #3d5a80;      /* 次级文字 */
+  --color-ink-300: #7a8ba3;      /* 辅助文字 */
+  --color-ink-100: #c8d3e0;      /* 边框/分割 */
+
+  /* === 节点状态色 === */
+  --color-node-active: #00d4aa;  /* 青绿：活跃/已掌握 */
+  --color-node-weak: #ff6b6b;    /* 珊瑚红：薄弱/错误 */
+  --color-node-warn: #ffd166;    /* 琥珀：警告/进行中 */
+  --color-node-info: #4d9de0;    /* 钢蓝：信息/诊断 */
+
+  /* === 背景层 === */
+  --color-bg-base: #f4f6fa;      /* 主背景（冷灰）*/
+  --color-bg-elevated: #ffffff;  /* 卡片底 */
+  --color-bg-sunken: #eaeef5;    /* 凹陷区 */
+  --color-bg-deep: #0f1e33;      /* 深色区块（页头/页脚）*/
+
+  /* === 语义色 === */
+  --color-success: #00d4aa;
+  --color-success-bg: #e6f9f4;
+  --color-warning: #ffd166;
+  --color-warning-bg: #fff8e1;
+  --color-error: #ff6b6b;
+  --color-error-bg: #ffeaea;
+  --color-info: #4d9de0;
+  --color-info-bg: #e6f1fb;
+
+  /* === 文字 === */
+  --color-fg-primary: #0f1e33;
+  --color-fg-secondary: #3d5a80;
+  --color-fg-tertiary: #7a8ba3;
+  --color-fg-inverse: #f4f6fa;
+  --color-fg-muted: #a8b3c4;
+
+  /* === 边框 === */
+  --color-border-subtle: #e3e8f0;
+  --color-border-default: #c8d3e0;
+  --color-border-strong: #7a8ba3;
+
+  /* === 字体族 === */
+  --font-serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Cascadia Code", "Consolas", ui-monospace, monospace;
+
+  /* === 字号阶梯 === */
+  --text-caption: 11px;
+  --text-meta: 12px;
+  --text-body: 14px;
+  --text-subtitle: 15px;
+  --text-title: 18px;
+  --text-section: 22px;
+  --text-display: 32px;
+  --text-hero: 44px;
+
+  /* === 间距（8 栅格）=== */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* === 圆角 === */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* === 阴影 · 层叠卡片感 === */
+  --shadow-xs: 0 1px 2px rgba(15, 30, 51, 0.04);
+  --shadow-sm: 0 2px 4px rgba(15, 30, 51, 0.06), 0 1px 2px rgba(15, 30, 51, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 30, 51, 0.08), 0 2px 4px rgba(15, 30, 51, 0.04);
+  --shadow-lg: 0 12px 24px rgba(15, 30, 51, 0.10), 0 4px 8px rgba(15, 30, 51, 0.06);
+  --shadow-xl: 0 20px 40px rgba(15, 30, 51, 0.12), 0 8px 16px rgba(15, 30, 51, 0.08);
+  --shadow-node: 0 0 0 4px rgba(0, 212, 170, 0.15);
+  --shadow-glow: 0 0 24px rgba(0, 212, 170, 0.25);
+
+  /* === 动效 === */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 0.15s;
+  --duration-base: 0.25s;
+  --duration-slow: 0.4s;
+
+  /* === 层级 === */
+  --z-bg: 0;
+  --z-base: 1;
+  --z-card: 10;
+  --z-sticky: 100;
+  --z-modal: 1000;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  color: var(--color-fg-primary);
+  background: var(--color-bg-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* 知识图谱底纹：极淡的网格点 */
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(30, 58, 95, 0.06) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+
+#app {
+  min-height: 100vh;
+  position: relative;
+}
+
+a {
+  color: var(--color-ink-700);
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+a:hover {
+  color: var(--color-node-active);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* === 全局滚动条 === */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-default);
+  border-radius: var(--radius-full);
+  border: 2px solid var(--color-bg-base);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-ink-300);
+}
+
+/* === 文字选区 === */
+::selection {
+  background: rgba(0, 212, 170, 0.25);
+  color: var(--color-ink-900);
+}
+
+/* === 通用工具类 === */
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* 节点连线装饰（CSS only，用于卡片角标） */
+.node-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-node-active);
+  box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.2);
+}
+
+/* 入场动画 */
+@keyframes node-appear {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes path-draw {
+  from { stroke-dashoffset: 100; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes pulse-node {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+@keyframes float-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}

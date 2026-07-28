@@ -1,0 +1,68 @@
+[
+  {
+    "school": "复旦大学",
+    "level": "985",
+    "region": "长三角",
+    "major": "微电子学与固体电子学",
+    "year": 2025,
+    "score_line": 350,
+    "ratio": 8.5,
+    "enrollment": 45,
+    "source_url": "https://gsao.fudan.edu.cn/"
+  },
+  {
+    "school": "上海交通大学",
+    "level": "985",
+    "region": "长三角",
+    "major": "集成电路工程",
+    "year": 2025,
+    "score_line": 355,
+    "ratio": 7.2,
+    "enrollment": 60,
+    "source_url": "https://www.gs.sjtu.edu.cn/"
+  },
+  {
+    "school": "东南大学",
+    "level": "985",
+    "region": "长三角",
+    "major": "微电子学与固体电子学",
+    "year": 2025,
+    "score_line": 330,
+    "ratio": 5.8,
+    "enrollment": 50,
+    "source_url": "https://seu.edu.cn/"
+  },
+  {
+    "school": "南京大学",
+    "level": "985",
+    "region": "长三角",
+    "major": "集成电路工程",
+    "year": 2025,
+    "score_line": 340,
+    "ratio": 6.5,
+    "enrollment": 35,
+    "source_url": "https://grawww.nju.edu.cn/"
+  },
+  {
+    "school": "浙江大学",
+    "level": "985",
+    "region": "长三角",
+    "major": "微电子学与固体电子学",
+    "year": 2025,
+    "score_line": 345,
+    "ratio": 7.0,
+    "enrollment": 40,
+    "source_url": "http://grs.zju.edu.cn/"
+  },
+  {
+    "school": "同济大学",
+    "level": "985",
+    "region": "长三角",
+    "major": "集成电路工程",
+    "year": 2025,
+    "score_line": 320,
+    "ratio": 4.5,
+    "enrollment": 30,
+    "source_url": "https://gs.tongji.edu.cn/"
+  }
+]

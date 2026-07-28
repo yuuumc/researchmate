@@ -1,0 +1,112 @@
+[
+  {
+    "school": "清华大学",
+    "level": "985",
+    "region": "北京",
+    "major": "计算机科学与技术",
+    "year": 2025,
+    "score_line": 380,
+    "ratio": 12.5,
+    "enrollment": 80,
+    "source_url": "https://yz.tsinghua.edu.cn/"
+  },
+  {
+    "school": "北京大学",
+    "level": "985",
+    "region": "北京",
+    "major": "计算机科学与技术",
+    "year": 2025,
+    "score_line": 375,
+    "ratio": 10.8,
+    "enrollment": 65,
+    "source_url": "https://admission.pku.edu.cn/"
+  },
+  {
+    "school": "上海交通大学",
+    "level": "985",
+    "region": "长三角",
+    "major": "计算机科学与技术",
+    "year": 2025,
+    "score_line": 370,
+    "ratio": 9.5,
+    "enrollment": 70,
+    "source_url": "https://www.gs.sjtu.edu.cn/"
+  },
+  {
+    "school": "浙江大学",
+    "level": "985",
+    "region": "长三角",
+    "major": "计算机科学与技术",
+    "year": 2025,
+    "score_line": 365,
+    "ratio": 8.8,
+    "enrollment": 75,
+    "source_url": "http://grs.zju.edu.cn/"
+  },
+  {
+    "school": "南京大学",
+    "level": "985",
+    "region": "长三角",
+    "major": "计算机科学与技术",
+    "year": 2025,
+    "score_line": 355,
+    "ratio": 7.2,
+    "enrollment": 60,
+    "source_url": "https://grawww.nju.edu.cn/"
+  },
+  {
+    "school": "复旦大学",
+    "level": "985",
+    "region": "长三角",
+    "major": "计算机科学与技术",
+    "year": 2025,
+    "score_line": 360,
+    "ratio": 7.5,
+    "enrollment": 50,
+    "source_url": "https://gsao.fudan.edu.cn/"
+  },
+  {
+    "school": "中国科学技术大学",
+    "level": "985",
+    "region": "合肥",
+    "major": "计算机科学与技术",
+    "year": 2025,
+    "score_line": 350,
+    "ratio": 6.5,
+    "enrollment": 55,
+    "source_url": "http://gradschool.ustc.edu.cn/"
+  },
+  {
+    "school": "哈尔滨工业大学",
+    "level": "985",
+    "region": "东北",
+    "major": "计算机科学与技术",
+    "year": 2025,
+    "score_line": 340,
+    "ratio": 5.8,
+    "enrollment": 90,
+    "source_url": "http://hitgs.hit.edu.cn/"
+  },
+  {
+    "school": "华中科技大学",
+    "level": "985",
+    "region": "华中",
+    "major": "计算机科学与技术",
+    "year": 2025,
+    "score_line": 345,
+    "ratio": 6.0,
+    "enrollment": 85,
+    "source_url": "http://gs.hust.edu.cn/"
+  },
+  {
+    "school": "电子科技大学",
+    "level": "985",
+    "region": "西南",
+    "major": "计算机科学与技术",
+    "year": 2025,
+    "score_line": 335,
+    "ratio": 5.5,
+    "enrollment": 100,
+    "source_url": "https://gr.uestc.edu.cn/"
+  }
+]

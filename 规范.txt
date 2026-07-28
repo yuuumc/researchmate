@@ -1,0 +1,20 @@
+# 项目：研芯通（Yanxintong）
+
+## 技术栈
+- 前端：Vue 3 + Vite + TypeScript + Pinia + Element Plus
+- 后端：Vercel serverless（api/chat.js，约 30 行）
+- 存储：v1 用 localStorage（UUID 映射账号体系），v2+ 评估迁数据库
+- AI：DeepSeek deepseek-chat / deepseek-reasoner，仅服务端调用
+
+## 架构铁律
+- 4 Agent 协作（诊断 / 计划 / 院校 / 经验），主控编排器统一调度
+- 画像全局共享：mastered > weak（掌握后自动从弱项移除）
+- 数字字段严禁 LLM 生成，只从 src/data/university/*.json 渲染
+
+## 数据契约
+- localStorage key 命名：yanxintong_<scope>（profile / diagnosis_history / plan_version / chat_*）
+- 严禁 JSON.stringify(Set/Map)，存读都是数组（已踩坑）
+
+## 测试门槛
+- 单测：Vitest；端到端：Playwright（5 标对话）；mock：msw 拦截 /api/chat
+- RAG 命中验证：20 题 hit@5 ≥ 0.8（不达标降级为按章节手动挂标签）
