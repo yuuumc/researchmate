@@ -4,12 +4,15 @@ import { useRouter } from 'vue-router'
 import { useProfileStore } from '@/stores/profile'
 import { useDiagnosisStore } from '@/stores/diagnosis'
 import { usePlanStore } from '@/stores/plan'
+import { useWrongBookStore } from '@/stores/wrongBook'
 import KnowledgeGraph from '@/components/KnowledgeGraph.vue'
+import WrongBook from '@/components/WrongBook.vue'
 
 const router = useRouter()
 const profileStore = useProfileStore()
 const diagnosisStore = useDiagnosisStore()
 const planStore = usePlanStore()
+const wrongBookStore = useWrongBookStore()
 
 // 欢迎语（按时段）
 const greeting = computed(() => {
@@ -36,7 +39,7 @@ const abilityLabel = computed(() => {
 // 今日任务（从 plan store 读取本周任务，取今日 3 条）
 const todayTasks = computed(() => {
   // 从最新 plan 的本周任务取前 3 条作为今日任务
-  const latestPlan = planStore.latestPlan
+  const latestPlan = planStore.current
   if (!latestPlan || !Array.isArray(latestPlan.weeks) || latestPlan.weeks.length === 0) {
     return []
   }
@@ -77,6 +80,9 @@ function goPlan() {
 function goHistory() {
   router.push('/history')
 }
+
+// 错题本折叠状态（默认展开，便于首屏即可见）
+const wrongBookExpanded = ref(true)
 </script>
 
 <template>
@@ -236,6 +242,31 @@ function goHistory() {
               <span class="meta-value">{{ profileStore.masteredCount }} 个</span>
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- === 错题本 === -->
+      <section class="card wrong-card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">
+              错题本
+              <span v-if="wrongBookStore.unresolvedCount > 0" class="wb-badge">
+                {{ wrongBookStore.unresolvedCount }}
+              </span>
+            </div>
+            <div class="card-en">Wrong Book · 能力星 ≤ 2 自动入册</div>
+          </div>
+          <button
+            v-if="wrongBookStore.count > 0"
+            class="link-btn"
+            @click="wrongBookExpanded = !wrongBookExpanded"
+          >
+            {{ wrongBookExpanded ? '收起' : '展开' }} →
+          </button>
+        </div>
+        <div v-if="wrongBookExpanded || wrongBookStore.count === 0">
+          <WrongBook />
         </div>
       </section>
     </div>
@@ -703,6 +734,21 @@ function goHistory() {
 
 /* === 最近诊断 === */
 .recent-card { animation-delay: 0.35s; }
+
+.wb-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  background: var(--color-error);
+  color: white;
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.wrong-card { animation-delay: 0.4s; }
 
 .link-btn {
   background: none;

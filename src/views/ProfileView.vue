@@ -59,10 +59,10 @@ const profile = computed(() => profileStore.profile)
               <div class="card-title">已掌握</div>
               <div class="card-en">Mastered</div>
             </div>
-            <span class="count">{{ profile.mastered?.length || 0 }}</span>
+            <span class="count">{{ profile.mastered_topics?.length || 0 }}</span>
           </div>
-          <div v-if="profile.mastered?.length" class="points-list">
-            <span v-for="(p, i) in profile.mastered" :key="i" class="point active">
+          <div v-if="profile.mastered_topics?.length" class="points-list">
+            <span v-for="(p, i) in profile.mastered_topics" :key="i" class="point active">
               <span class="point-dot"></span>
               {{ p }}
             </span>
@@ -78,10 +78,10 @@ const profile = computed(() => profileStore.profile)
               <div class="card-title">待加强</div>
               <div class="card-en">Weak</div>
             </div>
-            <span class="count">{{ profile.weak?.length || 0 }}</span>
+            <span class="count">{{ profile.weak_topics?.length || 0 }}</span>
           </div>
-          <div v-if="profile.weak?.length" class="points-list">
-            <span v-for="(p, i) in profile.weak" :key="i" class="point weak">
+          <div v-if="profile.weak_topics?.length" class="points-list">
+            <span v-for="(p, i) in profile.weak_topics" :key="i" class="point weak">
               <span class="point-dot"></span>
               {{ p }}
             </span>
@@ -358,5 +358,24 @@ const profile = computed(() => profileStore.profile)
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--color-fg-muted);
+}
+
+/* === 移动端响应式 === */
+@media (max-width: 768px) {
+  .profile-content { padding: 24px 16px 48px; }
+  .page-title { font-size: 26px; }
+  .page-subtitle { font-size: 12px; }
+  .profile-grid { grid-template-columns: 1fr; gap: 12px; }
+  .card { padding: 16px 18px; }
+  .card.wide { grid-column: span 1; }
+  .page-eyebrow { font-size: 10px; padding: 3px 10px; }
+}
+
+@media (max-width: 375px) {
+  .profile-content { padding: 20px 12px 40px; }
+  .page-title { font-size: 22px; }
+  .card-title { font-size: 14px; }
+  .info-row { padding: 6px 0; }
+  .info-value { font-size: 12px; }
 }
 </style>

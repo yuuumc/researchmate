@@ -7,6 +7,34 @@ import PlanCard from '@/components/PlanCard.vue'
 const planStore = usePlanStore()
 const plan = computed(() => planStore.plan)
 const versions = computed(() => planStore.versions || [])
+
+// 把 ISO 时间渲染为"距今 N 天"，避免依赖 dayjs
+function timeAgo(iso) {
+  if (!iso) return ''
+  const ms = Date.now() - new Date(iso).getTime()
+  if (ms < 0) return '刚刚'
+  const minutes = Math.floor(ms / 60000)
+  if (minutes < 1) return '刚刚'
+  if (minutes < 60) return `${minutes} 分钟前`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} 小时前`
+  const days = Math.floor(hours / 24)
+  if (days < 1) return '今天'
+  if (days === 1) return '昨天'
+  if (days < 7) return `${days} 天前`
+  if (days < 30) return `${Math.floor(days / 7)} 周前`
+  if (days < 365) return `${Math.floor(days / 30)} 月前`
+  return new Date(iso).toLocaleDateString('zh-CN')
+}
+
+// 调整条目数（keep + strengthen + drop）
+function adjustmentCount(v) {
+  if (!v || !v.adjustments) return 0
+  const a = v.adjustments
+  return (Array.isArray(a.keep) ? a.keep.length : 0)
+    + (Array.isArray(a.strengthen) ? a.strengthen.length : 0)
+    + (Array.isArray(a.drop) ? a.drop.length : 0)
+}
 </script>
 
 <template>
@@ -37,8 +65,8 @@ const versions = computed(() => planStore.versions || [])
             :class="{ current: i === versions.length - 1 }"
           >
             <span class="vb-num">v{{ v.version || i + 1 }}</span>
-            <span class="vb-time">{{ v.time }}</span>
-            <span v-if="v.trigger" class="vb-trigger">{{ v.trigger }}</span>
+            <span class="vb-time">{{ timeAgo(v.created_at) }}</span>
+            <span v-if="adjustmentCount(v) > 0" class="vb-trigger">已调整 {{ adjustmentCount(v) }} 项</span>
           </div>
         </div>
       </section>
@@ -260,5 +288,24 @@ const versions = computed(() => planStore.versions || [])
 .empty-desc {
   font-size: 12px;
   color: var(--color-fg-tertiary);
+}
+
+/* === 移动端响应式 === */
+@media (max-width: 768px) {
+  .plan-content { padding: 24px 16px 48px; }
+  .page-title { font-size: 26px; }
+  .page-subtitle { font-size: 12px; }
+  .version-bar { padding: 16px; }
+  .vb-track { gap: 6px; }
+  .vb-node { padding: 5px 10px; font-size: 10px; }
+  .vb-node:not(:last-child)::after { right: -8px; font-size: 10px; }
+  .empty-state { padding: 48px 16px; }
+  .empty-icon { font-size: 28px; }
+}
+
+@media (max-width: 375px) {
+  .plan-content { padding: 20px 12px 40px; }
+  .page-title { font-size: 22px; }
+  .vb-title { flex-direction: column; align-items: flex-start; gap: 4px; }
 }
 </style>

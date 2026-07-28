@@ -339,4 +339,29 @@ const activeIndex = computed(() => agents.findIndex((a) => a.key === props.activ
   color: var(--color-ink-700);
   letter-spacing: 0.5px;
 }
+
+/* === 移动端响应式（v1.5） === */
+@media (max-width: 768px) {
+  .top-bar {
+    height: 60px;
+    padding: 0 16px;
+  }
+  .brand-text { display: none; }
+  .agent-constellation { padding: 4px; gap: 2px; }
+  .agent-node { padding: 6px 10px; gap: 5px; }
+  .node-en { display: none; }
+  .node-label { font-size: 12px; }
+  .node-orbit { width: 12px; height: 12px; }
+  .node-dot { width: 6px; height: 6px; }
+  .status-pill { padding: 4px 8px; font-size: 10px; }
+  .status-text { display: none; }
+  .user-entry { width: 30px; height: 30px; }
+}
+
+@media (max-width: 480px) {
+  .top-bar { padding: 0 12px; height: 56px; }
+  .agent-node { padding: 5px 8px; }
+  .status-pill { display: none; }
+  .constellation-line { display: none; }
+}
 </style>

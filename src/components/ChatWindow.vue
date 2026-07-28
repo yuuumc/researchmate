@@ -1,7 +1,16 @@
 <script setup>
-import { ref, nextTick, watch, computed } from 'vue'
+import { ref, nextTick, watch, computed, onMounted } from 'vue'
 import { route } from '@/core/router'
 import { useTraceStore } from '@/stores/trace'
+import { useProfileStore } from '@/stores/profile'
+import {
+  saveRecent,
+  loadRecent,
+  clearExpiredRecent,
+  archiveAll,
+  loadAll,
+  listMonths
+} from '@/utils/persist'
 import KnowledgeGraph from './KnowledgeGraph.vue'
 import MarkdownRenderer from './MarkdownRenderer.vue'
 import DiagnosisReport from './DiagnosisReport.vue'
@@ -15,6 +24,66 @@ const messages = ref([])
 const inputText = ref('')
 const loading = ref(false)
 const chatBodyRef = ref(null)
+
+// v1.5: 对话历史持久化
+const profileStore = useProfileStore()
+const userId = computed(() => profileStore.profile?.user_id || 'default')
+const restoredBanner = ref(null) // {count, savedAt} | null
+const availableMonths = ref([])
+const loadingEarlier = ref(false)
+let saveTimer = null
+
+function scheduleSave() {
+  if (saveTimer) clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => {
+    if (messages.value.length === 0) return
+    saveRecent(userId.value, messages.value)
+    // 异步归档到 IndexedDB（不阻塞）
+    archiveAll(userId.value, messages.value)
+  }, 600)
+}
+
+async function refreshMonths() {
+  const months = await listMonths(userId.value)
+  availableMonths.value = months
+}
+
+async function loadEarlier() {
+  if (loadingEarlier.value) return
+  loadingEarlier.value = true
+  try {
+    const all = await loadAll(userId.value)
+    if (Array.isArray(all) && all.length > 0) {
+      // 去重：只把不在当前 messages 里的 prepend 进去
+      const existing = new Set(messages.value.map((m) => `${m.role}:${m.timestamp}:${m.content?.slice(0, 50)}`))
+      const earlier = all.filter((m) => !existing.has(`${m.role}:${m.timestamp}:${m.content?.slice(0, 50)}`))
+      if (earlier.length > 0) {
+        messages.value = [...earlier, ...messages.value]
+        scheduleSave()
+        restoredBanner.value = { count: earlier.length, fromCache: true }
+      } else {
+        restoredBanner.value = { count: 0, fromCache: true, noop: true }
+      }
+      setTimeout(() => { restoredBanner.value = null }, 3000)
+    }
+  } catch (e) {
+    console.error('[ChatWindow] loadEarlier failed:', e)
+  } finally {
+    loadingEarlier.value = false
+  }
+}
+
+onMounted(() => {
+  // 启动时清理过期 + 恢复 7 天内
+  clearExpiredRecent()
+  const restored = loadRecent(userId.value)
+  if (Array.isArray(restored) && restored.length > 0) {
+    messages.value = restored
+    restoredBanner.value = { count: restored.length, fromCache: false }
+    setTimeout(() => { restoredBanner.value = null }, 4000)
+  }
+  refreshMonths()
+})
 
 // Agent Trace（v1正式版 §六：智能体工作过程展示）
 const traceStore = useTraceStore()
@@ -144,11 +213,27 @@ function getAgentMeta(agent) {
 }
 
 watch(messages, scrollToBottom, { deep: true })
+// v1.5: 持久化（debounce 600ms）
+watch(messages, scheduleSave, { deep: true })
 </script>
 
 <template>
   <div class="chat-window">
     <div ref="chatBodyRef" class="chat-body">
+      <!-- v1.5: 恢复/加载提示 -->
+      <div v-if="restoredBanner" class="restored-banner" :class="{ noop: restoredBanner.noop }">
+        <span v-if="restoredBanner.noop">没有更早的历史可加载</span>
+        <span v-else-if="restoredBanner.fromCache">
+          ✓ 已加载更早的 {{ restoredBanner.count }} 条对话
+        </span>
+        <span v-else>
+          ✓ 已恢复最近 {{ restoredBanner.count }} 条对话（7 天内）
+        </span>
+        <button v-if="!restoredBanner.fromCache && availableMonths.length > 0" class="banner-cta" @click="loadEarlier" :disabled="loadingEarlier">
+          {{ loadingEarlier ? '加载中…' : '加载更早历史' }}
+        </button>
+      </div>
+
       <!-- 空态：首屏 hero -->
       <div v-if="messages.length === 0" class="hero-screen">
         <KnowledgeGraph :node-count="22" :flow-dots="true" />
@@ -997,6 +1082,78 @@ watch(messages, scrollToBottom, { deep: true })
 .send-btn:disabled {
   background: var(--color-border-default);
   cursor: not-allowed;
+}
+
+/* === v1.5: 恢复/加载提示 === */
+.restored-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  margin: 16px 0 8px;
+  background: var(--color-success-bg);
+  border: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-ink-700);
+  animation: float-up 0.3s var(--ease-out) both;
+}
+
+.restored-banner.noop {
+  background: var(--color-bg-sunken);
+  color: var(--color-fg-muted);
+}
+
+.banner-cta {
+  margin-left: auto;
+  padding: 4px 12px;
+  background: var(--color-ink-900);
+  color: var(--color-fg-inverse);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.banner-cta:hover:not(:disabled) {
+  background: var(--color-ink-700);
+  transform: translateX(2px);
+}
+
+.banner-cta:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* === 移动端响应式 === */
+@media (max-width: 768px) {
+  .chat-window { height: calc(100vh - 72px); }
+  .chat-body { padding: 0 16px; }
+  .chat-input { padding: 12px 16px 16px; }
+  .input-wrapper { padding: 4px 6px 4px 12px; }
+  .input-prompt { font-size: 14px; margin-right: 4px; }
+  .quick-actions { grid-template-columns: 1fr; gap: 10px; }
+  .hero-title { font-size: 32px; }
+  .hero-subtitle { font-size: 13px; margin-bottom: 24px; }
+  .hero-screen { padding: 24px 0 16px; }
+  .quick-card { padding: 14px 16px; }
+  .qc-path { font-size: 11px; padding: 7px 10px; }
+  .user-bubble { font-size: 13px; padding: 10px 14px; }
+  .assistant-bubble { font-size: 13px; padding: 14px 16px; }
+  .message { gap: 10px; margin-bottom: 18px; }
+  .restored-banner { padding: 8px 12px; font-size: 11px; flex-wrap: wrap; }
+  .banner-cta { padding: 3px 10px; font-size: 10px; }
+}
+
+@media (max-width: 375px) {
+  .chat-body { padding: 0 12px; }
+  .chat-input { padding: 10px 12px 14px; }
+  .hero-title { font-size: 26px; }
+  .qc-icon { width: 32px; height: 32px; font-size: 14px; }
+  .qc-title { font-size: 14px; }
 }
 
 .send-arrow {

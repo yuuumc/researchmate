@@ -1,5 +1,7 @@
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   recommendations: {
     type: Array,
     default: () => []
@@ -16,18 +18,53 @@ const tierConfig = {
 function getTier(tier) {
   return tierConfig[tier] || { label: tier || '推荐', en: '', color: '#7a8ba3', desc: '' }
 }
+
+// 字段 aliasing：v1 评审保命修复
+// agent 实际输出：school / score_line / ratio / enrollment（数字字段强制来自本地数据）
+// 旧 v1 代码误用了 name / rank_range / admission_rate / tags —— 全部空，导致卡片全是占位
+const items = computed(() => {
+  return (props.recommendations || []).map((u) => {
+    const score = u.score_line ?? u.scoreLine
+    const ratio = u.ratio ?? u.rank_range ?? u.rankRange
+    const enrollment = u.enrollment ?? u.admission_rate ?? u.admissionRate
+    const tags = Array.isArray(u.tags) ? u.tags : []
+    return {
+      school: u.school ?? u.name ?? '（未命名院校）',
+      region: u.region ?? '',
+      tier: u.tier,
+      level: u.level,
+      major: u.major,
+      year: u.year,
+      sourceUrl: u.source_url,
+      reason: u.reason || '',
+      // 每个 metric 单独判断是否存在 + 配套 label / unit
+      metrics: [
+        score != null
+          ? { key: 'score_line', label: '分数线', value: score, unit: '分' }
+          : null,
+        ratio != null
+          ? { key: 'ratio', label: '报录比', value: ratio, unit: ':1' }
+          : null,
+        enrollment != null
+          ? { key: 'enrollment', label: '招生人数', value: enrollment, unit: '人' }
+          : null
+      ].filter(Boolean),
+      tags
+    }
+  })
+})
 </script>
 
 <template>
   <div class="admission-card">
-    <div v-if="!recommendations.length" class="empty-state">
+    <div v-if="!items.length" class="empty-state">
       <span class="empty-icon">◯</span>
       <span class="empty-text">暂无推荐院校</span>
     </div>
 
     <div v-else class="uni-grid">
       <div
-        v-for="(uni, idx) in recommendations"
+        v-for="(uni, idx) in items"
         :key="idx"
         class="uni-card"
         :style="{ '--tier-color': getTier(uni.tier).color }"
@@ -47,7 +84,7 @@ function getTier(tier) {
 
         <!-- 院校名 -->
         <div class="uni-name-block">
-          <div class="uni-name">{{ uni.name }}</div>
+          <div class="uni-name">{{ uni.school }}</div>
           <div v-if="uni.region" class="uni-region">
             <span class="region-node"></span>
             {{ uni.region }}
@@ -55,25 +92,12 @@ function getTier(tier) {
         </div>
 
         <!-- 关键数字（铁律：只从 JSON 渲染）-->
-        <div class="metrics">
-          <div v-if="uni.score_line ?? uni.scoreLine" class="metric">
-            <div class="metric-label">分数线</div>
+        <div v-if="uni.metrics.length" class="metrics">
+          <div v-for="m in uni.metrics" :key="m.key" class="metric">
+            <div class="metric-label">{{ m.label }}</div>
             <div class="metric-value">
-              <span class="num">{{ uni.score_line ?? uni.scoreLine }}</span>
-              <span class="unit">分</span>
-            </div>
-          </div>
-          <div v-if="uni.rank_range ?? uni.rankRange" class="metric">
-            <div class="metric-label">排名区间</div>
-            <div class="metric-value">
-              <span class="num">{{ uni.rank_range ?? uni.rankRange }}</span>
-            </div>
-          </div>
-          <div v-if="uni.admission_rate ?? uni.admissionRate" class="metric">
-            <div class="metric-label">录取率</div>
-            <div class="metric-value">
-              <span class="num">{{ uni.admission_rate ?? uni.admissionRate }}</span>
-              <span class="unit">%</span>
+              <span class="num">{{ m.value }}</span>
+              <span class="unit">{{ m.unit }}</span>
             </div>
           </div>
         </div>
@@ -84,8 +108,8 @@ function getTier(tier) {
           <span class="reason-text">{{ uni.reason }}</span>
         </div>
 
-        <!-- 标签 -->
-        <div v-if="uni.tags?.length" class="tags">
+        <!-- 标签（agent 暂未输出 tags，v-if 防御） -->
+        <div v-if="uni.tags.length" class="tags">
           <span v-for="(tag, ti) in uni.tags" :key="ti" class="tag">{{ tag }}</span>
         </div>
       </div>
@@ -245,7 +269,7 @@ function getTier(tier) {
 /* === 数字指标 === */
 .metrics {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
   gap: 8px;
   padding: 12px 0;
   border-top: 1px dashed var(--color-border-subtle);

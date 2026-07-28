@@ -3,13 +3,18 @@
 // ============================================================
 // 职责：
 //   1. 加载学生画像
-//   2. 意图识别（调用 DeepSeek）
+//   2. 意图识别（调用 DeepSeek） —— 与「默认 tutor 预热」并行
 //   3. 路由到对应 Agent
 //   4. 兜底：意图识别失败 → 默认走 concept（专业导师）
 //
 // v1 正式版升级（v1正式版.txt §六）：
 //   接入 Agent Trace 事件系统，记录全过程时间线
 //   Router → Profile → Agent → Profile Update
+//
+// v1.5 升级（H2 评审保命）：
+//   「2x 串行 LLM → 并行」：intent 识别 + tutor 预热 Promise.all 并发执行
+//   节省单轮延迟约 50%（如果命中 concept 走默认）
+//   兜底：intent 失败 → 默认 concept；双失败 → 串行 tutor 兜底
 // ============================================================
 
 import { tutorAgent } from './agents/tutor'
@@ -55,8 +60,25 @@ const STAGE_LABELS = {
   sprint: '冲刺'
 }
 
+const VALID_INTENTS = ['concept', 'diagnose', 'plan', 'admission', 'research', 'cascade']
+
 /**
- * 主控路由
+ * 调用意图识别 LLM（独立函数，便于在 Promise.all 中复用 + 单独重试）
+ */
+async function recognizeIntent(userInput) {
+  const intentRaw = await AI_PROVIDER.call(INTENT_PROMPT, userInput, {
+    temperature: 0.1,
+    max_tokens: 200
+  })
+  const parsed = safeParseJSON(intentRaw, { intent: 'concept' })
+  if (parsed && VALID_INTENTS.includes(parsed.intent)) {
+    return parsed.intent
+  }
+  return 'concept' // 兜底
+}
+
+/**
+ * 主控路由（v1.5 并行版）
  * @param {string} userInput - 学生原始输入
  * @returns {Promise<object>} { intent, content, raw, agent }
  */
@@ -86,75 +108,132 @@ export async function route(userInput) {
     throw e
   }
 
-  // 2. 意图识别（带 trace）
-  let intent = 'concept' // 默认兜底
-  const routerStepIdx = traceStore.addStep('router', '识别意图…')
-  try {
-    const intentRaw = await AI_PROVIDER.call(INTENT_PROMPT, userInput, {
-      temperature: 0.1,
-      max_tokens: 200
-    })
-    const parsed = safeParseJSON(intentRaw, { intent: 'concept' })
-    const validIntents = ['concept', 'diagnose', 'plan', 'admission', 'research', 'cascade']
-    if (parsed && validIntents.includes(parsed.intent)) {
-      intent = parsed.intent
+  // 2. v1.5 升级：意图识别 + tutor 预热 并行
+  //    tutor 是最常见的 intent（concept），预先开 LLM 调用
+  //    如果命中 concept → 用预热结果（省一次 LLM round-trip，延迟 ↓50%）
+  //    如果命中其他 intent → 丢弃预热结果，调用对应 Agent
+  //    任何一方失败 → 互不阻塞；双失败 → 串行 tutor 兜底
+  const routerStepIdx = traceStore.addStep('router', '识别意图（+ tutor 预热）…')
+
+  const intentPromise = recognizeIntent(userInput).catch((e) => {
+    console.warn('[router] intent recognition failed:', e.message)
+    return { __error: e, __value: 'concept' }
+  })
+
+  const tutorPromise = tutorAgent(userInput, profile).catch((e) => {
+    console.warn('[router] tutor prewarm failed:', e.message)
+    return { __error: e, __value: null }
+  })
+
+  const [intentSettled, tutorSettled] = await Promise.all([intentPromise, tutorPromise])
+
+  const intentError = intentSettled && intentSettled.__error ? intentSettled.__error : null
+  const tutorError = tutorSettled && tutorSettled.__error ? tutorSettled.__error : null
+  const intent = (intentSettled && intentSettled.__value) || (intentSettled && !intentSettled.__error ? intentSettled : 'concept')
+  const tutorPrewarmResult = tutorSettled && tutorSettled.__value !== undefined ? tutorSettled.__value : tutorSettled
+
+  // 双失败兜底：串行再调一次 tutor
+  let intentForNext = intent
+  if (intentError && tutorError) {
+    console.warn('[router] both intent and tutor failed, falling back to serial tutor call')
+    try {
+      const fallbackResult = await tutorAgent(userInput, profile)
+      const updateStepIdx = traceStore.addStep('profile_update', '更新学生画像…')
+      try {
+        updateProfileAfterResponse('concept', fallbackResult, profile)
+        traceStore.updateStep(updateStepIdx, 'done', { detail: '画像已同步（兜底）' })
+      } catch (e) {
+        traceStore.updateStep(updateStepIdx, 'error', { error: e.message })
+      }
+      traceStore.updateStep(routerStepIdx, 'done', { detail: '概念引导（双失败兜底）' })
+      traceStore.endSession()
+      return { intent: 'concept', ...fallbackResult }
+    } catch (e) {
+      traceStore.updateStep(routerStepIdx, 'error', { error: 'router_fallback_failed: ' + e.message })
+      traceStore.endSession()
+      return {
+        intent: 'concept',
+        content: 'AI 服务暂不可用，请稍后再试。错误信息：' + e.message,
+        agent: 'concept',
+        error: true
+      }
     }
-    traceStore.updateStep(routerStepIdx, 'done', {
-      detail: INTENT_LABELS[intent] || intent
-    })
-  } catch (e) {
-    console.warn('[router] intent recognition failed, fallback to concept:', e.message)
-    traceStore.updateStep(routerStepIdx, 'done', {
-      detail: '概念引导（兜底）'
-    })
   }
 
+  // 单边失败处理
+  if (intentError) {
+    console.warn('[router] intent failed, using concept default (tutor prewarm will be used if available)')
+    intentForNext = 'concept'
+  }
+
+  traceStore.updateStep(routerStepIdx, 'done', {
+    detail: INTENT_LABELS[intentForNext] || intentForNext
+  })
+
   // 3. 路由到对应 Agent（带 trace）
+  //    关键优化：如果 intent=concept 且 tutor 预热成功 → 直接用预热结果
   let result
-  const agentStepIdx = traceStore.addStep(intent, getAgentStartDetail(intent))
-  try {
-    switch (intent) {
-      case 'concept':
-        result = await tutorAgent(userInput, profile)
-        break
-      case 'diagnose':
-        result = await diagnoseAgent(userInput, profile)
-        break
-      case 'plan':
-        result = await plannerAgent(userInput, profile)
-        break
-      case 'admission':
-        result = await admissionAgent(userInput, profile)
-        break
-      case 'research':
-        result = await researchAgent(userInput, profile)
-        break
-      case 'cascade':
-        result = await cascadeDiagnoseToPlan(userInput, profile)
-        break
-      default:
-        result = await tutorAgent(userInput, profile)
+  const agentStepIdx = traceStore.addStep(intentForNext, getAgentStartDetail(intentForNext))
+
+  if (intentForNext === 'concept' && tutorPrewarmResult && !tutorError) {
+    // 命中概念引导 + 预热成功 → 零额外延迟
+    result = tutorPrewarmResult
+  } else {
+    // 命中其他 intent（或预热失败但 intent 识别成功）→ 调对应 Agent
+    try {
+      switch (intentForNext) {
+        case 'concept':
+          // 预热失败但 intent=concept → 再调一次 tutor
+          result = await tutorAgent(userInput, profile)
+          break
+        case 'diagnose':
+          result = await diagnoseAgent(userInput, profile)
+          break
+        case 'plan':
+          result = await plannerAgent(userInput, profile)
+          break
+        case 'admission':
+          result = await admissionAgent(userInput, profile)
+          break
+        case 'research':
+          result = await researchAgent(userInput, profile)
+          break
+        case 'cascade':
+          result = await cascadeDiagnoseToPlan(userInput, profile)
+          break
+        default:
+          result = await tutorAgent(userInput, profile)
+      }
+      traceStore.updateStep(agentStepIdx, 'done', {
+        detail: getAgentDoneDetail(intentForNext, result)
+      })
+    } catch (e) {
+      console.error('[router] agent execution failed:', e)
+      traceStore.updateStep(agentStepIdx, 'error', { error: e.message })
+      result = {
+        intent: intentForNext,
+        content: 'AI 服务暂不可用，请稍后再试。错误信息：' + e.message,
+        agent: intentForNext,
+        error: true
+      }
     }
-    traceStore.updateStep(agentStepIdx, 'done', {
-      detail: getAgentDoneDetail(intent, result)
-    })
-  } catch (e) {
-    console.error('[router] agent execution failed:', e)
-    traceStore.updateStep(agentStepIdx, 'error', { error: e.message })
-    result = {
-      intent,
-      content: 'AI 服务暂不可用，请稍后再试。错误信息：' + e.message,
-      agent: intent,
-      error: true
-    }
+  }
+
+  // 3.5 如果是 concept 但用了预热结果且没有 trace detail，补一个
+  if (intentForNext === 'concept' && tutorPrewarmResult && !tutorError) {
+    try {
+      traceStore.updateStep(agentStepIdx, 'done', {
+        detail: getAgentDoneDetail(intentForNext, result)
+      })
+    } catch (_) { /* trace best-effort */ }
   }
 
   // 4. 画像更新（带 trace）
   const updateStepIdx = traceStore.addStep('profile_update', '更新学生画像…')
   try {
-    updateProfileAfterResponse(intent, result, profile)
+    updateProfileAfterResponse(intentForNext, result, profile)
     traceStore.updateStep(updateStepIdx, 'done', {
-      detail: getUpdateDetail(intent, result, profile)
+      detail: getUpdateDetail(intentForNext, result, profile)
     })
   } catch (e) {
     console.warn('[router] profile update failed:', e)
@@ -162,7 +241,7 @@ export async function route(userInput) {
   }
 
   traceStore.endSession()
-  return { intent, ...result }
+  return { intent: intentForNext, ...result }
 }
 
 /**

@@ -37,7 +37,9 @@ export const useDiagnosisStore = defineStore('diagnosis', {
         root_causes: Array.isArray(record.root_causes) ? record.root_causes : [],
         raw_report: record.raw_report || '',
         // v2: 知识点变化对比用
-        topics_snapshot: record.topics_snapshot || []
+        topics_snapshot: record.topics_snapshot || [],
+        // v1.5: ability_stars 快照（HistoryView 趋势图用）
+        ability_stars_snapshot: record.ability_stars_snapshot || {}
       }
       this.history.push(item)
       this.persist()

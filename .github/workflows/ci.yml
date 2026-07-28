@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Lint + Build + Static Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Prompt static tests (5 agents)
+        run: |
+          for t in scripts/test-{tutor,diagnose,planner,admission,research}-prompt.mjs; do
+            echo "==> $t"
+            node "$t" || exit 1
+          done
+
+      - name: Citation verifier
+        run: node scripts/test-citation-verifier.mjs
+
+      - name: BaseAgent + router tests (47 cases)
+        run: node scripts/test-base-agent-router.mjs
+
+      - name: Security scan (no real keys in tree)
+        run: |
+          # 1. 禁止 .env / 真实 key 入库
+          if git ls-files | grep -E '^\.env$|\.env\.local$|\.env\.development$|\.env\.production$' | grep -v '\.example$'; then
+            echo "::error::Real .env files committed to the repo"
+            exit 1
+          fi
+          # 2. 禁止 sk- 真实 key 出现在任何文本文件中
+          if git grep -nE 'sk-[A-Za-z0-9]{20,}' -- ':!.env.example' ':!*.md'; then
+            echo "::error::Real DeepSeek-style API key found in tracked files"
+            exit 1
+          fi
+          echo "Security scan passed"

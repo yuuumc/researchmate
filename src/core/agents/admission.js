@@ -7,12 +7,13 @@
 //   3. 所有数字字段只从 src/data/university/*.json 渲染
 //   4. 数据来源 URL 由 source_url 字段渲染，不让 LLM 拼 URL
 //   5. v3.4 新增：清洗 LLM 在 reason 中可能编造的数字字段（防泄漏）
+//
+// v1.5 升级：继承 BaseAgent，trace 自动埋点
 // ============================================================
 
-import { AI_PROVIDER } from '@/api/custom'
 import { profileToContext } from '../profileLoader'
 import { ADMISSION_PROMPT } from '@/prompts/index'
-import { safeParseJSON } from '@/utils/validator'
+import { traceAgent, runLLM, parseStructured } from './BaseAgent'
 
 // 院校数据库（启动时注入）
 let universityData = []
@@ -21,7 +22,7 @@ export function setUniversityData(data) {
   universityData = Array.isArray(data) ? data : []
 }
 
-export async function admissionAgent(userInput, profile) {
+export const admissionAgent = traceAgent('admission', async function admissionCore(userInput, profile) {
   // 1. 把候选院校列表（无数字字段，只有校名/地区/层次）作为上下文给 LLM
   const candidates = universityData.map((u) => ({
     school: u.school,
@@ -40,7 +41,7 @@ ${JSON.stringify(candidates, null, 2)}
 `
 
   // 2. LLM 只做匹配 + 推荐理由
-  const raw = await AI_PROVIDER.call(prompt, userInput, {
+  const { content: raw } = await runLLM('admission', prompt, userInput, {
     temperature: 0.4,
     max_tokens: 2000
   })
@@ -81,19 +82,16 @@ ${JSON.stringify(candidates, null, 2)}
       target_major: recommendations[0]?.major || null
     }
   }
-}
+})
 
 function extractMatchedSchools(raw) {
-  const jsonMatch = raw.match(/```json\s*([\s\S]+?)```/) || raw.match(/\{[\s\S]*\}/)
-  if (jsonMatch) {
-    const parsed = safeParseJSON(jsonMatch[1] || jsonMatch[0], null)
-    if (parsed && Array.isArray(parsed.recommendations)) {
-      return parsed.recommendations.map((r) => ({
-        school: r.school,
-        tier: r.tier, // 冲刺 / 稳妥 / 保底
-        reason: r.reason || ''
-      }))
-    }
+  const parsed = parseStructured(raw, null)
+  if (parsed && Array.isArray(parsed.recommendations)) {
+    return parsed.recommendations.map((r) => ({
+      school: r.school,
+      tier: r.tier, // 冲刺 / 稳妥 / 保底
+      reason: r.reason || ''
+    }))
   }
   return []
 }
