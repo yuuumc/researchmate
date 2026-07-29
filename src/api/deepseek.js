@@ -12,8 +12,22 @@
 
 import axios from 'axios'
 
+/**
+ * v2.5.1 defensive: .env 里把 SUPABASE_ANON_KEY 误填到 VITE_API_BASE 是经典坑——
+ * anon key 是 JWT（eyJ 开头），拼到 URL 路径上 Vite 中间件会 404。
+ * 这里统一检测：发现 JWT 就 warn + 当成空串处理。
+ */
+function resolveBaseURL() {
+  const raw = (import.meta.env.VITE_API_BASE || '').trim()
+  if (raw.startsWith('eyJ')) {
+    console.warn('[deepseek] VITE_API_BASE 看起来像 JWT（可能是 SUPABASE_ANON_KEY 错填到这一行），已忽略。请清空 VITE_API_BASE。')
+    return ''
+  }
+  return raw
+}
+
 const client = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE || '',
+  baseURL: resolveBaseURL(),
   headers: { 'Content-Type': 'application/json' },
   timeout: 30000
 })
@@ -71,7 +85,8 @@ export async function callDeepSeekStream(prompt, userInput, options = {}, onToke
   } = options
 
   // 基础 URL：与 JSON 模式一致（同源 /api/chat 代理）
-  const baseURL = import.meta.env.VITE_API_BASE || ''
+  // v2.5.2 defensive: 走 resolveBaseURL() 避免 .env 把 anon key 误填到这里导致 404
+  const baseURL = resolveBaseURL()
   const url = `${baseURL}/api/chat`
 
   let response

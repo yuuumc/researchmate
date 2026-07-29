@@ -137,9 +137,31 @@ async function handleStream(req, res, { apiKey, model, temperature, maxTokens, p
   res.setHeader('X-Accel-Buffering', 'no') // 禁用 nginx 缓冲
   res.status(200)
 
+  // v2.5.3 hotfix: 改成 DeepSeek 原生 SSE 格式，让前端的 deepseek.js 解析器能直接吃到 token
+  //   - 'token'  → data: {"choices":[{"delta":{"content":"<delta>"}}]}\n\n
+  //   - 'done'   → data: [DONE]\n\n
+  //   - 'error'  → data: {"error":"...","message":"..."}\n\n
+  // 之前用的是自定义 event: token/done/error 协议，deepseek.js 解析器只认 DeepSeek 原生格式，
+  // 导致 token/done 永远拿不到 delta，UI 显示「（无回复）」。
   const sendEvent = (event, data) => {
     if (res.writableEnded || res.destroyed) return
-    res.write(`event: ${event}\n`)
+    if (event === 'token') {
+      const delta = typeof data === 'object' && data ? data.delta : ''
+      if (delta) {
+        res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: delta } }] })}\n\n`)
+      }
+      return
+    }
+    if (event === 'done') {
+      res.write(`data: [DONE]\n\n`)
+      return
+    }
+    if (event === 'error') {
+      const errObj = typeof data === 'object' && data ? data : { error: 'unknown', message: String(data) }
+      res.write(`data: ${JSON.stringify({ error: errObj.error, message: errObj.message || errObj.error })}\n\n`)
+      return
+    }
+    // 兜底：未知 event 类型，按 data: 写 JSON（前端解析器会忽略它）
     res.write(`data: ${JSON.stringify(data)}\n\n`)
   }
 
