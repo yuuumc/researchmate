@@ -3,6 +3,11 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
+  "firewall": {
+    "pathRules": [
+      { "name": "api-rl", "action": "challenge", "expression": "request.path == \"/api/chat\" && rateLimit(20, \"5m\")" }
+    ]
+  },
   "functions": {
     "api/chat.js": {
       "maxDuration": 60

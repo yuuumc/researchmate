@@ -30,8 +30,22 @@ const STREAM_FIRST_TOKEN_TIMEOUT_MS = 30000 // 首 token 30s 超时（reasoner �
 const RETRY_MAX_TOKENS_RATIO = 0.5 // 重试时 max_tokens 减半
 
 export default async function handler(req, res) {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*')
+  // CORS 白名单（P0-3）：
+  //   设 ALLOWED_ORIGINS=csv 启用白名单；不设 = 默认拒绝任何来源
+  //   同源（无 Origin 头，例如服务端调用）默认放行；其余按白名单校验
+  const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  const requestOrigin = req.headers.origin || ''
+  const isSameOrigin = !requestOrigin
+  const isOriginAllowed = isSameOrigin || ALLOWED_ORIGINS.includes(requestOrigin)
+  if (!isOriginAllowed) {
+    console.warn(`[api/chat] CORS denied for origin: ${requestOrigin}`)
+    return res.status(403).json({ error: 'cors_denied' })
+  }
+  res.setHeader('Vary', 'Origin')
+  res.setHeader('Access-Control-Allow-Origin', isSameOrigin ? 'null' : requestOrigin)
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
 
