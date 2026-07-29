@@ -29,6 +29,35 @@ const DEFAULT_MAX_DURATION_MS = 58000 // 略小于 Vercel 60s 限制
 const STREAM_FIRST_TOKEN_TIMEOUT_MS = 30000 // 首 token 30s 超时（reasoner 长 prompt 适配）
 const RETRY_MAX_TOKENS_RATIO = 0.5 // 重试时 max_tokens 减半
 
+// ---- 简易限流（P0-6 兜底，Hobby plan 无 WAF）----
+// serverless 实例内存不共享：单实例内按 IP 固定窗口计数，可挡单点暴力刷；
+// 冷启动会重置计数（弱限流，够用即可；要强限流需升 Pro 走 Dashboard Firewall）
+const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX || 20)
+const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 5 * 60 * 1000)
+const rateLimitBuckets = globalThis.__yanxintongRateLimitBuckets || (globalThis.__yanxintongRateLimitBuckets = new Map())
+
+function getClientIp(req) {
+  const fwd = req.headers['x-forwarded-for']
+  if (fwd) return String(fwd).split(',')[0].trim()
+  return req.headers['x-real-ip'] || (req.socket && req.socket.remoteAddress) || 'unknown'
+}
+
+function checkRateLimit(ip) {
+  const now = Date.now()
+  let bucket = rateLimitBuckets.get(ip)
+  if (!bucket || now - bucket.start >= RATE_LIMIT_WINDOW_MS) {
+    bucket = { start: now, count: 0 }
+    rateLimitBuckets.set(ip, bucket)
+  }
+  bucket.count += 1
+  if (rateLimitBuckets.size > 5000) {
+    for (const [key, value] of rateLimitBuckets) {
+      if (now - value.start >= RATE_LIMIT_WINDOW_MS) rateLimitBuckets.delete(key)
+    }
+  }
+  return bucket.count <= RATE_LIMIT_MAX
+}
+
 export default async function handler(req, res) {
   // CORS 白名单（P0-3）：
   //   设 ALLOWED_ORIGINS=csv 启用白名单；不设 = 默认拒绝任何来源
@@ -54,6 +83,14 @@ export default async function handler(req, res) {
   }
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'method_not_allowed' })
+  }
+
+  // 简易限流（P0-6）：按 IP 固定窗口，超限 429 + Retry-After
+  const clientIp = getClientIp(req)
+  if (!checkRateLimit(clientIp)) {
+    console.warn('[api/chat] rate limited: ' + clientIp)
+    res.setHeader('Retry-After', String(Math.ceil(RATE_LIMIT_WINDOW_MS / 1000)))
+    return res.status(429).json({ error: 'rate_limited' })
   }
 
   const { prompt, userInput, options = {} } = req.body || {}
