@@ -5,6 +5,51 @@ import KnowledgeGraph from '@/components/KnowledgeGraph.vue'
 
 const profileStore = useProfileStore()
 const profile = computed(() => profileStore.profile)
+
+const STAGE_LABELS = {
+  initial: '起步',
+  basic: '基础',
+  intensive: '强化',
+  sprint: '冲刺'
+}
+
+// 考研日期 + 倒计时（基于 exam_date 实算，替代旧版硬编码 38 周）
+const examDateLabel = computed(() => {
+  const d = profile.value.exam_date
+  if (!d) return '未设定'
+  return d
+})
+const examCountdown = computed(() => {
+  const d = profile.value.exam_date
+  if (!d) return null
+  const target = new Date(d).getTime()
+  if (Number.isNaN(target)) return null
+  const days = Math.ceil((target - Date.now()) / 86400000)
+  return days > 0 ? days : 0
+})
+
+// 学习目标：组合 target_school + target_major + preparation_stage
+const goalText = computed(() => {
+  const p = profile.value
+  const parts = []
+  if (p.target_school) parts.push(p.target_school)
+  if (p.target_major) parts.push(p.target_major)
+  if (p.preparation_stage) parts.push(`备考阶段：${STAGE_LABELS[p.preparation_stage] || p.preparation_stage}`)
+  return parts.length > 0 ? parts.join(' · ') : ''
+})
+
+// 最近诊断：基于 last_diagnosis_score / last_diagnosis_date 实字段
+const hasRecentDiagnosis = computed(() => {
+  const s = profile.value.last_diagnosis_score
+  return s !== null && s !== undefined && s !== ''
+})
+const lastDiagnosisLabel = computed(() => {
+  const d = profile.value.last_diagnosis_date
+  if (!d) return ''
+  const t = new Date(d)
+  if (Number.isNaN(t.getTime())) return String(d)
+  return t.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+})
 </script>
 
 <template>
@@ -33,20 +78,20 @@ const profile = computed(() => profileStore.profile)
           </div>
           <div class="info-rows">
             <div class="info-row">
+              <span class="info-label">目标院校</span>
+              <span class="info-value">{{ profile.target_school || '未设定' }}</span>
+            </div>
+            <div class="info-row">
               <span class="info-label">目标专业</span>
-              <span class="info-value">{{ profile.target_major || '微电子' }}</span>
+              <span class="info-value">{{ profile.target_major || '未设定' }}</span>
             </div>
             <div class="info-row">
-              <span class="info-label">目标地区</span>
-              <span class="info-value">{{ profile.target_region || '长三角' }}</span>
+              <span class="info-label">目标方向</span>
+              <span class="info-value">{{ profile.target_direction || '未设定' }}</span>
             </div>
             <div class="info-row">
-              <span class="info-label">本科层次</span>
-              <span class="info-value">{{ profile.bachelor_tier || '双非' }}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">备考周期</span>
-              <span class="info-value">{{ profile.total_weeks || '38' }} 周</span>
+              <span class="info-label">考研日期</span>
+              <span class="info-value">{{ examDateLabel }} · 倒计时 {{ examCountdown }} 天</span>
             </div>
           </div>
         </section>
@@ -98,12 +143,12 @@ const profile = computed(() => profileStore.profile)
               <div class="card-en">Goal</div>
             </div>
           </div>
-          <div v-if="profile.goal" class="goal-text">{{ profile.goal }}</div>
-          <div v-else class="empty">未设定目标</div>
+          <div v-if="goalText" class="goal-text">{{ goalText }}</div>
+          <div v-else class="empty">未设定目标，去对话中告诉导师你的目标院校 / 专业</div>
         </section>
 
         <!-- 最近诊断 -->
-        <section v-if="profile.recent_diagnosis" class="card diagnosis-card wide">
+        <section v-if="hasRecentDiagnosis" class="card diagnosis-card wide">
           <div class="card-header">
             <span class="card-icon">●</span>
             <div>
@@ -112,9 +157,9 @@ const profile = computed(() => profileStore.profile)
             </div>
           </div>
           <div class="diag-score">
-            <span class="score-num">{{ profile.recent_diagnosis.score }}</span>
+            <span class="score-num">{{ profile.last_diagnosis_score }}</span>
             <span class="score-unit">分</span>
-            <span class="score-time">{{ profile.recent_diagnosis.time }}</span>
+            <span class="score-time">{{ lastDiagnosisLabel }}</span>
           </div>
         </section>
       </div>

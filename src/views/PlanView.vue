@@ -5,7 +5,8 @@ import KnowledgeGraph from '@/components/KnowledgeGraph.vue'
 import PlanCard from '@/components/PlanCard.vue'
 
 const planStore = usePlanStore()
-const plan = computed(() => planStore.plan)
+// P0-2 fix: store 实际暴露的 getter 是 `current`，旧版调 `plan` 永远 undefined → "当前计划" 永远空态
+const plan = computed(() => planStore.current)
 const versions = computed(() => planStore.versions || [])
 
 // 把 ISO 时间渲染为"距今 N 天"，避免依赖 dayjs
