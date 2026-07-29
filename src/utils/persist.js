@@ -199,7 +199,9 @@ export async function archiveAll(userId, messages) {
         id: genId(userId, month),
         userId: userId || 'default',
         month,
-        messages,
+        // v2.5.1 hotfix: Vue 响应式 Proxy 无法被 IndexedDB structured clone，
+        // 先 JSON 往返打平成普通对象再 put（否则 DataCloneError）
+        messages: JSON.parse(JSON.stringify(messages)),
         savedAt: now.toISOString(),
         size: messages.length
       }
