@@ -69,6 +69,8 @@ function apiChatDevPlugin() {
           // 适配 serverless handler 签名（SSE 透传支持）
           const mockReq = {
             method: 'POST',
+            headers: req.headers || {},
+            socket: req.socket,
             body: JSON.parse(bodyStr || '{}')
           }
           const mockRes = {
