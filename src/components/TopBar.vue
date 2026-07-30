@@ -11,7 +11,7 @@ const props = defineProps({
 
 const router = useRouter()
 
-// 5 个 Agent 节点 + 主控编排器中心（v1 正式版：第 5 个 Research）
+// v3.1: 8 个 Agent 节点 + 主控编排器中心
 const agents = [
   {
     key: 'tutor',
@@ -39,6 +39,33 @@ const agents = [
     route: '/plan',
     color: '#ffd166',
     desc: '动态周计划'
+  },
+  {
+    key: 'career',
+    label: '就业',
+    en: 'Career',
+    icon: '◈',
+    route: '/career',
+    color: '#9b59b6',
+    desc: '就业路径推荐'
+  },
+  {
+    key: 'practice',
+    label: '练习',
+    en: 'Practice',
+    icon: '✦',
+    route: '/practice',
+    color: '#e74c3c',
+    desc: '针对性出题'
+  },
+  {
+    key: 'peer',
+    label: '同伴',
+    en: 'Peer',
+    icon: '◍',
+    route: '/peer',
+    color: '#3498db',
+    desc: '互助匹配'
   },
   {
     key: 'admission',
@@ -347,8 +374,8 @@ const activeIndex = computed(() => agents.findIndex((a) => a.key === props.activ
     padding: 0 16px;
   }
   .brand-text { display: none; }
-  .agent-constellation { padding: 4px; gap: 2px; }
-  .agent-node { padding: 6px 10px; gap: 5px; }
+  .agent-constellation { padding: 4px; gap: 2px; overflow-x: auto; max-width: 100%; }
+  .agent-node { padding: 6px 10px; gap: 5px; flex-shrink: 0; }
   .node-en { display: none; }
   .node-label { font-size: 12px; }
   .node-orbit { width: 12px; height: 12px; }

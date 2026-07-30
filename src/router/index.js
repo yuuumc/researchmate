@@ -56,6 +56,24 @@ const routes = [
     meta: { title: '复习计划', agent: 'planner' }
   },
   {
+    path: '/career',
+    name: 'career',
+    component: () => import('@/views/CareerView.vue'),
+    meta: { title: '就业指导', agent: 'career' }
+  },
+  {
+    path: '/practice',
+    name: 'practice',
+    component: () => import('@/views/PracticeView.vue'),
+    meta: { title: '练习题', agent: 'practice' }
+  },
+  {
+    path: '/peer',
+    name: 'peer',
+    component: () => import('@/views/PeerView.vue'),
+    meta: { title: '同伴匹配', agent: 'peer' }
+  },
+  {
     path: '/teacher/classes',
     name: 'teacher-classes',
     component: () => import('@/views/teacher/ClassListView.vue'),

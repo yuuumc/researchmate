@@ -1,6 +1,7 @@
 <script setup>
 import { ref, nextTick, watch, computed, onMounted } from 'vue'
 import { route } from '@/core/router'
+import { callChatWithMode } from '@/api/agent'
 import { useTraceStore } from '@/stores/trace'
 import { useProfileStore } from '@/stores/profile'
 import {
@@ -90,6 +91,25 @@ onMounted(() => {
 const traceStore = useTraceStore()
 const traceExpanded = ref(true)
 
+// v3.1: 聊天模式切换（就业咨询 / 教研答疑 / 智能路由）
+const chatMode = ref('')  // '' | 'employment' | 'taoyan'
+const modeOptions = [
+  { value: '', label: '智能路由', en: 'Auto', icon: '◎' },
+  { value: 'employment', label: '就业咨询', en: 'Career', icon: '◈' },
+  { value: 'taoyan', label: '教研答疑', en: 'Tutor', icon: '✦' }
+]
+function selectMode(m) {
+  chatMode.value = m
+}
+// 就业模式需要 profile 字段
+const modeProfile = computed(() => {
+  if (chatMode.value !== 'employment') return {}
+  return {
+    target_school: profileStore.profile?.target_school || '',
+    target_major: profileStore.profile?.target_major || profileStore.profile?.major || ''
+  }
+})
+
 const agentMeta = {
   tutor: { label: '导师', en: 'Tutor', color: '#00d4aa' },
   diagnose: { label: '诊断', en: 'Diagnose', color: '#4d9de0' },
@@ -177,15 +197,38 @@ async function send(text) {
   currentAbort = new AbortController()
 
   try {
-    const result = await route(content, {
-      onToken: (chunk) => {
-        const msg = messages.value[assistantIdx]
-        if (msg) {
-          msg.content = (msg.content || '') + (chunk.delta || '')
-        }
-      },
-      signal: currentAbort.signal
-    })
+    let result
+
+    if (chatMode.value) {
+      // v3.1: 指定模式 → 绕过 intent 路由，直调 /api/chat with mode
+      const replyContent = await callChatWithMode(content, {
+        mode: chatMode.value,
+        profile: modeProfile.value,
+        onToken: (chunk) => {
+          const msg = messages.value[assistantIdx]
+          if (msg) {
+            msg.content = (msg.content || '') + (chunk.delta || '')
+          }
+        },
+        signal: currentAbort.signal
+      })
+      result = {
+        content: replyContent,
+        agent: chatMode.value === 'employment' ? 'admission' : 'tutor',
+        intent: chatMode.value
+      }
+    } else {
+      // 默认：走 intent 路由 + Agent 编排
+      result = await route(content, {
+        onToken: (chunk) => {
+          const msg = messages.value[assistantIdx]
+          if (msg) {
+            msg.content = (msg.content || '') + (chunk.delta || '')
+          }
+        },
+        signal: currentAbort.signal
+      })
+    }
 
     const finalMsg = messages.value[assistantIdx] || {}
     messages.value[assistantIdx] = {
@@ -448,6 +491,19 @@ watch(messages, scheduleSave, { deep: true })
     </div>
 
     <div class="chat-input">
+      <!-- v3.1: 模式切换器 -->
+      <div class="mode-selector">
+        <button
+          v-for="opt in modeOptions"
+          :key="opt.value"
+          class="mode-btn"
+          :class="{ active: chatMode === opt.value }"
+          @click="selectMode(opt.value)"
+        >
+          <span class="mode-icon">{{ opt.icon }}</span>
+          <span class="mode-label">{{ opt.label }}</span>
+        </button>
+      </div>
       <div class="input-wrapper">
         <span class="input-prompt">▸</span>
         <textarea
@@ -1100,6 +1156,43 @@ watch(messages, scheduleSave, { deep: true })
   max-width: 1080px;
   margin: 0 auto;
   width: 100%;
+}
+
+/* v3.1: 模式切换器 */
+.mode-selector {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  color: var(--color-fg-secondary);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.mode-btn:hover {
+  border-color: var(--color-ink-500);
+  color: var(--color-ink-700);
+}
+
+.mode-btn.active {
+  background: var(--color-ink-900);
+  border-color: var(--color-ink-900);
+  color: var(--color-fg-inverse);
+}
+
+.mode-icon {
+  font-size: 11px;
+  line-height: 1;
 }
 
 .input-wrapper {
