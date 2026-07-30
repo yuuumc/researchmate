@@ -116,9 +116,10 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'provider_not_configured', message: providerError })
   }
 
-  const model = options.model || providerConfig.model
-  const temperature = options.temperature ?? 0.7
-  const maxTokens = options.max_tokens ?? 2000
+  const ALLOWED_MODELS = ['deepseek-chat', 'deepseek-reasoner']
+  const model = (options.model && ALLOWED_MODELS.includes(options.model)) ? options.model : providerConfig.model
+  const temperature = Math.min(Math.max(Number(options.temperature) ?? 0.7, 0), 2)
+  const maxTokens = Math.min(Number(options.max_tokens) ?? 2000, 4000)
   const stream = options.stream === true
 
   const callParams = {
@@ -177,7 +178,6 @@ async function handleJson(req, res, { chatUrl, apiKey, provider, model, temperat
       return res.status(502).json({
         error: 'upstream_error',
         status: r.status,
-        message: errText.slice(0, 500),
       })
     }
 
@@ -194,7 +194,6 @@ async function handleJson(req, res, { chatUrl, apiKey, provider, model, temperat
     console.error(`[api/chat] ${provider} fetch failed:`, e)
     return res.status(502).json({
       error: 'upstream_error',
-      message: String(e),
     })
   }
 }
@@ -290,7 +289,6 @@ async function handleStream(req, res, { chatUrl, apiKey, provider, model, temper
       sendEvent('error', {
         error: 'upstream_error',
         status: r.status,
-        message: errText.slice(0, 500),
       })
       return res.end()
     }
@@ -377,12 +375,12 @@ async function handleStream(req, res, { chatUrl, apiKey, provider, model, temper
     } catch (e) {
       clearTimeout(firstTokenTimer)
       console.error(`[api/chat] ${provider} stream read error:`, e)
-      sendEvent('error', { error: 'stream_read_error', message: String(e) })
+      sendEvent('error', { error: 'stream_read_error' })
       if (!res.writableEnded) res.end()
     }
   } catch (e) {
     console.error(`[api/chat] ${provider} stream failed:`, e)
-    sendEvent('error', { error: 'upstream_error', message: String(e) })
+    sendEvent('error', { error: 'upstream_error' })
     if (!res.writableEnded) res.end()
   }
 }

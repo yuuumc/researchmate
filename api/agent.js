@@ -7,6 +7,7 @@
 //   - diagnose/plan/practice/peer: 全部接入 v3.1 Prompt（6/6 Agent 就绪）
 //   - 支持 compact 模式（Groq provider 自动加载 .compact.md）
 //   - 响应体新增 structured 字段（从 LLM 输出提取 JSON 块）
+//   - v3.1.1: AbortController 超时 + 限流 + 错误脱敏 + 参数 clamp
 //
 // POST /api/agent
 // Body: { action: "diagnose|plan|practice|tutor|career|peer", input: {...} }
@@ -21,6 +22,35 @@
 
 import { getProviderConfig, validateProviderConfig, buildHeaders, buildMessages } from './llm-provider.js'
 import { loadPrompt, substitute, getSchoolProfile, getCareerPaths, shouldUseCompact, extractStructured } from './prompt-loader.js'
+
+const AGENT_TIMEOUT_MS = 55000
+
+// ---- 简易限流（与 chat.js 共享 globalThis 桶，P0-6 兜底）----
+const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX || 20)
+const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 5 * 60 * 1000)
+const rateLimitBuckets = globalThis.__yanxintongRateLimitBuckets || (globalThis.__yanxintongRateLimitBuckets = new Map())
+
+function getClientIp(req) {
+  const fwd = req.headers['x-forwarded-for']
+  if (fwd) return String(fwd).split(',')[0].trim()
+  return req.headers['x-real-ip'] || (req.socket && req.socket.remoteAddress) || 'unknown'
+}
+
+function checkRateLimit(ip) {
+  const now = Date.now()
+  let bucket = rateLimitBuckets.get(ip)
+  if (!bucket || now - bucket.start >= RATE_LIMIT_WINDOW_MS) {
+    bucket = { start: now, count: 0 }
+    rateLimitBuckets.set(ip, bucket)
+  }
+  bucket.count += 1
+  if (rateLimitBuckets.size > 5000) {
+    for (const [key, value] of rateLimitBuckets) {
+      if (now - value.start >= RATE_LIMIT_WINDOW_MS) rateLimitBuckets.delete(key)
+    }
+  }
+  return bucket.count <= RATE_LIMIT_MAX
+}
 
 const AGENTS = {
   diagnose: { name: '诊断 Agent', desc: '识别学员知识薄弱点，生成分层诊断报告', prompt: 'diagnose', ready: true },
@@ -48,6 +78,14 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' })
 
+  // ---- 限流（P0-6 兜底）----
+  const clientIp = getClientIp(req)
+  if (!checkRateLimit(clientIp)) {
+    console.warn('[api/agent] rate limited: ' + clientIp)
+    res.setHeader('Retry-After', String(Math.ceil(RATE_LIMIT_WINDOW_MS / 1000)))
+    return res.status(429).json({ error: 'rate_limited' })
+  }
+
   const { action, input = {} } = req.body || {}
   if (!action) return res.status(400).json({ error: 'missing_action' })
   if (!AGENTS[action]) {
@@ -60,31 +98,14 @@ export default async function handler(req, res) {
   const config = getProviderConfig()
   const { valid, error: providerError } = validateProviderConfig(config)
   if (!valid) {
-    return res.status(500).json({ error: 'provider_not_configured', message: providerError })
-  }
-
-  // ---- 未就绪 Agent：返回 scaffold ----
-  if (!agentInfo.ready) {
-    return res.status(200).json({
-      status: 'scaffold',
-      message: `${agentInfo.name} 已注册，Prompt 待升级到 v3.1`,
-      agent: action,
-      agentInfo: { name: agentInfo.name, description: agentInfo.desc },
-      input: input || null,
-      provider: { name: config.provider, model: config.model, configured: valid },
-      availableAgents: Object.entries(AGENTS).map(([k, v]) => ({ key: k, name: v.name, ready: v.ready })),
-    })
+    return res.status(500).json({ error: 'provider_not_configured' })
   }
 
   // ---- 加载 Prompt ----
   const compact = shouldUseCompact()
   const promptTemplate = loadPrompt(agentInfo.prompt, { compact })
   if (!promptTemplate) {
-    return res.status(500).json({
-      error: 'prompt_not_found',
-      message: `Prompt 文件未找到: prompts/${agentInfo.prompt}.md（compact=${compact}）`,
-      hint: '请确认 prompts/ 目录下有对应的 .md 文件',
-    })
+    return res.status(500).json({ error: 'prompt_not_found' })
   }
 
   // ---- Placeholder 替换 + 数据注入 ----
@@ -109,7 +130,14 @@ export default async function handler(req, res) {
       ? buildTutorQuery(input)
       : JSON.stringify(input)
 
-  // ---- 调用 LLM ----
+  // ---- 参数 clamp（P1 安全加固）----
+  const temperature = Math.min(Math.max(Number(input.temperature) || 0.7, 0), 2)
+  const maxTokens = Math.min(Number(input.max_tokens) || 2000, 4000)
+
+  // ---- 调用 LLM（带 AbortController 超时）----
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), AGENT_TIMEOUT_MS)
+
   try {
     const response = await fetch(config.chatUrl, {
       method: 'POST',
@@ -117,19 +145,22 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: config.model,
         messages: buildMessages(systemPrompt, userInput),
-        temperature: input.temperature ?? 0.7,
-        max_tokens: input.max_tokens ?? 2000,
+        temperature,
+        max_tokens: maxTokens,
         stream: false,
       }),
+      signal: controller.signal,
     })
+
+    clearTimeout(timeoutId)
 
     if (!response.ok) {
       const errText = await response.text()
       console.error(`[api/agent] ${action} upstream ${response.status}:`, errText.slice(0, 200))
+      // 不返回上游错误原文，防止泄露 API 端点信息
       return res.status(502).json({
         error: 'upstream_error',
         status: response.status,
-        message: errText.slice(0, 500),
       })
     }
 
@@ -147,10 +178,11 @@ export default async function handler(req, res) {
       usage: data.usage || null,
     })
   } catch (e) {
-    console.error(`[api/agent] ${action} fetch failed:`, e)
+    clearTimeout(timeoutId)
+    const isTimeout = e.name === 'AbortError'
+    console.error(`[api/agent] ${action} ${isTimeout ? 'timeout' : 'fetch failed'}:`, e)
     return res.status(502).json({
-      error: 'upstream_error',
-      message: String(e),
+      error: isTimeout ? 'upstream_timeout' : 'upstream_error',
     })
   }
 }
@@ -165,9 +197,9 @@ function buildCareerQuery(input) {
   if (input.target_direction) parts.push(`意向方向: ${input.target_direction}`)
   if (input.mastered_skills) parts.push(`已掌握技能: ${Array.isArray(input.mastered_skills) ? input.mastered_skills.join(', ') : input.mastered_skills}`)
   if (input.weak_points) parts.push(`薄弱点: ${Array.isArray(input.weak_points) ? input.weak_points.join(', ') : input.weak_points}`)
+  parts.push(`当前日期: ${new Date().toISOString().slice(0, 10)}`)
   if (input.question) parts.push(`问题: ${input.question}`)
 
-  // 如果没有具体问题，默认请求 3 条就业路径
   if (!input.question) {
     parts.push('请根据我的院校和专业，推荐 3 条就业路径（career_paths 模式），每条附 2-3 个目标岗位和技能缺口分析。')
   }
@@ -179,6 +211,7 @@ function buildTutorQuery(input) {
   const parts = []
   if (input.subject) parts.push(`科目: ${input.subject}`)
   if (input.context) parts.push(`上下文: ${input.context}`)
+  parts.push(`当前日期: ${new Date().toISOString().slice(0, 10)}`)
   parts.push(`问题: ${input.question || '请帮我梳理这个知识点。'}`)
   return parts.join('\n')
 }

@@ -20,6 +20,7 @@ const PROMPTS_DIR = resolve(process.cwd(), 'prompts')
 const DATA_DIR = resolve(process.cwd(), 'src', 'data')
 
 const cache = new Map()
+let schoolDataCache = null
 
 /**
  * 加载 prompt 文件
@@ -51,14 +52,35 @@ export function loadPrompt(name, { compact = false } = {}) {
 
 /**
  * 替换 {{placeholder}} 占位符
+ * 未匹配的 placeholder 替换为空字符串，避免 LLM 看到原始 {{xxx}}
  * @param {string} template — prompt 模板
  * @param {Record<string, string|number>} data — 替换数据
  * @returns {string} — 替换后的 prompt
  */
 export function substitute(template, data = {}) {
   return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-    return data[key] !== undefined ? String(data[key]) : match
+    if (data[key] !== undefined) {
+      const val = data[key]
+      return Array.isArray(val) ? val.join(', ') : String(val)
+    }
+    return '' // 未匹配的 placeholder 替换为空字符串
   })
+}
+
+/**
+ * 加载 school-profiles.json（带缓存）
+ * @returns {object|null}
+ */
+function loadSchoolData() {
+  if (schoolDataCache) return schoolDataCache
+  const profilesPath = join(DATA_DIR, 'employment', 'school-profiles.json')
+  if (!existsSync(profilesPath)) return null
+  try {
+    schoolDataCache = JSON.parse(readFileSync(profilesPath, 'utf-8'))
+    return schoolDataCache
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -67,18 +89,12 @@ export function substitute(template, data = {}) {
  * @returns {object|null} — 院校画像对象
  */
 export function getSchoolProfile(schoolName) {
-  const profilesPath = join(DATA_DIR, 'employment', 'school-profiles.json')
-  if (!existsSync(profilesPath)) return null
-
-  try {
-    const data = JSON.parse(readFileSync(profilesPath, 'utf-8'))
-    const school = data.schools?.find(
-      (s) => s.school === schoolName || s.alias === schoolName
-    )
-    return school || null
-  } catch {
-    return null
-  }
+  const data = loadSchoolData()
+  if (!data) return null
+  const school = data.schools?.find(
+    (s) => s.school === schoolName || s.alias === schoolName
+  )
+  return school || null
 }
 
 /**
@@ -86,15 +102,9 @@ export function getSchoolProfile(schoolName) {
  * @returns {array} — career_paths 数组
  */
 export function getCareerPaths() {
-  const profilesPath = join(DATA_DIR, 'employment', 'school-profiles.json')
-  if (!existsSync(profilesPath)) return []
-
-  try {
-    const data = JSON.parse(readFileSync(profilesPath, 'utf-8'))
-    return data.career_paths || []
-  } catch {
-    return []
-  }
+  const data = loadSchoolData()
+  if (!data) return []
+  return data.career_paths || []
 }
 
 /**
