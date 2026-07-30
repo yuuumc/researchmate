@@ -114,7 +114,7 @@ const agentMeta = {
   tutor: { label: '导师', en: 'Tutor', color: '#00d4aa' },
   diagnose: { label: '诊断', en: 'Diagnose', color: '#4d9de0' },
   planner: { label: '规划', en: 'Planner', color: '#ffd166' },
-  admission: { label: '择校', en: 'Admission', color: '#ff6b6b' },
+  career: { label: '择校', en: 'Admission', color: '#ff6b6b' },
   research: { label: '科研', en: 'Research', color: '#e67e22' },
   cascade: { label: '级联', en: 'Cascade', color: '#1e3a5f' },
   concept: { label: '导师', en: 'Tutor', color: '#00d4aa' },
@@ -136,7 +136,7 @@ const quickActions = [
   },
   {
     icon: 'A', title: '考研导航', en: 'Admission', desc: '数据驱动择校',
-    color: '#ff6b6b', agent: 'admission',
+    color: '#ff6b6b', agent: 'career',
     text: '我双非前 30%，想去长三角读微电子'
   },
   {

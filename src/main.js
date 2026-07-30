@@ -1,8 +1,12 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import ElementPlus from 'element-plus'
-import 'element-plus/dist/index.css'
-import zhCn from 'element-plus/es/locale/lang/zh-cn'
+import { ElButton, ElDialog, ElConfigProvider } from 'element-plus'
+// 按需导入各组件样式（每个 style/css 已含 base + 子依赖，Vite 自动去重）
+import 'element-plus/es/components/button/style/css'
+import 'element-plus/es/components/dialog/style/css'
+import 'element-plus/es/components/message/style/css'
+import 'element-plus/es/components/message-box/style/css'
+import 'element-plus/es/components/config-provider/style/css'
 import router from './router'
 import App from './App.vue'
 import './styles/main.css'
@@ -78,7 +82,10 @@ async function bootstrapAuth() {
 const app = createApp(App)
 app.use(createPinia())
 app.use(router)
-app.use(ElementPlus, { locale: zhCn })
+// element-plus 按需注册（ElMessage / ElMessageBox 为命令式 API，无需注册）
+app.component('ElButton', ElButton)
+app.component('ElDialog', ElDialog)
+app.component('ElConfigProvider', ElConfigProvider)
 
 app.mount('#app')
 

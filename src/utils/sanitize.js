@@ -3,7 +3,7 @@
 // P0-5：DOMPurify 加固集中配置（4 道防御）
 //
 // 1. 基础：ALLOWED_ATTR 收紧（src/href 走 URI 白名单），显式 FORBID_TAGS
-// 2. 加固 A：img[src] hook 白名单（CDN / 同源 / data:image 合法子集）
+// 2. 加固 A：img[src] hook 白名单（同源 / data:image 合法子集）
 // 3. 加固 B：<a href="javascript:..."> 用 ALLOWED_URI_REGEXP 挡 +
 //             addHook('afterSanitizeAttributes') 强制 a[rel]
 // 4. 其它：FORBID_ATTR 屏蔽 style/事件类属性
@@ -14,14 +14,12 @@
 //   const safe = sanitizeHtml(DOMPurify, marked.parse(input))
 // ============================================================
 
-// ---- img[src] 白名单正则（3 类） ----------------------------
+// ---- img[src] 白名单正则（2 类） ----------------------------
 const IMG_SRC_PATTERNS = [
-  // 1) 自有 CDN 域名（严匹配 host 段）
-  /^https:\/\/yanxintong-cdn\.example\.com\//i,
-  // 2) 同源（相对路径 / 同 host 协议）— 由 hook 内 window.location 决定
-  //    这里只放占位正则，运行时由 installSanitizeHooks 注入 origin
+  // 1) 同源（相对路径 / 同 host 协议）— 由 hook 内 window.location 决定
+  //    运行时由 installSanitizeHooks 注入 origin
   null,
-  // 3) data:image/(png|jpeg|gif|webp);base64,...
+  // 2) data:image/(png|jpeg|gif|webp);base64,...
   /^data:image\/(png|jpeg|jpg|gif|webp);base64,/i
 ]
 

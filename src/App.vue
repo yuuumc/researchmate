@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import TopBar from '@/components/TopBar.vue'
 import SyncStatusBar from '@/components/SyncStatusBar.vue'
 import ConflictResolveModal from '@/components/ConflictResolveModal.vue'
@@ -11,18 +12,20 @@ const hideTopBar = computed(() => Boolean(route.meta.hideTopBar))
 </script>
 
 <template>
-  <div class="app-shell">
-    <TopBar v-if="!hideTopBar" :active-agent="activeAgent" />
-    <main class="app-main" :class="{ 'app-main--no-topbar': hideTopBar }">
-      <router-view v-slot="{ Component }">
-        <transition name="fade" mode="out-in">
-          <component :is="Component" />
-        </transition>
-      </router-view>
-    </main>
-    <SyncStatusBar />
-    <ConflictResolveModal />
-  </div>
+  <el-config-provider :locale="zhCn">
+    <div class="app-shell">
+      <TopBar v-if="!hideTopBar" :active-agent="activeAgent" />
+      <main class="app-main" :class="{ 'app-main--no-topbar': hideTopBar }">
+        <router-view v-slot="{ Component }">
+          <transition name="fade" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
+      </main>
+      <SyncStatusBar />
+      <ConflictResolveModal />
+    </div>
+  </el-config-provider>
 </template>
 
 <style scoped>
