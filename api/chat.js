@@ -1,37 +1,30 @@
 // ============================================================
-// Vercel serverless function - DeepSeek API 代理（v2.0 SSE 流式版）
+// Vercel serverless function - LLM API 代理（v3.0 多 Provider 版）
 // ============================================================
-// 职责：
-//   1. JSON 模式（向后兼容 v1.5）：一次性返回
-//   2. SSE 流式模式（v2.0 新增）：服务端流式转发，首 token 延迟 < 2s
-//   3. 1 次重试：上游失败/超时时降级 max_tokens 重试
-//   4. 健康检查：探测 API 可用性
+// v3.0 变更（队长保留件）：
+//   - 抽出 llm-provider.js，支持 DeepSeek / OpenAI / Groq / 硅基流动
+//   - env LLM_PROVIDER 切换 provider（默认 deepseek，向后兼容）
+//   - env LLM_API_KEY 统一 key 入口（回退 DEEPSEEK_API_KEY）
+//   - env LLM_BASE_URL / LLM_MODEL 可覆盖默认值
 //
-// 安全铁律（沿用 v1.5）：
-//   1. DEEPSEEK_API_KEY 只从 process.env 读取
-//   2. 严禁 VITE_DEEPSEEK_API_KEY 前缀
+// 沿用 v2.0：
+//   1. JSON 模式（v1.5 兼容）：一次性返回
+//   2. SSE 流式模式（v2.0）：服务端流式转发，首 token < 2s
+//   3. 1 次重试：上游失败/超时降级 max_tokens
+//
+// 安全铁律：
+//   1. API key 只从 process.env 读取（经 provider config）
+//   2. 严禁 VITE_ 前缀
 //   3. 前端 DevTools Network 只能看到 /api/chat
-//
-// 部署前自检：
-//   # JSON 模式（兼容）
-//   curl https://your-app.vercel.app/api/chat -X POST \
-//     -H "Content-Type: application/json" \
-//     -d '{"prompt":"hi","userInput":"hello"}'
-//
-//   # SSE 流式模式
-//   curl -N https://your-app.vercel.app/api/chat -X POST \
-//     -H "Content-Type: application/json" \
-//     -d '{"prompt":"hi","userInput":"hello","stream":true}'
 // ============================================================
 
-const UPSTREAM_URL = 'https://api.deepseek.com/v1/chat/completions'
-const DEFAULT_MAX_DURATION_MS = 58000 // 略小于 Vercel 60s 限制
-const STREAM_FIRST_TOKEN_TIMEOUT_MS = 30000 // 首 token 30s 超时（reasoner 长 prompt 适配）
-const RETRY_MAX_TOKENS_RATIO = 0.5 // 重试时 max_tokens 减半
+import { getProviderConfig, validateProviderConfig } from './llm-provider.js'
+
+const DEFAULT_MAX_DURATION_MS = 58000
+const STREAM_FIRST_TOKEN_TIMEOUT_MS = 30000
+const RETRY_MAX_TOKENS_RATIO = 0.5
 
 // ---- 简易限流（P0-6 兜底，Hobby plan 无 WAF）----
-// serverless 实例内存不共享：单实例内按 IP 固定窗口计数，可挡单点暴力刷；
-// 冷启动会重置计数（弱限流，够用即可；要强限流需升 Pro 走 Dashboard Firewall）
 const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX || 20)
 const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 5 * 60 * 1000)
 const rateLimitBuckets = globalThis.__yanxintongRateLimitBuckets || (globalThis.__yanxintongRateLimitBuckets = new Map())
@@ -59,9 +52,7 @@ function checkRateLimit(ip) {
 }
 
 export default async function handler(req, res) {
-  // CORS 白名单（P0-3）：
-  //   设 ALLOWED_ORIGINS=csv 启用白名单；不设 = 默认拒绝任何来源
-  //   同源（无 Origin 头，例如服务端调用）默认放行；其余按白名单校验
+  // CORS 白名单（P0-3）
   const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
     .split(',')
     .map((s) => s.trim())
@@ -85,7 +76,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'method_not_allowed' })
   }
 
-  // 简易限流（P0-6）：按 IP 固定窗口，超限 429 + Retry-After
+  // 简易限流（P0-6）
   const clientIp = getClientIp(req)
   if (!checkRateLimit(clientIp)) {
     console.warn('[api/chat] rate limited: ' + clientIp)
@@ -99,44 +90,57 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'missing_prompt_or_userInput' })
   }
 
-  const apiKey = process.env.DEEPSEEK_API_KEY
-  if (!apiKey) {
-    console.error('[api/chat] DEEPSEEK_API_KEY not configured')
-    return res.status(500).json({ error: 'api_key_not_configured' })
+  // v3.0: 多 LLM provider 配置
+  const providerConfig = getProviderConfig()
+  const { valid, error: providerError } = validateProviderConfig(providerConfig)
+  if (!valid) {
+    console.error('[api/chat] ' + providerError)
+    return res.status(500).json({ error: 'provider_not_configured', message: providerError })
   }
 
-  const model = options.model || 'deepseek-chat'
+  const model = options.model || providerConfig.model
   const temperature = options.temperature ?? 0.7
   const maxTokens = options.max_tokens ?? 2000
   const stream = options.stream === true
 
-  if (stream) {
-    return handleStream(req, res, { apiKey, model, temperature, maxTokens, prompt, userInput })
+  const callParams = {
+    chatUrl: providerConfig.chatUrl,
+    apiKey: providerConfig.apiKey,
+    provider: providerConfig.provider,
+    model,
+    temperature,
+    maxTokens,
+    prompt,
+    userInput,
   }
-  return handleJson(req, res, { apiKey, model, temperature, maxTokens, prompt, userInput })
+
+  if (stream) {
+    return handleStream(req, res, callParams)
+  }
+  return handleJson(req, res, callParams)
 }
 
 // ============================================================
 // JSON 模式（v1.5 兼容路径）
 // ============================================================
-async function handleJson(req, res, { apiKey, model, temperature, maxTokens, prompt, userInput }) {
+async function handleJson(req, res, { chatUrl, apiKey, provider, model, temperature, maxTokens, prompt, userInput }) {
   const attempt = async (mt) => {
-    const r = await fetch(UPSTREAM_URL, {
+    const r = await fetch(chatUrl, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         model,
         messages: [
           { role: 'system', content: prompt },
-          { role: 'user', content: userInput }
+          { role: 'user', content: userInput },
         ],
         temperature,
         max_tokens: mt,
-        stream: false
-      })
+        stream: false,
+      }),
     })
     return r
   }
@@ -144,19 +148,18 @@ async function handleJson(req, res, { apiKey, model, temperature, maxTokens, pro
   try {
     let r = await attempt(maxTokens)
 
-    // 1 次重试：上游失败/超时 → 降级 max_tokens
     if (!r.ok && isRetryable(r.status)) {
-      console.warn(`[api/chat] upstream ${r.status}，降级重试 (max_tokens ${maxTokens} → ${Math.floor(maxTokens * RETRY_MAX_TOKENS_RATIO)})`)
+      console.warn(`[api/chat] ${provider} upstream ${r.status}，降级重试 (max_tokens ${maxTokens} → ${Math.floor(maxTokens * RETRY_MAX_TOKENS_RATIO)})`)
       r = await attempt(Math.max(256, Math.floor(maxTokens * RETRY_MAX_TOKENS_RATIO)))
     }
 
     if (!r.ok) {
       const errText = await r.text()
-      console.error('[api/chat] DeepSeek upstream error:', r.status, errText)
+      console.error(`[api/chat] ${provider} upstream error:`, r.status, errText)
       return res.status(502).json({
         error: 'upstream_error',
         status: r.status,
-        message: errText.slice(0, 500)
+        message: errText.slice(0, 500),
       })
     }
 
@@ -166,34 +169,29 @@ async function handleJson(req, res, { apiKey, model, temperature, maxTokens, pro
     return res.status(200).json({
       content,
       model: data.model || model,
-      usage: data.usage || null
+      provider,
+      usage: data.usage || null,
     })
   } catch (e) {
-    console.error('[api/chat] fetch failed:', e)
+    console.error(`[api/chat] ${provider} fetch failed:`, e)
     return res.status(502).json({
       error: 'upstream_error',
-      message: String(e)
+      message: String(e),
     })
   }
 }
 
 // ============================================================
-// SSE 流式模式（v2.0 新增）
+// SSE 流式模式（v2.0）
 // ============================================================
-async function handleStream(req, res, { apiKey, model, temperature, maxTokens, prompt, userInput }) {
-  // 设置 SSE 响应头
+async function handleStream(req, res, { chatUrl, apiKey, provider, model, temperature, maxTokens, prompt, userInput }) {
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8')
   res.setHeader('Cache-Control', 'no-cache, no-transform')
   res.setHeader('Connection', 'keep-alive')
-  res.setHeader('X-Accel-Buffering', 'no') // 禁用 nginx 缓冲
+  res.setHeader('X-Accel-Buffering', 'no')
   res.status(200)
 
-  // v2.5.3 hotfix: 改成 DeepSeek 原生 SSE 格式，让前端的 deepseek.js 解析器能直接吃到 token
-  //   - 'token'  → data: {"choices":[{"delta":{"content":"<delta>"}}]}\n\n
-  //   - 'done'   → data: [DONE]\n\n
-  //   - 'error'  → data: {"error":"...","message":"..."}\n\n
-  // 之前用的是自定义 event: token/done/error 协议，deepseek.js 解析器只认 DeepSeek 原生格式，
-  // 导致 token/done 永远拿不到 delta，UI 显示「（无回复）」。
+  // v2.5.3: DeepSeek 原生 SSE 格式（OpenAI-compatible，所有 provider 通用）
   const sendEvent = (event, data) => {
     if (res.writableEnded || res.destroyed) return
     if (event === 'token') {
@@ -212,11 +210,9 @@ async function handleStream(req, res, { apiKey, model, temperature, maxTokens, p
       res.write(`data: ${JSON.stringify({ error: errObj.error, message: errObj.message || errObj.error })}\n\n`)
       return
     }
-    // 兜底：未知 event 类型，按 data: 写 JSON（前端解析器会忽略它）
     res.write(`data: ${JSON.stringify(data)}\n\n`)
   }
 
-  // 立即 flush headers
   if (typeof res.flushHeaders === 'function') res.flushHeaders()
 
   const startTime = Date.now()
@@ -224,29 +220,28 @@ async function handleStream(req, res, { apiKey, model, temperature, maxTokens, p
   let retryUsed = false
   let totalContent = ''
 
-  // 辅助：执行一次流式调用
   const streamOnce = async (mt) => {
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), DEFAULT_MAX_DURATION_MS)
     try {
-      const r = await fetch(UPSTREAM_URL, {
+      const r = await fetch(chatUrl, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
-          Accept: 'text/event-stream'
+          Accept: 'text/event-stream',
         },
         body: JSON.stringify({
           model,
           messages: [
             { role: 'system', content: prompt },
-            { role: 'user', content: userInput }
+            { role: 'user', content: userInput },
           ],
           temperature,
           max_tokens: mt,
-          stream: true
+          stream: true,
         }),
-        signal: ctrl.signal
+        signal: ctrl.signal,
       })
       clearTimeout(timer)
       return r
@@ -261,7 +256,7 @@ async function handleStream(req, res, { apiKey, model, temperature, maxTokens, p
 
     if (!r.ok && isRetryable(r.status) && !retryUsed) {
       const fallbackMt = Math.max(256, Math.floor(mt * RETRY_MAX_TOKENS_RATIO))
-      console.warn(`[api/chat] stream upstream ${r.status}，降级重试 (max_tokens ${mt} → ${fallbackMt})`)
+      console.warn(`[api/chat] ${provider} stream upstream ${r.status}，降级重试 (max_tokens ${mt} → ${fallbackMt})`)
       retryUsed = true
       r = await streamOnce(fallbackMt)
     }
@@ -274,11 +269,11 @@ async function handleStream(req, res, { apiKey, model, temperature, maxTokens, p
 
     if (!r.ok) {
       const errText = await r.text()
-      console.error('[api/chat] stream upstream error:', r.status, errText)
+      console.error(`[api/chat] ${provider} stream upstream error:`, r.status, errText)
       sendEvent('error', {
         error: 'upstream_error',
         status: r.status,
-        message: errText.slice(0, 500)
+        message: errText.slice(0, 500),
       })
       return res.end()
     }
@@ -288,19 +283,17 @@ async function handleStream(req, res, { apiKey, model, temperature, maxTokens, p
       return res.end()
     }
 
-    // 解析 SSE 流（DeepSeek 格式：data: {...}\n\n）
     const reader = r.body.getReader()
     const decoder = new TextDecoder('utf-8')
     let buffer = ''
 
-    // 首 token 超时检测
     const firstTokenTimer = setTimeout(() => {
       if (!firstTokenSent) {
         console.error(`[api/chat] 首 token 超时 (${STREAM_FIRST_TOKEN_TIMEOUT_MS}ms)，主动中断`)
         sendEvent('error', {
           error: 'first_token_timeout',
           message: `首 token 超过 ${STREAM_FIRST_TOKEN_TIMEOUT_MS}ms 未到达`,
-          latencyMs: Date.now() - startTime
+          latencyMs: Date.now() - startTime,
         })
         try { reader.cancel() } catch (_) { /* noop */ }
         if (!res.writableEnded) res.end()
@@ -314,9 +307,8 @@ async function handleStream(req, res, { apiKey, model, temperature, maxTokens, p
 
         buffer += decoder.decode(value, { stream: true })
 
-        // 按双换行切分 SSE 事件
         const events = buffer.split('\n\n')
-        buffer = events.pop() || '' // 最后一个可能不完整，留到下次
+        buffer = events.pop() || ''
 
         for (const evt of events) {
           const lines = evt.split('\n')
@@ -329,9 +321,10 @@ async function handleStream(req, res, { apiKey, model, temperature, maxTokens, p
               sendEvent('done', {
                 content: totalContent,
                 model,
+                provider,
                 usage: null,
                 latencyMs: Date.now() - startTime,
-                firstTokenLatencyMs: firstTokenSent ? null : Date.now() - startTime
+                firstTokenLatencyMs: firstTokenSent ? null : Date.now() - startTime,
               })
               if (!res.writableEnded) res.end()
               return
@@ -353,25 +346,25 @@ async function handleStream(req, res, { apiKey, model, temperature, maxTokens, p
           }
         }
       }
-      // 正常流结束（部分实现不发 [DONE]）
       clearTimeout(firstTokenTimer)
       if (!res.writableEnded) {
         sendEvent('done', {
           content: totalContent,
           model,
+          provider,
           usage: null,
-          latencyMs: Date.now() - startTime
+          latencyMs: Date.now() - startTime,
         })
         res.end()
       }
     } catch (e) {
       clearTimeout(firstTokenTimer)
-      console.error('[api/chat] stream read error:', e)
+      console.error(`[api/chat] ${provider} stream read error:`, e)
       sendEvent('error', { error: 'stream_read_error', message: String(e) })
       if (!res.writableEnded) res.end()
     }
   } catch (e) {
-    console.error('[api/chat] stream failed:', e)
+    console.error(`[api/chat] ${provider} stream failed:`, e)
     sendEvent('error', { error: 'upstream_error', message: String(e) })
     if (!res.writableEnded) res.end()
   }
@@ -381,6 +374,5 @@ async function handleStream(req, res, { apiKey, model, temperature, maxTokens, p
 // 工具函数
 // ============================================================
 function isRetryable(status) {
-  // 408 408 429 500 502 503 504 524 → 1 次重试
   return [408, 429, 500, 502, 503, 504, 524].includes(status)
 }
