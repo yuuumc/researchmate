@@ -24,54 +24,45 @@ loadDevEnv()
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 // ============================================================
-// Vite middleware：开发期直接处理 /api/chat
+// Vite middleware：开发期处理所有 /api/* 路由
 // ============================================================
-// 优势：
-//   1. 只启动一个进程（vite dev），无需 vercel CLI 或额外 Node 服务
-//   2. .env 中的 DEEPSEEK_API_KEY 直接注入 process.env，被 api/chat.js 读取
-//   3. 生产环境由 Vercel serverless function 接管，行为一致
-//
-// v2.0 升级：支持 SSE 流式透传（mockRes.write + flushHeaders）
+// v3.0 升级：从仅 /api/chat 扩展为通用 /api/* 路由
+//   - /api/chat       → api/chat.js（SSE 流式 + JSON）
+//   - /api/knowledge   → api/knowledge.js
+//   - /api/agent       → api/agent.js
+//   - /api/profile     → api/profile.js
+// 新增 API 文件只需放到 api/ 目录，自动被中间件识别
 // ============================================================
-function apiChatDevPlugin() {
+function apiDevPlugin() {
   return {
-    name: 'api-chat-dev-middleware',
+    name: 'api-dev-middleware',
     configureServer(server) {
-      server.middlewares.use('/api/chat', async (req, res) => {
-        // CORS
-        res.setHeader('Access-Control-Allow-Origin', '*')
-        res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+      server.middlewares.use(async (req, res, next) => {
+        const url = req.url || ''
+        if (!url.startsWith('/api/')) return next()
 
-        if (req.method === 'OPTIONS') {
-          res.statusCode = 204
-          res.end()
-          return
-        }
-        if (req.method !== 'POST') {
-          res.statusCode = 405
-          res.end(JSON.stringify({ error: 'method_not_allowed' }))
-          return
-        }
+        const endpoint = url.split('?')[0].split('/').pop()
+        const apiFile = resolve(__dirname, 'api', `${endpoint}.js`)
+        if (!existsSync(apiFile)) return next()
 
-        // 收集 body
+        const method = req.method || 'GET'
+
         const chunks = []
-        for await (const chunk of req) chunks.push(chunk)
+        if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
+          for await (const chunk of req) chunks.push(chunk)
+        }
         const bodyStr = Buffer.concat(chunks).toString('utf-8')
 
         try {
-          // 动态加载 api/chat.js（确保每次热重载生效）
-          // Windows 下 import() 需要 file:// URL
-          const chatPath = resolve(__dirname, 'api/chat.js')
-          const chatURL = pathToFileURL(chatPath).href
-          const handler = (await import(`${chatURL}?t=${Date.now()}`)).default
+          const apiURL = pathToFileURL(apiFile).href
+          const handler = (await import(`${apiURL}?t=${Date.now()}`)).default
 
-          // 适配 serverless handler 签名（SSE 透传支持）
           const mockReq = {
-            method: 'POST',
+            method,
             headers: req.headers || {},
             socket: req.socket,
-            body: JSON.parse(bodyStr || '{}')
+            body: bodyStr ? JSON.parse(bodyStr) : {},
+            query: Object.fromEntries(new URL(url, 'http://localhost').searchParams)
           }
           const mockRes = {
             setHeader: (k, v) => res.setHeader(k, v),
@@ -88,29 +79,25 @@ function apiChatDevPlugin() {
             end(data) {
               res.end(data)
             },
-            // v2.0 SSE 流式支持
             write(chunk) {
               return res.write(chunk)
             },
             flushHeaders() {
               if (typeof res.flushHeaders === 'function') res.flushHeaders()
             },
-            // 可读性属性（handler 可能会读）
             get writableEnded() { return res.writableEnded },
             get destroyed() { return res.destroyed }
           }
           await handler(mockReq, mockRes)
-          // 注意：SSE 路径下 handler 内部已 res.end()，这里不需要再 end
         } catch (e) {
-          console.error('[vite:api-chat-dev] error:', e)
+          console.error(`[vite:api-dev] /${endpoint} error:`, e)
           if (!res.headersSent) {
             res.statusCode = 500
             res.setHeader('Content-Type', 'application/json; charset=utf-8')
             res.end(JSON.stringify({ error: 'middleware_error', message: String(e) }))
           } else {
-            // SSE 已开始，尝试发送 error 事件后结束
             try {
-              res.write(`event: error\ndata: ${JSON.stringify({ error: 'middleware_error', message: String(e) })}\n\n`)
+              res.write(`data: ${JSON.stringify({ error: 'middleware_error', message: String(e) })}\n\n`)
               res.end()
             } catch (_) { /* noop */ }
           }
@@ -122,7 +109,7 @@ function apiChatDevPlugin() {
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [vue(), apiChatDevPlugin()],
+  plugins: [vue(), apiDevPlugin()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
