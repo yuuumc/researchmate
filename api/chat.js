@@ -1,24 +1,20 @@
 // ============================================================
-// Vercel serverless function - LLM API 代理（v3.0 多 Provider 版）
+// Vercel serverless function - LLM API 代理（v3.1 多 Provider + Prompt 自动加载）
 // ============================================================
-// v3.0 变更（队长保留件）：
-//   - 抽出 llm-provider.js，支持 DeepSeek / OpenAI / Groq / 硅基流动
-//   - env LLM_PROVIDER 切换 provider（默认 deepseek，向后兼容）
-//   - env LLM_API_KEY 统一 key 入口（回退 DEEPSEEK_API_KEY）
-//   - env LLM_BASE_URL / LLM_MODEL 可覆盖默认值
+// v3.1 变更：
+//   - 新增 mode 参数：employment/taoyan → 自动加载对应 prompt
+//   - 前端不再需要传完整 system prompt，只传 mode + userInput 即可
+//   - 向后兼容：不传 mode 时仍用 body.prompt（v3.0 行为不变）
 //
-// 沿用 v2.0：
-//   1. JSON 模式（v1.5 兼容）：一次性返回
-//   2. SSE 流式模式（v2.0）：服务端流式转发，首 token < 2s
-//   3. 1 次重试：上游失败/超时降级 max_tokens
-//
-// 安全铁律：
-//   1. API key 只从 process.env 读取（经 provider config）
-//   2. 严禁 VITE_ 前缀
-//   3. 前端 DevTools Network 只能看到 /api/chat
+// v3.0 沿用：
+//   - 多 provider 抽象（llm-provider.js）
+//   - JSON 模式 + SSE 流式模式
+//   - CORS 白名单 + 简易限流
+//   - 1 次降级重试
 // ============================================================
 
 import { getProviderConfig, validateProviderConfig } from './llm-provider.js'
+import { loadPrompt, substitute, shouldUseCompact } from './prompt-loader.js'
 
 const DEFAULT_MAX_DURATION_MS = 58000
 const STREAM_FIRST_TOKEN_TIMEOUT_MS = 30000
@@ -49,6 +45,12 @@ function checkRateLimit(ip) {
     }
   }
   return bucket.count <= RATE_LIMIT_MAX
+}
+
+// ---- mode → prompt 文件映射 ----
+const MODE_PROMPT_MAP = {
+  employment: 'student-employment',
+  taoyan: 'student-taoyan',
 }
 
 export default async function handler(req, res) {
@@ -84,10 +86,26 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: 'rate_limited' })
   }
 
-  const { prompt, userInput, options = {} } = req.body || {}
+  const { prompt, userInput, options = {}, mode, profile = {} } = req.body || {}
 
-  if (!prompt || !userInput) {
-    return res.status(400).json({ error: 'missing_prompt_or_userInput' })
+  if (!userInput) {
+    return res.status(400).json({ error: 'missing_userInput' })
+  }
+
+  // ---- v3.1: mode 自动加载 prompt ----
+  let systemPrompt = prompt
+  if (mode && MODE_PROMPT_MAP[mode]) {
+    const compact = shouldUseCompact()
+    const template = loadPrompt(MODE_PROMPT_MAP[mode], { compact })
+    if (template) {
+      systemPrompt = substitute(template, profile)
+    } else {
+      console.warn(`[api/chat] mode=${mode} 但 prompt 文件未找到，回退到 body.prompt`)
+    }
+  }
+
+  if (!systemPrompt) {
+    return res.status(400).json({ error: 'missing_prompt', message: '请提供 prompt 或 mode 参数' })
   }
 
   // v3.0: 多 LLM provider 配置
@@ -110,7 +128,7 @@ export default async function handler(req, res) {
     model,
     temperature,
     maxTokens,
-    prompt,
+    prompt: systemPrompt,
     userInput,
   }
 
@@ -191,7 +209,6 @@ async function handleStream(req, res, { chatUrl, apiKey, provider, model, temper
   res.setHeader('X-Accel-Buffering', 'no')
   res.status(200)
 
-  // v2.5.3: DeepSeek 原生 SSE 格式（OpenAI-compatible，所有 provider 通用）
   const sendEvent = (event, data) => {
     if (res.writableEnded || res.destroyed) return
     if (event === 'token') {

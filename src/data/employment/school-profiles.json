@@ -1,0 +1,194 @@
+{
+  "version": "3.1.0",
+  "description": "长三角微电子院校就业偏好画像（v3.1 第二轮深化）",
+  "updated": "2026-07-30",
+  "schools": [
+    {
+      "school": "中国科学技术大学",
+      "alias": "中科大",
+      "region": "安徽合肥",
+      "level": "985",
+      "microelectronics_rank": "A+",
+      "employment_preference": {
+        "chip_design": {
+          "weight": 0.45,
+          "target_roles": [
+            { "role": "数字IC设计工程师", "companies": ["华为海思", "紫光展锐", "中芯国际"], "skill_gaps": ["Verilog/SystemVerilog", "EDA工具链(Cadence/Synopsys)", "时序分析"] },
+            { "role": "AI芯片架构师", "companies": ["寒武纪", "地平线", "燧原科技"], "skill_gaps": ["计算机体系结构", "脉动阵列设计", "量化推理"] }
+          ]
+        },
+        "process_engineer": {
+          "weight": 0.30,
+          "target_roles": [
+            { "role": "先进工艺研发工程师", "companies": ["中芯国际", "长江存储", "长鑫存储"], "skill_gaps": ["光刻工艺", "薄膜沉积", "刻蚀工艺优化"] },
+            { "role": "良率提升工程师", "companies": ["华虹半导体", "中芯国际"], "skill_gaps": ["SPC统计过程控制", "缺陷分析", "DOE实验设计"] }
+          ]
+        },
+        "packaging_testing": {
+          "weight": 0.25,
+          "target_roles": [
+            { "role": "先进封装工程师", "companies": ["长电科技", "通富微电", "华天科技"], "skill_gaps": ["2.5D/3D封装", "TSV硅通孔", "Chiplet互联"] }
+          ]
+        }
+      },
+      "alumni_network_strength": "强（中科大微电子校友在合肥长鑫/长江存储集中）",
+      "local_industry_ecosystem": "合肥集成电路产业集群（长鑫存储+晶合集成）"
+    },
+    {
+      "school": "东南大学",
+      "alias": "东南",
+      "region": "江苏南京",
+      "level": "985",
+      "microelectronics_rank": "A",
+      "employment_preference": {
+        "chip_design": {
+          "weight": 0.40,
+          "target_roles": [
+            { "role": "模拟IC设计工程师", "companies": ["圣邦微电子", "思瑞浦", "纳芯微"], "skill_gaps": ["运放设计", "Bandgap基准", "版图DRC/LVS"] },
+            { "role": "射频IC设计工程师", "companies": ["卓胜微", "唯捷创芯", "紫光展锐"], "skill_gaps": ["射频电路设计", "阻抗匹配", "EM仿真"] }
+          ]
+        },
+        "process_engineer": {
+          "weight": 0.35,
+          "target_roles": [
+            { "role": "器件工艺工程师", "companies": ["台积电(南京)", "中芯国际"], "skill_gaps": ["CMOS工艺集成", "器件特性表征", "工艺仿真TCAD"] },
+            { "role": "量测工程师", "companies": ["中芯国际", "华虹"], "skill_gaps": ["CD-SEM", "OCD量测", "缺陷检测"] }
+          ]
+        },
+        "packaging_testing": {
+          "weight": 0.25,
+          "target_roles": [
+            { "role": "测试工程师", "companies": ["华天科技", "长电科技"], "skill_gaps": ["ATE测试编程", "测试向量生成", "良率分析"] }
+          ]
+        }
+      },
+      "alumni_network_strength": "强（东南射频/模拟IC方向校友在长三角设计公司密集）",
+      "local_industry_ecosystem": "南京江北新区集成电路产业基地（台积电南京+华天科技）"
+    },
+    {
+      "school": "复旦大学",
+      "alias": "复旦微院",
+      "region": "上海",
+      "level": "985",
+      "microelectronics_rank": "A+",
+      "employment_preference": {
+        "chip_design": {
+          "weight": 0.50,
+          "target_roles": [
+            { "role": "数字IC前端设计工程师", "companies": ["紫光展锐", "壁仞科技", "燧原科技"], "skill_gaps": ["RTL设计", "UVM验证", "低功耗设计"] },
+            { "role": "DFT工程师", "companies": ["中芯国际", "紫光展锐"], "skill_gaps": ["扫描链设计", "BIST", "ATPG"] }
+          ]
+        },
+        "process_engineer": {
+          "weight": 0.25,
+          "target_roles": [
+            { "role": "工艺整合工程师(PIE)", "companies": ["中芯国际", "华虹半导体"], "skill_gaps": ["工艺流程定义", "跨工序协调", "SPC"] }
+          ]
+        },
+        "packaging_testing": {
+          "weight": 0.25,
+          "target_roles": [
+            { "role": "系统级封装工程师", "companies": ["长电科技", "通富微电"], "skill_gaps": ["SiP设计", "电磁仿真", "热管理"] }
+          ]
+        }
+      },
+      "alumni_network_strength": "极强（复旦微院校友在上海张江设计公司高管层密集）",
+      "local_industry_ecosystem": "上海张江高科技园区（紫光展锐+中芯国际+壁仞科技）"
+    },
+    {
+      "school": "上海交通大学",
+      "alias": "上交",
+      "region": "上海",
+      "level": "985",
+      "microelectronics_rank": "A",
+      "employment_preference": {
+        "chip_design": {
+          "weight": 0.45,
+          "target_roles": [
+            { "role": "GPU/AI芯片设计工程师", "companies": ["壁仞科技", "天数智芯", "沐曦"], "skill_gaps": ["并行计算架构", "GPGPU编程", "流水线设计"] },
+            { "role": "SoC架构师", "companies": ["华为海思", "紫光展锐"], "skill_gaps": ["AXI/AHB总线", "存储子系统", "功耗分析"] }
+          ]
+        },
+        "process_engineer": {
+          "weight": 0.30,
+          "target_roles": [
+            { "role": "先进器件研发工程师", "companies": ["中芯国际", "上海集成电路研发中心"], "skill_gaps": ["FinFET器件", "GAA结构", "TCAD仿真"] },
+            { "role": "材料工程师", "companies": ["中芯国际", "安集科技"], "skill_gaps": ["高K金属栅极", "CMP抛光液", "新材料表征"] }
+          ]
+        },
+        "packaging_testing": {
+          "weight": 0.25,
+          "target_roles": [
+            { "role": "可靠性工程师", "companies": ["长电科技", "中芯国际"], "skill_gaps": ["JEDEC标准", "HTOL/HAST测试", "失效分析"] }
+          ]
+        }
+      },
+      "alumni_network_strength": "强（上交电院校友在上海AI芯片初创公司技术骨干密集）",
+      "local_industry_ecosystem": "上海临港新片区（集成电路+AI芯片集群）"
+    },
+    {
+      "school": "浙江大学",
+      "alias": "浙大",
+      "region": "浙江杭州",
+      "level": "985",
+      "microelectronics_rank": "A",
+      "employment_preference": {
+        "chip_design": {
+          "weight": 0.40,
+          "target_roles": [
+            { "role": "嵌入式SoC设计工程师", "companies": ["海康威视", "大华股份", "中天微"], "skill_gaps": ["RISC-V架构", "片上总线", "中断控制器"] },
+            { "role": "混合信号设计工程师", "companies": ["士兰微电子", "圣邦微电子"], "skill_gaps": ["ADC/DAC设计", "PLL", "混合信号版图"] }
+          ]
+        },
+        "process_engineer": {
+          "weight": 0.30,
+          "target_roles": [
+            { "role": "功率器件工艺工程师", "companies": ["士兰微电子", "比亚迪半导体", "华润微电子"], "skill_gaps": ["IGBT工艺", "SiC/GaN功率器件", "功率模块封装"] }
+          ]
+        },
+        "packaging_testing": {
+          "weight": 0.30,
+          "target_roles": [
+            { "role": "产品工程师", "companies": ["立昂微电子", "中晶半导体"], "skill_gaps": ["产品测试流程", "客户技术支持", "失效分析"] },
+            { "role": "质量工程师", "companies": ["士兰微电子", "华润微电子"], "skill_gaps": ["ISO9001", "8D报告", "SPC"] }
+          ]
+        }
+      },
+      "alumni_network_strength": "强（浙大校友在杭州/宁波功率半导体和安防芯片领域集中）",
+      "local_industry_ecosystem": "杭州滨江集成电路设计产业园（士兰微+海康威视+中天微）"
+    }
+  ],
+  "career_paths": [
+    {
+      "path_id": "chip_design",
+      "path_name": "芯片设计",
+      "description": "面向IC设计公司/设计服务公司，从事数字/模拟/射频电路设计与验证",
+      "core_skills": ["Verilog/SystemVerilog", "EDA工具链", "电路设计理论", "验证方法学(UVM)"],
+      "growth_trajectory": "初级设计工程师 → 模块负责人 → 架构师 → 技术总监",
+      "market_demand": "高（国产替代驱动，设计岗位缺口持续扩大）"
+    },
+    {
+      "path_id": "process_engineer",
+      "path_name": "工艺工程师",
+      "description": "面向晶圆厂/IDM公司，从事半导体制造工艺开发与优化",
+      "core_skills": ["半导体物理", "工艺原理(光刻/刻蚀/薄膜/掺杂)", "SPC/DOE", "TCAD仿真"],
+      "growth_trajectory": "工艺工程师 → 工艺模块负责人 → PIE → 工艺总监",
+      "market_demand": "高（28nm/14nm产能扩张，工艺人才稀缺）"
+    },
+    {
+      "path_id": "packaging_testing",
+      "path_name": "封测",
+      "description": "面向封测厂/IDM封测部门，从事封装设计、测试开发与可靠性验证",
+      "core_skills": ["封装工艺(引线键合/倒装/TSV)", "ATE测试编程", "可靠性标准", "失效分析"],
+      "growth_trajectory": "测试/封装工程师 → 产品工程师 → 封测经理 → 运营总监",
+      "market_demand": "中高（先进封装需求增长，Chiplet/2.5D/3D封装驱动）"
+    }
+  ],
+  "placeholders": {
+    "{{salary_range}}": "薪资范围（前端从 hr_<pool>.json 渲染，LLM 不得生成）",
+    "{{placement_rate}}": "就业率（前端从 hr_<pool>.json 渲染，LLM 不得生成）",
+    "{{headcount}}": "招聘名额（前端从 hr_<pool>.json 渲染，LLM 不得生成）",
+    "{{year}}": "年份（前端从 hr_<pool>.json 渲染，LLM 不得生成）",
+    "{{rank_band}}": "排名区间（前端从本地数据渲染，LLM 不得生成）"
+  }
+}
