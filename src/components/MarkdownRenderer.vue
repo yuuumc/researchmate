@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
+import { installSanitizeHooks, sanitizeHtml, SANITIZE_CONFIG } from '@/utils/sanitize'
 
 const props = defineProps({
   content: {
@@ -16,22 +17,18 @@ marked.setOptions({
   headerIds: false
 })
 
+// 装上 2 个 hook：img[src] 三类白名单 + a[href] 强制 rel
+// 幂等：重复 install 会先 remove 旧 hook 再装新的
+installSanitizeHooks(DOMPurify)
+
 const html = computed(() => {
   if (!props.content) return ''
   const rawHtml = marked.parse(props.content)
-  return DOMPurify.sanitize(rawHtml, {
-    ALLOWED_TAGS: [
-      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-      'p', 'br', 'hr',
-      'strong', 'b', 'em', 'i', 'del', 's', 'mark',
-      'ul', 'ol', 'li',
-      'blockquote', 'code', 'pre',
-      'a', 'img',
-      'table', 'thead', 'tbody', 'tr', 'th', 'td',
-      'div', 'span'
-    ],
-    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class']
-  })
+  // 4 道防御统一交给 sanitize.js（见 SANITIZE_CONFIG）
+  //   1) 基础：收紧 ALLOWED_ATTR + 显式 FORBID_TAGS / FORBID_ATTR
+  //   2) 加固 A：img[src] 三类白名单（hook）— 挡外链跟踪 + 像素打点
+  //   3) 加固 B：ALLOWED_URI_REGEXP 挡 javascript: + a[rel] 强制（hook）
+  return sanitizeHtml(DOMPurify, rawHtml)
 })
 </script>
 
