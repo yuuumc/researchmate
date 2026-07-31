@@ -25,6 +25,7 @@ const messages = ref([])
 const inputText = ref('')
 const loading = ref(false)
 const chatBodyRef = ref(null)
+const textareaRef = ref(null)
 
 // v2.0: 当前流式响应的 AbortController
 let currentAbort = null
@@ -282,6 +283,17 @@ function handleEnter(e) {
   }
 }
 
+// textarea 自动撑高（上限 200px）
+function autoResize() {
+  const el = textareaRef.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = Math.min(el.scrollHeight, 200) + 'px'
+}
+watch(inputText, (v) => {
+  if (!v && textareaRef.value) textareaRef.value.style.height = 'auto'
+})
+
 function getAgentMeta(agent) {
   return agentMeta[agent] || { label: '系统', en: 'System', color: '#7a8ba3' }
 }
@@ -508,11 +520,13 @@ watch(messages, scheduleSave, { deep: true })
         <span class="input-prompt">▸</span>
         <textarea
           v-model="inputText"
+          ref="textareaRef"
           class="input-textarea"
           placeholder="输入你的问题（Enter 发送 / Shift+Enter 换行）…"
           rows="1"
           :disabled="loading"
           @keydown="handleEnter"
+          @input="autoResize"
         />
         <button
           class="send-btn"
