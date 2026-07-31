@@ -95,9 +95,9 @@ const traceExpanded = ref(true)
 // v3.1: 聊天模式切换（就业咨询 / 教研答疑 / 智能路由）
 const chatMode = ref('')  // '' | 'employment' | 'taoyan'
 const modeOptions = [
-  { value: '', label: '智能路由', en: 'Auto', icon: '◎' },
-  { value: 'employment', label: '就业咨询', en: 'Career', icon: '◈' },
-  { value: 'taoyan', label: '教研答疑', en: 'Tutor', icon: '✦' }
+  { value: '', label: '智能路由', en: 'Auto', icon: '◎', desc: '自动识别意图，分发给最合适的 Agent' },
+  { value: 'employment', label: '就业咨询', en: 'Career', icon: '◈', desc: '直接调用择校 Agent，给出院校推荐与路径' },
+  { value: 'taoyan', label: '教研答疑', en: 'Tutor', icon: '✦', desc: '直接调用教研 Agent，苏格拉底式知识点答疑' }
 ]
 function selectMode(m) {
   chatMode.value = m
@@ -590,6 +590,8 @@ watch(messages, scheduleSave, { deep: true })
           :key="opt.value"
           class="mode-btn"
           :class="{ active: chatMode === opt.value }"
+          :data-tooltip="opt.desc"
+          :title="opt.desc"
           @click="selectMode(opt.value)"
         >
           <span class="mode-icon">{{ opt.icon }}</span>
@@ -1344,6 +1346,32 @@ watch(messages, scheduleSave, { deep: true })
   background: var(--color-ink-900);
   border-color: var(--color-ink-900);
   color: var(--color-fg-inverse);
+}
+
+/* mode-btn CSS tooltip */
+.mode-btn { position: relative; }
+.mode-btn::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  white-space: nowrap;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-family: var(--font-mono, monospace);
+  color: var(--color-fg-inverse, #fff);
+  background: var(--color-ink-900, #0f1e33);
+  border-radius: 6px;
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0,0,0,0.15));
+  opacity: 0;
+  pointer-events: none;
+  transition: all var(--duration-base, 0.2s) var(--ease-out, ease);
+  z-index: var(--z-tooltip, 200);
+}
+.mode-btn:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
 .mode-icon {
