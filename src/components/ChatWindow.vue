@@ -185,7 +185,7 @@ async function send(text) {
   loading.value = true
   await scrollToBottom()
 
-  // v2.0: 推入空 assistant 占位，route() 通过 onToken 实时写入
+  // 推入空 assistant 占位，runAssistantReply 通过 onToken 实时写入
   const assistantIdx = messages.value.length
   messages.value.push({
     role: 'assistant',
@@ -194,8 +194,23 @@ async function send(text) {
     streaming: true,
     timestamp: new Date().toLocaleTimeString('zh-CN', { hour12: false })
   })
+  await runAssistantReply(content, assistantIdx)
+}
+
+/**
+ * 核心：对 messages[assistantIdx] 执行流式调用并 finalize。
+ * send() 推入新占位后调用；regenerate() 原地重置占位后调用。
+ */
+async function runAssistantReply(content, assistantIdx) {
   currentAssistantIndex = assistantIdx
   currentAbort = new AbortController()
+
+  const onToken = (chunk) => {
+    const msg = messages.value[assistantIdx]
+    if (msg) {
+      msg.content = (msg.content || '') + (chunk.delta || '')
+    }
+  }
 
   try {
     let result
@@ -205,12 +220,7 @@ async function send(text) {
       const replyContent = await callChatWithMode(content, {
         mode: chatMode.value,
         profile: modeProfile.value,
-        onToken: (chunk) => {
-          const msg = messages.value[assistantIdx]
-          if (msg) {
-            msg.content = (msg.content || '') + (chunk.delta || '')
-          }
-        },
+        onToken,
         signal: currentAbort.signal
       })
       result = {
@@ -220,15 +230,7 @@ async function send(text) {
       }
     } else {
       // 默认：走 intent 路由 + Agent 编排
-      result = await route(content, {
-        onToken: (chunk) => {
-          const msg = messages.value[assistantIdx]
-          if (msg) {
-            msg.content = (msg.content || '') + (chunk.delta || '')
-          }
-        },
-        signal: currentAbort.signal
-      })
+      result = await route(content, { onToken, signal: currentAbort.signal })
     }
 
     const finalMsg = messages.value[assistantIdx] || {}
@@ -270,6 +272,52 @@ async function send(text) {
     currentAssistantIndex = -1
     await scrollToBottom()
   }
+}
+
+// ---- 消息操作栏：复制 / 重新生成 ----
+const copiedIdx = ref(-1)
+
+async function copyMessage(i) {
+  const msg = messages.value[i]
+  if (!msg) return
+  const text = msg.content || ''
+  try {
+    await navigator.clipboard.writeText(text)
+  } catch (_) {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.style.position = 'fixed'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    try { document.execCommand('copy') } catch (__) { /* noop */ }
+    document.body.removeChild(ta)
+  }
+  copiedIdx.value = i
+  setTimeout(() => { if (copiedIdx.value === i) copiedIdx.value = -1 }, 2000)
+}
+
+async function regenerate(i) {
+  if (loading.value) return
+  // 向上找最近一条 user 消息
+  let userIdx = -1
+  for (let j = i - 1; j >= 0; j--) {
+    if (messages.value[j].role === 'user') { userIdx = j; break }
+  }
+  if (userIdx < 0) return
+  const userText = messages.value[userIdx].content
+
+  loading.value = true
+  // 原地重置目标 assistant 消息
+  messages.value[i] = {
+    role: 'assistant',
+    content: '',
+    agent: null,
+    streaming: true,
+    timestamp: new Date().toLocaleTimeString('zh-CN', { hour12: false })
+  }
+  await scrollToBottom()
+  await runAssistantReply(userText, i)
 }
 
 function handleQuickAction(action) {
@@ -465,6 +513,14 @@ watch(messages, scheduleSave, { deep: true })
                     </li>
                   </ol>
                 </details>
+
+                <!-- 消息操作栏：复制 / 重新生成（仅 assistant 且非流式非错误时） -->
+                <div v-if="!msg.streaming && !msg.error" class="msg-actions">
+                  <button class="action-btn" @click="copyMessage(i)">
+                    {{ copiedIdx === i ? '✓ 已复制' : '复制' }}
+                  </button>
+                  <button class="action-btn" @click="regenerate(i)">重新生成</button>
+                </div>
               </div>
             </div>
           </div>
@@ -981,6 +1037,34 @@ watch(messages, scheduleSave, { deep: true })
 }
 
 .rag-panel summary::-webkit-details-marker { display: none; }
+
+/* ---- 消息操作栏 ---- */
+.msg-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border-subtle, rgba(0,0,0,0.06));
+  opacity: 0;
+  transition: opacity var(--duration-base, 0.2s) var(--ease-out, ease);
+}
+.message:hover .msg-actions { opacity: 1; }
+.action-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-family: var(--font-mono, monospace);
+  color: var(--color-ink-400, #7a8ba3);
+  background: transparent;
+  border: 1px solid var(--color-border-subtle, rgba(0,0,0,0.08));
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all var(--duration-base, 0.2s) var(--ease-out, ease);
+}
+.action-btn:hover {
+  color: var(--color-ink-700, #1e3a5f);
+  border-color: var(--color-ink-300, #b0bcc8);
+  background: var(--color-bg-elevated, #fff);
+}
 
 .rag-icon {
   color: var(--color-node-active);
