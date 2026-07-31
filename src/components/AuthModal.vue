@@ -99,6 +99,13 @@ function close() {
 function wechatPlaceholder() {
   ElMessage.info('微信扫码登录即将开放（Supabase Provider 接入中）')
 }
+
+function guestLogin() {
+  auth.guestLogin()
+  ElMessage.success('欢迎体验！数据仅保存在本设备')
+  emit('success')
+  if (props.mode === 'modal') emit('close')
+}
 </script>
 
 <template>
@@ -114,6 +121,7 @@ function wechatPlaceholder() {
             <p>当前为本地单机模式，数据仅保存在本设备。</p>
             <p class="degraded-hint">配置 <code>VITE_SUPABASE_URL</code> / <code>VITE_SUPABASE_ANON_KEY</code> 后开放多设备同步与账号体系。</p>
             <button class="btn btn-primary" @click="close">知道了</button>
+            <button class="btn btn-guest" @click="guestLogin">游客体验</button>
           </div>
 
           <!-- 手机号 OTP -->
@@ -184,6 +192,7 @@ function wechatPlaceholder() {
             <button class="btn btn-wechat" disabled @click="wechatPlaceholder">
               <span class="wechat-dot" />微信扫码登录（即将开放）
             </button>
+            <button class="btn btn-guest" @click="guestLogin">游客体验</button>
           </template>
         </div>
       </div>
@@ -199,6 +208,7 @@ function wechatPlaceholder() {
         <p>当前为本地单机模式，数据仅保存在本设备。</p>
         <p class="degraded-hint">配置 <code>VITE_SUPABASE_URL</code> / <code>VITE_SUPABASE_ANON_KEY</code> 后开放多设备同步与账号体系。</p>
         <button class="btn btn-primary" @click="emit('success')">继续本地使用</button>
+        <button class="btn btn-guest" @click="guestLogin">游客体验</button>
       </div>
 
       <template v-else>
@@ -264,6 +274,7 @@ function wechatPlaceholder() {
         <button class="btn btn-wechat" disabled @click="wechatPlaceholder">
           <span class="wechat-dot" />微信扫码登录（即将开放）
         </button>
+        <button class="btn btn-guest" @click="guestLogin">游客体验</button>
       </template>
     </div>
   </div>
@@ -508,6 +519,22 @@ function wechatPlaceholder() {
   gap: var(--space-2);
   background: var(--color-bg-sunken);
   color: var(--color-fg-tertiary);
+}
+
+.btn-guest {
+  width: 100%;
+  margin-top: var(--space-3);
+  background: transparent;
+  color: var(--color-ink-500);
+  border: 1px solid var(--color-border-default);
+  font-size: var(--text-meta);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.btn-guest:hover {
+  border-color: var(--color-ink-500);
+  color: var(--color-ink-700);
+  background: var(--color-bg-sunken);
 }
 
 .wechat-dot {
