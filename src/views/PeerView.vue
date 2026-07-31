@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { usePeerStore } from '@/stores/peer'
 import { useProfileStore } from '@/stores/profile'
+import { useTagInput } from '@/composables/useTagInput'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 
 const peerStore = usePeerStore()
@@ -15,26 +16,8 @@ const form = ref({
   weak_points: []
 })
 
-const skillInput = ref('')
-const weakInput = ref('')
-
-function addSkill() {
-  const v = skillInput.value.trim()
-  if (v && !form.value.mastered_skills.includes(v)) {
-    form.value.mastered_skills.push(v)
-    skillInput.value = ''
-  }
-}
-function removeSkill(i) { form.value.mastered_skills.splice(i, 1) }
-
-function addWeak() {
-  const v = weakInput.value.trim()
-  if (v && !form.value.weak_points.includes(v)) {
-    form.value.weak_points.push(v)
-    weakInput.value = ''
-  }
-}
-function removeWeak(i) { form.value.weak_points.splice(i, 1) }
+const { input: skillInput, add: addSkill, remove: removeSkill } = useTagInput(form, 'mastered_skills')
+const { input: weakInput, add: addWeak, remove: removeWeak } = useTagInput(form, 'weak_points')
 
 async function submit() {
   if (!form.value.student_name) return
