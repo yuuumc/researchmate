@@ -86,6 +86,7 @@ onMounted(() => {
     setTimeout(() => { restoredBanner.value = null }, 4000)
   }
   refreshMonths()
+  loadFeedback()
 })
 
 // Agent Trace
@@ -276,6 +277,42 @@ async function runAssistantReply(content, assistantIdx) {
 
 // ---- 消息操作栏：复制 / 重新生成 ----
 const copiedIdx = ref(-1)
+
+// ---- 消息反馈 👍/👎（存 localStorage） ----
+const feedbackMap = ref({})
+
+function fbKey(i) {
+  const m = messages.value[i]
+  if (!m) return ''
+  return `${m.timestamp}:${(m.content || '').slice(0, 50)}`
+}
+function getFb(i) {
+  return feedbackMap.value[fbKey(i)] || ''
+}
+function setFb(i, type) {
+  const k = fbKey(i)
+  const cur = feedbackMap.value[k]
+  const next = cur === type ? '' : type
+  if (next) feedbackMap.value = { ...feedbackMap.value, [k]: next }
+  else { const cp = { ...feedbackMap.value }; delete cp[k]; feedbackMap.value = cp }
+  try {
+    const all = JSON.parse(localStorage.getItem('yxt_feedback') || '{}')
+    const fullKey = userId.value + ':' + k
+    if (next) all[fullKey] = next; else delete all[fullKey]
+    localStorage.setItem('yxt_feedback', JSON.stringify(all))
+  } catch (_) { /* noop */ }
+}
+function loadFeedback() {
+  try {
+    const all = JSON.parse(localStorage.getItem('yxt_feedback') || '{}')
+    const prefix = userId.value + ':'
+    const map = {}
+    for (const [k, v] of Object.entries(all)) {
+      if (k.startsWith(prefix)) map[k.slice(prefix.length)] = v
+    }
+    feedbackMap.value = map
+  } catch (_) { feedbackMap.value = {} }
+}
 
 async function copyMessage(i) {
   const msg = messages.value[i]
@@ -536,6 +573,17 @@ watch(messages, scheduleSave, { deep: true })
                     {{ copiedIdx === i ? '✓ 已复制' : '复制' }}
                   </button>
                   <button class="action-btn" @click="regenerate(i)">重新生成</button>
+                  <span class="action-divider"></span>
+                  <button
+                    class="action-btn fb-btn"
+                    :class="{ active: getFb(i) === 'up' }"
+                    @click="setFb(i, 'up')"
+                  >👍</button>
+                  <button
+                    class="action-btn fb-btn"
+                    :class="{ active: getFb(i) === 'down' }"
+                    @click="setFb(i, 'down')"
+                  >👎</button>
                 </div>
               </div>
             </div>
@@ -1090,6 +1138,18 @@ watch(messages, scheduleSave, { deep: true })
   color: var(--color-ink-700, #1e3a5f);
   border-color: var(--color-ink-300, #b0bcc8);
   background: var(--color-bg-elevated, #fff);
+}
+.action-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--color-border-subtle, rgba(0,0,0,0.08));
+  align-self: center;
+}
+.fb-btn { font-size: 14px; line-height: 1; padding: 4px 8px; }
+.fb-btn.active {
+  background: var(--color-bg-elevated, #fff);
+  border-color: var(--color-ink-500, #4d9de0);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-ink-500, #4d9de0) 15%, transparent);
 }
 
 /* ---- 滚动到底部按钮 ---- */
