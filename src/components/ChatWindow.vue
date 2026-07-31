@@ -324,6 +324,22 @@ function handleQuickAction(action) {
   send(action.text)
 }
 
+// ---- 滚动到底部按钮 ----
+const showScrollBottom = ref(false)
+
+function onChatScroll() {
+  const el = chatBodyRef.value
+  if (!el) return
+  const dist = el.scrollHeight - el.scrollTop - el.clientHeight
+  showScrollBottom.value = dist > 120
+}
+
+async function scrollBottomClick() {
+  const el = chatBodyRef.value
+  if (!el) return
+  el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+}
+
 function handleEnter(e) {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
@@ -352,7 +368,7 @@ watch(messages, scheduleSave, { deep: true })
 
 <template>
   <div class="chat-window">
-    <div ref="chatBodyRef" class="chat-body">
+    <div ref="chatBodyRef" class="chat-body" @scroll="onChatScroll">
       <div v-if="restoredBanner" class="restored-banner" :class="{ noop: restoredBanner.noop }">
         <span v-if="restoredBanner.noop">没有更早的历史可加载</span>
         <span v-else-if="restoredBanner.fromCache">
@@ -549,6 +565,14 @@ watch(messages, scheduleSave, { deep: true })
         </div>
       </div>
     </div>
+
+    <!-- 滚动到底部按钮 -->
+    <transition name="fade-scale">
+      <button v-if="showScrollBottom" class="scroll-bottom-btn" @click="scrollBottomClick">
+        <span class="sbd-arrow">↓</span>
+        <span class="sbd-text">回到最新</span>
+      </button>
+    </transition>
 
     <div v-if="traceStore.hasTraces" class="trace-panel">
       <AgentTrace
@@ -1064,6 +1088,40 @@ watch(messages, scheduleSave, { deep: true })
   color: var(--color-ink-700, #1e3a5f);
   border-color: var(--color-ink-300, #b0bcc8);
   background: var(--color-bg-elevated, #fff);
+}
+
+/* ---- 滚动到底部按钮 ---- */
+.scroll-bottom-btn {
+  position: absolute;
+  bottom: 140px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-family: var(--font-mono, monospace);
+  color: var(--color-ink-700, #1e3a5f);
+  background: var(--color-bg-elevated, #fff);
+  border: 1px solid var(--color-border-subtle, rgba(0,0,0,0.08));
+  border-radius: var(--radius-full, 999px);
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0,0,0,0.08));
+  cursor: pointer;
+  z-index: var(--z-sticky, 100);
+  transition: all var(--duration-base, 0.2s) var(--ease-out, ease);
+}
+.scroll-bottom-btn:hover {
+  box-shadow: var(--shadow-lg, 0 8px 24px rgba(0,0,0,0.12));
+  transform: translateX(-50%) translateY(-2px);
+}
+.sbd-arrow { font-size: 15px; line-height: 1; }
+.fade-scale-enter-active, .fade-scale-leave-active {
+  transition: all 0.2s var(--ease-out, ease);
+}
+.fade-scale-enter-from, .fade-scale-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px);
 }
 
 .rag-icon {
