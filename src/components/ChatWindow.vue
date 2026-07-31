@@ -19,6 +19,7 @@ import PlanCard from './PlanCard.vue'
 import AdmissionCard from './AdmissionCard.vue'
 import ResearchCard from './ResearchCard.vue'
 import KnowledgePathCard from './KnowledgePathCard.vue'
+import AgentIcon from './AgentIcon.vue'
 import AgentTrace from './AgentTrace.vue'
 
 const messages = ref([])
@@ -446,7 +447,9 @@ watch(messages, scheduleSave, { deep: true })
               @click="handleQuickAction(action)"
             >
               <div class="qc-header">
-                <div class="qc-icon">{{ action.icon }}</div>
+                <div class="qc-icon">
+                <AgentIcon :type="action.agent" :agent-color="action.color" :icon-size="24" />
+              </div>
                 <div class="qc-meta">
                   <div class="qc-title">{{ action.title }}</div>
                   <div class="qc-en">{{ action.en }}</div>
@@ -811,17 +814,13 @@ watch(messages, scheduleSave, { deep: true })
 }
 
 .qc-icon {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--card-color) 12%, transparent);
-  color: var(--card-color);
   border-radius: var(--radius-md);
-  font-family: var(--font-serif);
-  font-weight: 700;
-  font-size: 16px;
+  flex-shrink: 0;
 }
 
 .qc-meta { flex: 1; }
@@ -1549,11 +1548,32 @@ watch(messages, scheduleSave, { deep: true })
   40% { transform: scale(1); opacity: 1; }
 }
 
+/* === 移动端响应式 — 三断点系统 (480/768/1024) === */
+@media (max-width: 1024px) {
+  .chat-window { max-width: 100%; }
+  .chat-body { padding: 0 24px; }
+  .chat-input { padding: 12px 24px 16px; }
+}
+
 @media (max-width: 768px) {
   .chat-body { padding: 0 16px; }
   .chat-input { padding: 8px 16px 12px; }
   .quick-actions { grid-template-columns: 1fr; }
   .hero-title { font-size: 32px; }
   .hero-content { padding: 0 8px; }
+  .mode-selector { flex-wrap: wrap; gap: 4px; }
+  .mode-btn { padding: 4px 8px; font-size: 11px; }
+}
+
+@media (max-width: 480px) {
+  .chat-body { padding: 0 12px; }
+  .chat-input { padding: 8px 12px 10px; }
+  .hero-title { font-size: 24px; }
+  .hero-subtitle { font-size: 13px; }
+  .quick-actions { gap: 8px; }
+  .qc-icon { width: 36px; height: 36px; }
+  .qc-title { font-size: 13px; }
+  .input-hint { display: none; }
+  .mode-btn .mode-label { font-size: 11px; }
 }
 </style>

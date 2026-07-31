@@ -1,6 +1,7 @@
 <script setup>
 import { useRouter } from 'vue-router'
 import { computed } from 'vue'
+import AgentIcon from './AgentIcon.vue'
 
 const props = defineProps({
   activeAgent: {
@@ -139,7 +140,7 @@ const activeIndex = computed(() => agents.findIndex((a) => a.key === props.activ
         @click="go(agent)"
       >
         <span class="node-orbit">
-          <span class="node-dot" :style="{ background: agent.color }"></span>
+          <AgentIcon :type="agent.key" :agent-color="agent.color" :icon-size="16" :stroke-width="2" class="node-icon" />
         </span>
         <span class="node-label">{{ agent.label }}</span>
         <span class="node-en">{{ agent.en }}</span>
@@ -262,29 +263,27 @@ const activeIndex = computed(() => agents.findIndex((a) => a.key === props.activ
 
 .node-orbit {
   position: relative;
-  width: 14px;
-  height: 14px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.node-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--agent-color) 10%, transparent);
   transition: all var(--duration-base) var(--ease-out);
-  box-shadow: 0 0 0 0 transparent;
 }
 
-.agent-node.active .node-dot {
-  width: 10px;
-  height: 10px;
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--agent-color) 20%, transparent);
+.node-icon {
+  transition: transform var(--duration-base) var(--ease-out);
 }
 
-.agent-node:hover .node-dot {
-  transform: scale(1.2);
+.agent-node.active .node-orbit {
+  background: color-mix(in srgb, var(--agent-color) 22%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--agent-color) 18%, transparent);
+}
+
+.agent-node:hover .node-icon {
+  transform: scale(1.12);
 }
 
 .node-label {
@@ -368,27 +367,45 @@ const activeIndex = computed(() => agents.findIndex((a) => a.key === props.activ
   letter-spacing: 0.5px;
 }
 
-/* === 移动端响应式（v1.5） === */
+/* === 移动端响应式 — 三断点系统 (480/768/1024) === */
+
+/* 小桌面 768-1024px */
+@media (max-width: 1024px) {
+  .top-bar { padding: 0 20px; }
+  .brand-text { font-size: 16px; }
+}
+
+/* 平板 480-768px */
 @media (max-width: 768px) {
   .top-bar {
     height: 60px;
     padding: 0 16px;
   }
   .brand-text { display: none; }
-  .agent-constellation { padding: 4px; gap: 2px; overflow-x: auto; max-width: 100%; }
-  .agent-node { padding: 6px 10px; gap: 5px; flex-shrink: 0; }
+  .agent-constellation {
+    padding: 4px;
+    gap: 2px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    max-width: 100%;
+  }
+  .agent-constellation::-webkit-scrollbar { display: none; }
+  .agent-node { padding: 6px 8px; gap: 4px; flex-shrink: 0; }
   .node-en { display: none; }
   .node-label { font-size: 12px; }
-  .node-orbit { width: 12px; height: 12px; }
-  .node-dot { width: 6px; height: 6px; }
+  .node-orbit { width: 24px; height: 24px; }
   .status-pill { padding: 4px 8px; font-size: 10px; }
   .status-text { display: none; }
   .user-entry { width: 30px; height: 30px; }
 }
 
+/* 手机竖屏 <480px */
 @media (max-width: 480px) {
   .top-bar { padding: 0 12px; height: 56px; }
-  .agent-node { padding: 5px 8px; }
+  .brand-mark { width: 32px; height: 32px; }
+  .agent-node { padding: 5px 6px; }
+  .node-orbit { width: 22px; height: 22px; }
   .status-pill { display: none; }
   .constellation-line { display: none; }
 }
