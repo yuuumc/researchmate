@@ -226,6 +226,7 @@ const activeIndex = computed(() => agents.findIndex((a) => a.key === props.activ
 
 /* === 中央 Agent 星座 === */
 .agent-constellation {
+  overflow-x: auto;
   display: flex;
   align-items: center;
   gap: 8px;

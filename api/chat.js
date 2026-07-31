@@ -118,8 +118,8 @@ export default async function handler(req, res) {
 
   const ALLOWED_MODELS = ['deepseek-chat', 'deepseek-reasoner']
   const model = (options.model && ALLOWED_MODELS.includes(options.model)) ? options.model : providerConfig.model
-  const temperature = Math.min(Math.max(Number(options.temperature) ?? 0.7, 0), 2)
-  const maxTokens = Math.min(Number(options.max_tokens) ?? 2000, 4000)
+  const temperature = Math.min(Math.max(Number(options.temperature) || 0.7, 0), 2)
+  const maxTokens = Math.min(Number(options.max_tokens) || 2000, 4000)
   const stream = options.stream === true
 
   const callParams = {

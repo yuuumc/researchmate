@@ -6,7 +6,7 @@
    ============================================================ */
 
 /* === 字体加载（Noto Serif SC 仅 2 个字重，控制体积）=== */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+/* Google Fonts removed: CN unreachable + render-blocking. System font stack covers macOS/Windows CN. */
 
 :root {
   /* === 主色调 · 墨蓝学术系 === */
