@@ -17,7 +17,7 @@ const hideTopBar = computed(() => Boolean(route.meta.hideTopBar))
       <TopBar v-if="!hideTopBar" :active-agent="activeAgent" />
       <main class="app-main" :class="{ 'app-main--no-topbar': hideTopBar }">
         <router-view v-slot="{ Component }">
-          <transition name="fade" mode="out-in">
+          <transition name="route-fade" mode="out-in">
             <component :is="Component" />
           </transition>
         </router-view>

@@ -442,7 +442,7 @@ watch(messages, scheduleSave, { deep: true })
             <button
               v-for="action in quickActions"
               :key="action.title"
-              class="quick-card"
+              class="quick-card interactive-card"
               :style="{ '--card-color': action.color }"
               @click="handleQuickAction(action)"
             >
@@ -470,8 +470,8 @@ watch(messages, scheduleSave, { deep: true })
         <div
           v-for="(msg, i) in messages"
           :key="i"
-          class="message"
-          :class="[msg.role, { streaming: msg.streaming, cancelled: msg.cancelled, error: msg.error }]"
+          class="message msg-item"
+          :class="[msg.role, { streaming: msg.streaming, cancelled: msg.cancelled, error: msg.error, 'msg-item--user': msg.role === 'user' }]"
         >
           <div class="msg-axis">
             <div class="axis-node" :class="msg.role" :style="msg.role === 'assistant' ? { '--node-color': getAgentMeta(msg.agent).color } : {}"></div>
@@ -662,7 +662,7 @@ watch(messages, scheduleSave, { deep: true })
           @input="autoResize"
         />
         <button
-          class="send-btn"
+          class="send-btn btn-ripple"
           :disabled="!inputText.trim() && !loading"
           @click="loading ? cancelCurrentStream() : send()"
         >
@@ -1576,4 +1576,19 @@ watch(messages, scheduleSave, { deep: true })
   .input-hint { display: none; }
   .mode-btn .mode-label { font-size: 11px; }
 }
+
+/* ---- 消息入场交错动画 ---- */
+.msg-item {
+  animation: msg-enter 0.4s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+}
+.msg-item--user {
+  animation: msg-enter-user 0.4s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+}
+.msg-item:nth-child(1) { animation-delay: 0ms; }
+.msg-item:nth-child(2) { animation-delay: 60ms; }
+.msg-item:nth-child(3) { animation-delay: 120ms; }
+.msg-item:nth-child(4) { animation-delay: 180ms; }
+.msg-item:nth-child(5) { animation-delay: 240ms; }
+.msg-item:nth-child(6) { animation-delay: 300ms; }
+.msg-item:nth-child(n+7) { animation-delay: 300ms; }
 </style>
