@@ -287,6 +287,7 @@ function guestLogin() {
   z-index: var(--z-modal);
   background: rgba(15, 30, 51, 0.45);
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
