@@ -23,7 +23,7 @@ const client = axios.create({
 export async function callAgent(action, input = {}) {
   const { data } = await client.post('/api/agent', { action, input })
   if (data.error) {
-    throw new Error(`AGENT_ERROR: ${data.error} — ${data.message || ''}`)
+    throw new Error('AGENT_ERROR: ' + data.error)
   }
   return data
 }
@@ -44,69 +44,78 @@ export async function callChatWithMode(userInput, opts = {}) {
     body.profile = profile
   }
 
-  const response = await fetch('/api/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal
-  })
-
-  if (!response.ok) {
-    let errMsg = `HTTP ${response.status}`
-    try {
-      const errJson = await response.json()
-      errMsg = errJson.error || errMsg
-    } catch (_) { /* noop */ }
-    throw new Error(`AI_SERVICE_ERROR: ${errMsg}`)
-  }
-
-  if (!response.body) {
-    // 降级：非流式
-    const data = await response.json()
-    return data.content || ''
-  }
-
-  const reader = response.body.getReader()
-  const decoder = new TextDecoder('utf-8')
-  let buffer = ''
-  let totalContent = ''
+  // 默认 60s 超时，外部 signal 可覆盖
+  const controller = signal ? null : new AbortController()
+  const timeoutId = controller ? setTimeout(() => controller.abort(), 60000) : null
+  const fetchSignal = signal || (controller ? controller.signal : undefined)
 
   try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: fetchSignal
+    })
 
-      buffer += decoder.decode(value, { stream: true })
-      const events = buffer.split('\n\n')
-      buffer = events.pop() || ''
+    if (!response.ok) {
+      let errMsg = 'HTTP ' + response.status
+      try {
+        const errJson = await response.json()
+        errMsg = errJson.error || errMsg
+      } catch (_) { /* noop */ }
+      throw new Error('AI_SERVICE_ERROR: ' + errMsg)
+    }
 
-      for (const evt of events) {
-        const lines = evt.split('\n')
-        for (const line of lines) {
-          const trimmed = line.trim()
-          if (!trimmed || !trimmed.startsWith('data:')) continue
-          const payload = trimmed.slice(5).trim()
-          if (payload === '[DONE]') return totalContent
-          try {
-            const parsed = JSON.parse(payload)
-            if (parsed.error) {
-              throw new Error(`AI_SERVICE_ERROR: ${parsed.error} - ${parsed.message || ''}`)
-            }
-            const delta = parsed.choices?.[0]?.delta?.content || ''
-            if (delta) {
-              totalContent += delta
-              if (typeof onToken === 'function') {
-                try { onToken({ delta }) } catch (_) { /* noop */ }
+    if (!response.body) {
+      // 降级：非流式
+      const data = await response.json()
+      return data.content || ''
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder('utf-8')
+    let buffer = ''
+    let totalContent = ''
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const events = buffer.split('\n\n')
+        buffer = events.pop() || ''
+
+        for (const evt of events) {
+          const lines = evt.split('\n')
+          for (const line of lines) {
+            const trimmed = line.trim()
+            if (!trimmed || !trimmed.startsWith('data:')) continue
+            const payload = trimmed.slice(5).trim()
+            if (payload === '[DONE]') return totalContent
+            try {
+              const parsed = JSON.parse(payload)
+              if (parsed.error) {
+                throw new Error('AI_SERVICE_ERROR: ' + parsed.error)
               }
+              const delta = parsed.choices?.[0]?.delta?.content || ''
+              if (delta) {
+                totalContent += delta
+                if (typeof onToken === 'function') {
+                  try { onToken({ delta }) } catch (e) { console.warn('[callChatWithMode] onToken error:', e) }
+                }
+              }
+            } catch (parseErr) {
+              if (parseErr.message?.startsWith('AI_SERVICE_ERROR:')) throw parseErr
             }
-          } catch (parseErr) {
-            if (parseErr.message?.startsWith('AI_SERVICE_ERROR:')) throw parseErr
           }
         }
       }
+      return totalContent
+    } finally {
+      try { reader.releaseLock() } catch (_) { /* noop */ }
     }
-    return totalContent
   } finally {
-    try { reader.releaseLock() } catch (_) { /* noop */ }
+    if (timeoutId) clearTimeout(timeoutId)
   }
 }
