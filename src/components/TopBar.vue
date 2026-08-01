@@ -12,7 +12,18 @@ const props = defineProps({
 
 const router = useRouter()
 
-// V2: 4 核心 Agent + 4 收进"更多"下拉
+// V2.6: 每个 Agent 恢复差异化专属入口
+// key → 目标路由 path（chat 类走 /chat?agent=，专属页走各自 path + boot 参数）
+const AGENT_ROUTES = {
+  tutor: { path: '/chat', query: 'agent' },
+  diagnose: { path: '/diagnosis', query: 'boot' },
+  planner: { path: '/plan', query: 'boot' },
+  research: { path: '/research', query: 'boot' },
+  career: { path: '/career', query: 'boot' },
+  practice: { path: '/practice', query: 'boot' },
+  peer: { path: '/peer', query: 'boot' },
+  admission: { path: '/admission', query: 'boot' }
+}
 const coreAgents = [
   { key: 'tutor', label: 'AI 导师', en: 'Tutor', color: '#00d4aa', desc: '苏格拉底式教学' },
   { key: 'diagnose', label: '成长诊断', en: 'Diagnose', color: '#4d9de0', desc: '4 层根因链' },
@@ -54,7 +65,9 @@ onUnmounted(() => {
 
 function go(agent) {
   moreOpen.value = false
-  router.push({ path: '/chat', query: { agent: agent.key } })
+  const route = AGENT_ROUTES[agent.key]
+  if (!route) return
+  router.push({ path: route.path, query: { [route.query]: agent.key } })
 }
 
 function goProfile() {
