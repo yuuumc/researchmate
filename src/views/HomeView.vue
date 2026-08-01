@@ -95,40 +95,21 @@ const wrongBookExpanded = ref(true)
 
     <!-- 仪表盘内容 -->
     <div class="dashboard">
-      <!-- === AI导师状态卡（V2 · 评审核心展示） === -->
+      <!-- === AI导师状态卡（V2 · spec 对齐：左侧 4px 渐变色条 + 浅渐变底） === -->
       <section class="mentor-status-card" @click="goChat(undefined, 'tutor')">
-        <div class="mentor-header">
-          <div class="mentor-badge">
-            <span class="mentor-badge-dot"></span>
+        <div class="mentor-content">
+          <div class="mentor-status-row">
+            <span class="mentor-pulse"></span>
             <span class="mentor-badge-text">AI Mentor · Active</span>
           </div>
-          <span class="mentor-arrow">→</span>
+          <p class="mentor-stage">当前阶段：微电子基础学习期</p>
+          <p class="mentor-summary">
+            <span class="highlight-good">3 个优势</span> ·
+            <span class="highlight-bad">2 个薄弱点</span> ·
+            今日建议：优先学习 MOSFET 阈值电压
+          </p>
         </div>
-        <div class="mentor-body">
-          <div class="mentor-title-row">
-            <span class="mentor-check-icon">
-              <svg viewBox="0 0 20 20" width="18" height="18"><path d="M5 10.5l3 3 7-7.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </span>
-            <span class="mentor-title">已分析你的学习状态</span>
-          </div>
-          <div class="mentor-info-grid">
-            <div class="mentor-info-item">
-              <span class="info-label">当前阶段</span>
-              <span class="info-value">微电子基础学习期</span>
-            </div>
-            <div class="mentor-info-item">
-              <span class="info-label">诊断发现</span>
-              <span class="info-value">
-                <span class="highlight-good">3 个优势</span> ·
-                <span class="highlight-bad">2 个薄弱点</span>
-              </span>
-            </div>
-            <div class="mentor-info-item mentor-suggestion">
-              <span class="info-label">今日建议</span>
-              <span class="info-value suggestion-value">优先学习 MOSFET 阈值电压</span>
-            </div>
-          </div>
-        </div>
+        <span class="mentor-action">查看完整分析 →</span>
       </section>
 
       <!-- === 顶部：欢迎 + 倒计时 === -->
@@ -330,15 +311,22 @@ const wrongBookExpanded = ref(true)
   gap: 20px;
 }
 
-/* === AI导师状态卡（V2 · 评审核心） === */
+/* === AI导师状态卡（V2 · spec：左侧 4px 渐变色条 + 浅渐变底） === */
 .mentor-status-card {
   position: relative;
-  background: linear-gradient(135deg, var(--color-bg-elevated) 0%, color-mix(in srgb, var(--color-brand-500) 6%, var(--color-bg-elevated)) 100%);
-  border: 1px solid color-mix(in srgb, var(--color-brand-500) 20%, var(--color-border-subtle));
-  border-radius: var(--radius-lg);
-  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 24px 20px 28px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-ink-700) 3%, var(--color-bg-elevated)),
+    color-mix(in srgb, var(--color-success) 2%, var(--color-bg-elevated))
+  );
+  border: 1px solid color-mix(in srgb, var(--color-ink-700) 10%, transparent);
+  border-radius: 14px;
   cursor: pointer;
-  transition: all var(--duration-base) var(--ease-out);
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
   animation: float-up 0.5s var(--ease-out) both;
   overflow: hidden;
 }
@@ -346,123 +334,98 @@ const wrongBookExpanded = ref(true)
 .mentor-status-card::before {
   content: '';
   position: absolute;
-  top: 0;
   left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--color-brand-400), var(--color-brand-600), var(--color-brand-400));
-  background-size: 200% 100%;
-  animation: mentor-shimmer 3s ease-in-out infinite;
-}
-
-@keyframes mentor-shimmer {
-  0%, 100% { background-position: 0% 0; }
-  50% { background-position: 200% 0; }
+  top: 12px;
+  bottom: 12px;
+  width: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to bottom,
+    var(--color-ink-700),
+    var(--color-success)
+  );
 }
 
 .mentor-status-card:hover {
-  border-color: color-mix(in srgb, var(--color-brand-500) 40%, var(--color-border-subtle));
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--color-ink-700) 8%, transparent);
+  border-color: color-mix(in srgb, var(--color-ink-700) 25%, transparent);
 }
 
-.mentor-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 14px;
-}
-
-.mentor-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 12px;
-  background: color-mix(in srgb, var(--color-brand-500) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-brand-500) 25%, transparent);
-  border-radius: var(--radius-full);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--color-brand-700);
-  letter-spacing: 0.5px;
-}
-
-.mentor-badge-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-brand-500);
-  box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.2);
-  animation: pulse 2s ease-in-out infinite;
-}
-
-.mentor-arrow {
-  font-size: 18px;
-  color: var(--color-brand-600);
-  transition: transform 0.2s;
-}
-
-.mentor-status-card:hover .mentor-arrow {
-  transform: translateX(4px);
-}
-
-.mentor-body {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.mentor-title-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.mentor-check-icon {
-  color: var(--color-brand-600);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.mentor-title {
-  font-family: var(--font-serif);
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--color-ink-900);
-}
-
-.mentor-info-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1.2fr;
-  gap: 16px;
-  padding: 14px 16px;
-  background: var(--color-bg-sunken);
-  border-radius: var(--radius-md);
-}
-
-.mentor-info-item {
+.mentor-content {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.info-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--color-fg-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 1px;
+.mentor-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
 }
 
-.info-value {
-  font-size: 13px;
-  color: var(--color-ink-900);
+.mentor-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-success);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.mentor-pulse::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: var(--color-success);
+  opacity: 0.3;
+  animation: mentor-pulse 2s ease-in-out infinite;
+}
+
+@keyframes mentor-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(2); opacity: 0; }
+}
+
+.mentor-badge-text {
+  font-size: 11px;
   font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-fg-tertiary);
+}
+
+.mentor-stage {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-ink-900);
+  margin: 0 0 2px;
+}
+
+.mentor-summary {
+  font-size: 13px;
+  color: var(--color-fg-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.mentor-action {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--color-ink-700);
+  font-weight: 500;
+  transition: transform 0.2s;
+}
+
+.mentor-status-card:hover .mentor-action {
+  transform: translateX(3px);
 }
 
 .highlight-good {
-  color: var(--color-brand-600);
+  color: var(--color-success);
   font-weight: 600;
 }
 
@@ -471,15 +434,14 @@ const wrongBookExpanded = ref(true)
   font-weight: 600;
 }
 
-.suggestion-value {
-  color: var(--color-brand-700);
-  font-weight: 600;
-}
-
 @media (max-width: 768px) {
-  .mentor-info-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
+  .mentor-status-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .mentor-action {
+    margin-left: 0;
   }
 }
 
