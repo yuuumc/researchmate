@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { usePracticeStore } from '@/stores/practice'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
+import { SEED_QUESTIONS } from '@/data/seedDemo'
 
 const practiceStore = usePracticeStore()
 
@@ -33,6 +34,18 @@ function toggleAnswer(idx) {
     expandedAnswers.value.delete(idx)
   } else {
     expandedAnswers.value.add(idx)
+  }
+}
+
+// 空态红线：无 Agent 结果时展示种子题目
+const showSeed = computed(() => !practiceStore.hasResult)
+const seedQuestions = SEED_QUESTIONS
+const seedExpanded = ref(new Set())
+function toggleSeedAnswer(idx) {
+  if (seedExpanded.value.has(idx)) {
+    seedExpanded.value.delete(idx)
+  } else {
+    seedExpanded.value.add(idx)
   }
 }
 </script>
@@ -87,7 +100,44 @@ function toggleAnswer(idx) {
         <div v-if="error" class="error-msg">{{ error }}</div>
       </section>
 
-      <!-- 题目卡片 -->
+      <!-- 种子练习题（空态红线 · 评委首次进入即见内容） -->
+      <section v-if="showSeed" class="result-section seed-section">
+        <div class="section-header">
+          <h2 class="section-title">练习题 <span class="seed-badge">Demo</span></h2>
+          <span class="section-en">{{ seedQuestions.length }} Questions</span>
+        </div>
+        <div class="question-list">
+          <div v-for="(q, i) in seedQuestions" :key="i" class="question-card">
+            <div class="q-header">
+              <span class="q-num">Q{{ i + 1 }}</span>
+              <span class="q-difficulty" :class="q.difficulty">{{ q.difficulty }}</span>
+              <span class="q-type">{{ q.type }}</span>
+              <span class="q-point">{{ q.point }}</span>
+            </div>
+            <div class="q-content">{{ q.question }}</div>
+            <div v-if="q.options?.length" class="q-options">
+              <div v-for="(opt, j) in q.options" :key="j" class="q-option">
+                <span class="opt-label">{{ String.fromCharCode(65 + j) }}.</span>
+                <span class="opt-text">{{ opt }}</span>
+              </div>
+            </div>
+            <div class="q-answer-area">
+              <button class="answer-toggle" @click="toggleSeedAnswer(i)">
+                {{ seedExpanded.has(i) ? '收起答案' : '查看答案' }}
+              </button>
+              <div v-if="seedExpanded.has(i)" class="q-answer">
+                <div class="answer-line">
+                  <span class="answer-label">答案：</span>{{ q.answer }}
+                </div>
+                <div class="answer-line">
+                  <span class="answer-label">解析：</span>{{ q.analysis }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="seed-hint">以上为针对张同学薄弱点的示例题目，填写知识点生成个性化练习</p>
+      </section>
       <section v-if="questions.length" class="result-section">
         <div class="section-header">
           <h2 class="section-title">练习题</h2>
@@ -212,6 +262,12 @@ function toggleAnswer(idx) {
 .answer-label { font-weight: 600; color: var(--color-ink-900); }
 
 .report-section { margin-top: 24px; }
+
+/* 种子展示区 */
+.seed-badge { display: inline-block; padding: 1px 8px; margin-left: 6px; background: color-mix(in srgb, #e74c3c 15%, transparent); color: #e74c3c; border-radius: var(--radius-full); font-size: 10px; font-weight: 600; font-family: var(--font-mono); vertical-align: middle; }
+.seed-section { border-left: 3px solid #e74c3c; padding-left: 16px; }
+.q-point { font-family: var(--font-mono); font-size: 11px; color: var(--color-fg-tertiary); margin-left: auto; }
+.seed-hint { margin-top: 12px; font-size: 12px; color: var(--color-fg-muted); font-style: italic; }
 
 @media (max-width: 768px) {
   .page-content { padding: 24px 16px 48px; }

@@ -5,6 +5,7 @@ import { useProfileStore } from '@/stores/profile'
 import { useTagInput } from '@/composables/useTagInput'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import schoolData from '@/data/employment/school-profiles.json'
+import { SEED_CAREER_PATHS } from '@/data/seedDemo'
 
 const careerStore = useCareerStore()
 const profileStore = useProfileStore()
@@ -37,6 +38,10 @@ const careerPaths = computed(() => careerStore.careerPaths)
 const result = computed(() => careerStore.result)
 const loading = computed(() => careerStore.loading)
 const error = computed(() => careerStore.error)
+
+// 空态红线：无 Agent 结果时展示种子推荐方向
+const showSeed = computed(() => !careerStore.hasResult)
+const seedPaths = SEED_CAREER_PATHS
 </script>
 
 <template>
@@ -102,7 +107,37 @@ const error = computed(() => careerStore.error)
         <div v-if="error" class="error-msg">{{ error }}</div>
       </section>
 
-      <!-- 结果：路径卡片 -->
+      <!-- 种子推荐方向（空态红线 · 评委首次进入即见内容） -->
+      <section v-if="showSeed" class="result-section seed-section">
+        <div class="section-header">
+          <h2 class="section-title">推荐方向 <span class="seed-badge">Demo</span></h2>
+          <span class="section-en">Career Paths</span>
+        </div>
+        <div class="path-cards">
+          <div v-for="(p, i) in seedPaths" :key="i" class="path-card">
+            <div class="path-header">
+              <span class="path-num">{{ i + 1 }}</span>
+              <span class="path-name">{{ p.title }}</span>
+              <span class="path-weight">{{ p.match }}%</span>
+            </div>
+            <div class="path-detail">
+              <div class="detail-row">
+                <span class="detail-label">技能缺口</span>
+                <span v-for="g in p.gap" :key="g" class="gap-chip">{{ g }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">代表企业</span>
+                <span v-for="c in p.companies" :key="c" class="company-chip">{{ c }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">参考薪资</span>
+                <span class="salary-text">{{ p.salary }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="seed-hint">以上为基于张同学画像的示例推荐，填写表单生成个性化路径</p>
+      </section>
       <section v-if="careerPaths.length" class="result-section">
         <div class="section-header">
           <h2 class="section-title">推荐路径</h2>
@@ -220,6 +255,15 @@ const error = computed(() => careerStore.error)
 .gap-chip { padding: 2px 8px; background: rgba(255,209,102,0.15); border-radius: var(--radius-xs); font-size: 11px; color: #b8860b; }
 
 .report-section { margin-top: 24px; }
+
+/* 种子展示区 */
+.seed-badge { display: inline-block; padding: 1px 8px; margin-left: 6px; background: color-mix(in srgb, #9b59b6 15%, transparent); color: #9b59b6; border-radius: var(--radius-full); font-size: 10px; font-weight: 600; font-family: var(--font-mono); vertical-align: middle; }
+.seed-section { border-left: 3px solid #9b59b6; padding-left: 16px; }
+.path-detail { display: flex; flex-direction: column; gap: 10px; }
+.detail-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.detail-label { font-size: 12px; color: var(--color-fg-tertiary); min-width: 64px; }
+.salary-text { font-family: var(--font-mono); font-size: 13px; color: var(--color-node-active); font-weight: 600; }
+.seed-hint { margin-top: 12px; font-size: 12px; color: var(--color-fg-muted); font-style: italic; }
 
 @media (max-width: 768px) {
   .page-content { padding: 24px 16px 48px; }

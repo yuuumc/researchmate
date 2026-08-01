@@ -4,6 +4,7 @@ import { usePeerStore } from '@/stores/peer'
 import { useProfileStore } from '@/stores/profile'
 import { useTagInput } from '@/composables/useTagInput'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
+import { SEED_PEER_MATCHES } from '@/data/seedDemo'
 
 const peerStore = usePeerStore()
 const profileStore = useProfileStore()
@@ -28,6 +29,10 @@ const matches = computed(() => peerStore.matches)
 const result = computed(() => peerStore.result)
 const loading = computed(() => peerStore.loading)
 const error = computed(() => peerStore.error)
+
+// 空态红线：无 Agent 结果时展示种子同伴
+const showSeed = computed(() => !peerStore.hasResult)
+const seedMatches = SEED_PEER_MATCHES
 </script>
 
 <template>
@@ -86,7 +91,35 @@ const error = computed(() => peerStore.error)
         <div v-if="error" class="error-msg">{{ error }}</div>
       </section>
 
-      <!-- 匹配结果 -->
+      <!-- 种子同伴匹配（空态红线 · 评委首次进入即见内容） -->
+      <section v-if="showSeed" class="result-section seed-section">
+        <div class="section-header">
+          <h2 class="section-title">匹配结果 <span class="seed-badge">Demo</span></h2>
+          <span class="section-en">Top {{ seedMatches.length }}</span>
+        </div>
+        <div class="match-cards">
+          <div v-for="(m, i) in seedMatches" :key="i" class="match-card">
+            <div class="match-header">
+              <span class="match-rank">#{{ i + 1 }}</span>
+              <span class="match-name">{{ m.name }}</span>
+              <span class="match-score">匹配度 {{ m.match_score }}%</span>
+            </div>
+            <div class="match-meta">
+              <span class="meta-school">{{ m.school }}</span>
+              <span class="meta-major">{{ m.major }}</span>
+            </div>
+            <div class="match-complement">
+              <span class="comp-label">互补能力：</span>
+              <span class="comp-chip">{{ m.complement }}</span>
+            </div>
+            <div class="match-common">
+              <span class="common-label">共同点：</span>
+              <span v-for="c in m.common" :key="c" class="common-chip">{{ c }}</span>
+            </div>
+          </div>
+        </div>
+        <p class="seed-hint">以上为基于张同学画像的示例匹配，填写信息生成个性化同伴推荐</p>
+      </section>
       <section v-if="matches.length" class="result-section">
         <div class="section-header">
           <h2 class="section-title">匹配结果</h2>
@@ -208,6 +241,18 @@ const error = computed(() => peerStore.error)
 .match-analysis { font-size: 13px; color: var(--color-ink-700); line-height: 1.7; padding: 10px; background: var(--color-bg-sunken); border-radius: var(--radius-sm); }
 
 .report-section { margin-top: 24px; }
+
+/* 种子展示区 */
+.seed-badge { display: inline-block; padding: 1px 8px; margin-left: 6px; background: color-mix(in srgb, #3498db 15%, transparent); color: #3498db; border-radius: var(--radius-full); font-size: 10px; font-weight: 600; font-family: var(--font-mono); vertical-align: middle; }
+.seed-section { border-left: 3px solid #3498db; padding-left: 16px; }
+.match-meta { display: flex; gap: 12px; margin: 8px 0; font-size: 13px; }
+.meta-school { font-family: var(--font-serif); font-weight: 600; color: var(--color-ink-900); }
+.meta-major { color: var(--color-fg-secondary); }
+.match-complement { margin: 8px 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.match-common { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.common-label, .comp-label { font-size: 12px; color: var(--color-fg-tertiary); }
+.common-chip { padding: 2px 8px; background: color-mix(in srgb, #3498db 12%, transparent); border-radius: var(--radius-xs); font-size: 11px; color: #2980b9; }
+.seed-hint { margin-top: 12px; font-size: 12px; color: var(--color-fg-muted); font-style: italic; }
 
 @media (max-width: 768px) {
   .page-content { padding: 24px 16px 48px; }
