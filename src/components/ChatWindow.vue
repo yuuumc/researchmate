@@ -23,18 +23,27 @@ import KnowledgePathCard from './KnowledgePathCard.vue'
 import AgentIcon from './AgentIcon.vue'
 import AgentTrace from './AgentTrace.vue'
 import AgentBootSequence from './AgentBootSequence.vue'
+import { bootShown, markBootShown } from '@/utils/bootOnce'
 
 const vueRoute = useRoute()
 
-// === Agent 启动序列（V2 · 评审核心展示） ===
+// === Agent 启动序列（V2 · 评审核心展示）+ 克制化（会话内每 Agent 仅首次播放） ===
 const bootAgent = ref('')
 const booting = ref(false)
 
-// 从 route query 读取 agent 参数，启动 boot sequence
+// 从 route query 读取 agent 参数，启动 boot sequence（已播放过的直接跳过）
 watch(
   () => vueRoute.query.agent,
   (agent) => {
     if (agent && typeof agent === 'string') {
+      if (bootShown(agent)) {
+        // 本会话已播放过：直接执行预填问题等逻辑，不再打断
+        const q = vueRoute.query.q
+        if (q && typeof q === 'string' && q.trim()) {
+          nextTick(() => send(q))
+        }
+        return
+      }
       bootAgent.value = agent
       booting.value = true
     }
@@ -43,6 +52,7 @@ watch(
 )
 
 function onBootDone() {
+  markBootShown(bootAgent.value)
   booting.value = false
   // 如果有预填问题，自动发送
   const q = vueRoute.query.q
