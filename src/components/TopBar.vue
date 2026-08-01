@@ -1,6 +1,6 @@
 <script setup>
 import { useRouter } from 'vue-router'
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import AgentIcon from './AgentIcon.vue'
 
 const props = defineProps({
@@ -12,102 +12,74 @@ const props = defineProps({
 
 const router = useRouter()
 
-// v3.1: 8 个 Agent 节点 + 主控编排器中心
-// V2: 所有 Agent 统一进入 /chat?agent=<key>，展示启动序列
-const agents = [
-  {
-    key: 'tutor',
-    label: '导师',
-    en: 'Tutor',
-    icon: 'M',
-    color: '#00d4aa',
-    desc: '苏格拉底式教学'
-  },
-  {
-    key: 'diagnose',
-    label: '诊断',
-    en: 'Diagnose',
-    icon: 'D',
-    color: '#4d9de0',
-    desc: '4 层根因链'
-  },
-  {
-    key: 'planner',
-    label: '规划',
-    en: 'Planner',
-    icon: 'P',
-    color: '#ffd166',
-    desc: '动态周计划'
-  },
-  {
-    key: 'career',
-    label: '就业',
-    en: 'Career',
-    icon: '◈',
-    color: '#9b59b6',
-    desc: '就业路径推荐'
-  },
-  {
-    key: 'practice',
-    label: '练习',
-    en: 'Practice',
-    icon: '✦',
-    color: '#e74c3c',
-    desc: '针对性出题'
-  },
-  {
-    key: 'peer',
-    label: '同伴',
-    en: 'Peer',
-    icon: '◍',
-    color: '#3498db',
-    desc: '互助匹配'
-  },
-  {
-    key: 'admission',
-    label: '择校',
-    en: 'Admission',
-    icon: 'A',
-    color: '#ff6b6b',
-    desc: '数据驱动'
-  },
-  {
-    key: 'research',
-    label: '科研',
-    en: 'Research',
-    icon: 'X',
-    color: '#e67e22',
-    desc: '本科→研究生路线'
-  }
+// V2: 4 核心 Agent + 4 收进"更多"下拉
+const coreAgents = [
+  { key: 'tutor', label: 'AI 导师', en: 'Tutor', color: '#00d4aa', desc: '苏格拉底式教学' },
+  { key: 'diagnose', label: '成长诊断', en: 'Diagnose', color: '#4d9de0', desc: '4 层根因链' },
+  { key: 'planner', label: '学习规划', en: 'Planner', color: '#ffd166', desc: '动态周计划' },
+  { key: 'research', label: '科研探索', en: 'Research', color: '#e67e22', desc: '本科→研究生路线' }
 ]
 
+const moreAgents = [
+  { key: 'career', label: '就业', en: 'Career', color: '#9b59b6', desc: '就业路径推荐' },
+  { key: 'practice', label: '练习', en: 'Practice', color: '#e74c3c', desc: '针对性出题' },
+  { key: 'peer', label: '同伴', en: 'Peer', color: '#3498db', desc: '互助匹配' },
+  { key: 'admission', label: '择校', en: 'Admission', color: '#ff6b6b', desc: '数据驱动' }
+]
+
+// "更多"下拉
+const moreOpen = ref(false)
+const moreRef = ref(null)
+
+function toggleMore() {
+  moreOpen.value = !moreOpen.value
+}
+
+function closeMore() {
+  moreOpen.value = false
+}
+
+function handleClickOutside(e) {
+  if (moreRef.value && !moreRef.value.contains(e.target)) {
+    moreOpen.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
+
 function go(agent) {
-  // V2: 所有 Agent 统一进入聊天，展示启动序列
+  moreOpen.value = false
   router.push({ path: '/chat', query: { agent: agent.key } })
 }
 
-const activeIndex = computed(() => agents.findIndex((a) => a.key === props.activeAgent))
+function goProfile() {
+  router.push('/profile')
+}
+
+const activeIndex = computed(() => coreAgents.findIndex((a) => a.key === props.activeAgent))
 </script>
 
 <template>
   <header class="top-bar">
-    <!-- 左侧：品牌 + 主控编排器中心 -->
+    <!-- 左侧：品牌 -->
     <div class="bar-left">
       <div class="brand">
         <div class="brand-mark">
           <svg viewBox="0 0 40 40" class="brand-svg">
-            <!-- 主控中心节点 -->
             <circle cx="20" cy="20" r="4" fill="#0f1e33" />
             <circle cx="20" cy="20" r="10" fill="none" stroke="#0f1e33" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.5">
               <animateTransform attributeName="transform" type="rotate" from="0 20 20" to="360 20 20" dur="20s" repeatCount="indefinite" />
             </circle>
-            <!-- 5 个 Agent 卫星（五边形分布） -->
             <circle cx="20" cy="6" r="1.5" fill="#00d4aa" />
             <circle cx="33.3" cy="15.5" r="1.5" fill="#4d9de0" />
             <circle cx="28.2" cy="31.3" r="1.5" fill="#ffd166" />
             <circle cx="11.8" cy="31.3" r="1.5" fill="#ff6b6b" />
             <circle cx="6.7" cy="15.5" r="1.5" fill="#e67e22" />
-            <!-- 连线 -->
             <line x1="20" y1="20" x2="20" y2="6" stroke="#0f1e33" stroke-width="0.5" opacity="0.3" />
             <line x1="20" y1="20" x2="33.3" y2="15.5" stroke="#0f1e33" stroke-width="0.5" opacity="0.3" />
             <line x1="20" y1="20" x2="28.2" y2="31.3" stroke="#0f1e33" stroke-width="0.5" opacity="0.3" />
@@ -122,33 +94,60 @@ const activeIndex = computed(() => agents.findIndex((a) => a.key === props.activ
       </div>
     </div>
 
-    <!-- 中央：Agent 星座导航 -->
-    <nav class="agent-constellation">
-      <div class="constellation-line" :style="{ '--active-index': activeIndex }"></div>
+    <!-- 中央：4 核心 Agent + 更多下拉 -->
+    <nav class="agent-nav">
       <button
-        v-for="(agent, i) in agents"
+        v-for="agent in coreAgents"
         :key="agent.key"
-        class="agent-node"
+        class="agent-btn agent-btn--core"
         :class="{ active: activeAgent === agent.key }"
-        :style="{ '--agent-color': agent.color, '--node-index': i }"
+        :style="{ '--agent-color': agent.color }"
         @click="go(agent)"
       >
-        <span class="node-orbit">
-          <AgentIcon :type="agent.key" :agent-color="agent.color" :icon-size="16" :stroke-width="2" class="node-icon" />
+        <!-- AI 状态 badge：Tutor 常亮绿点，其余 hover 显示 -->
+        <span
+          class="agent-btn__status"
+          :class="agent.key === 'tutor' ? 'agent-btn__status--online' : 'agent-btn__status--idle'"
+        ></span>
+        <span class="agent-btn__icon">
+          <AgentIcon :type="agent.key" :agent-color="agent.color" :icon-size="16" :stroke-width="2" />
         </span>
-        <span class="node-label">{{ agent.label }}</span>
-        <span class="node-en">{{ agent.en }}</span>
+        <span class="agent-btn__label">{{ agent.label }}</span>
       </button>
+
+      <!-- 更多下拉 -->
+      <div ref="moreRef" class="more-wrap">
+        <button class="agent-btn agent-btn--more" :class="{ active: moreOpen }" @click="toggleMore">
+          <span class="more-dots">···</span>
+          <span class="agent-btn__label">更多</span>
+        </button>
+        <transition name="dropdown">
+          <div v-if="moreOpen" class="agent-dropdown">
+            <button
+              v-for="agent in moreAgents"
+              :key="agent.key"
+              class="agent-dropdown__item"
+              @click="go(agent)"
+            >
+              <span class="dropdown-icon" :style="{ '--agent-color': agent.color }">
+                <AgentIcon :type="agent.key" :agent-color="agent.color" :icon-size="16" :stroke-width="2" />
+              </span>
+              <span class="dropdown-label">{{ agent.label }}</span>
+              <span class="dropdown-en">{{ agent.en }}</span>
+            </button>
+          </div>
+        </transition>
+      </div>
     </nav>
 
-    <!-- 右侧：状态 + 入口 -->
+    <!-- 右侧：状态 + 头像入口 -->
     <div class="bar-right">
       <div class="status-pill">
         <span class="status-dot"></span>
-        <span class="status-text">localhost · dev</span>
+        <span class="status-text">8 Agents · Online</span>
       </div>
-      <button class="user-entry" title="学生入口">
-        <span class="user-avatar">YM</span>
+      <button class="user-entry" title="学生画像" @click="goProfile">
+        <span class="user-avatar">张</span>
       </button>
     </div>
   </header>
@@ -191,10 +190,7 @@ const activeIndex = computed(() => agents.findIndex((a) => a.key === props.activ
   justify-content: center;
 }
 
-.brand-svg {
-  width: 100%;
-  height: 100%;
-}
+.brand-svg { width: 100%; height: 100%; }
 
 .brand-text {
   display: flex;
@@ -219,13 +215,11 @@ const activeIndex = computed(() => agents.findIndex((a) => a.key === props.activ
   margin-top: 2px;
 }
 
-/* === 中央 Agent 星座 === */
-.agent-constellation {
-  overflow-x: auto;
+/* === 中央 Agent 导航 === */
+.agent-nav {
   display: flex;
   align-items: center;
-  gap: 8px;
-  position: relative;
+  gap: 4px;
   padding: 6px;
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border-subtle);
@@ -233,75 +227,161 @@ const activeIndex = computed(() => agents.findIndex((a) => a.key === props.activ
   box-shadow: var(--shadow-sm);
 }
 
-.agent-node {
+.agent-btn--core {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-fg-secondary);
   background: transparent;
   border: none;
-  border-radius: var(--radius-full);
   cursor: pointer;
-  transition: all var(--duration-base) var(--ease-out);
-  position: relative;
+  transition: all 0.2s ease;
 }
 
-.agent-node:hover {
+.agent-btn--core:hover {
   background: var(--color-bg-sunken);
+  color: var(--color-ink-900);
 }
 
-.agent-node.active {
-  background: var(--color-bg-base);
-  box-shadow: var(--shadow-xs);
+.agent-btn--core.active {
+  background: color-mix(in srgb, var(--agent-color) 8%, transparent);
+  color: var(--agent-color);
 }
 
-.node-orbit {
-  position: relative;
-  width: 28px;
-  height: 28px;
+.agent-btn__icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--agent-color) 10%, transparent);
-  transition: all var(--duration-base) var(--ease-out);
 }
 
-.node-icon {
-  transition: transform var(--duration-base) var(--ease-out);
-}
-
-.agent-node.active .node-orbit {
-  background: color-mix(in srgb, var(--agent-color) 22%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--agent-color) 18%, transparent);
-}
-
-.agent-node:hover .node-icon {
-  transform: scale(1.12);
-}
-
-.node-label {
+.agent-btn__label {
   font-family: var(--font-serif);
-  font-size: 14px;
   font-weight: 600;
+  white-space: nowrap;
+}
+
+/* AI 状态 badge */
+.agent-btn__status {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: opacity 0.2s;
+}
+
+.agent-btn__status--online {
+  background: var(--color-success);
+  box-shadow: 0 0 0 2px rgba(0, 212, 170, 0.2);
+}
+
+.agent-btn__status--idle {
+  background: var(--color-fg-muted);
+  opacity: 0;
+}
+
+.agent-btn--core:hover .agent-btn__status--idle {
+  opacity: 0.5;
+}
+
+/* === 更多下拉 === */
+.more-wrap {
+  position: relative;
+}
+
+.agent-btn--more {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-fg-tertiary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.agent-btn--more:hover,
+.agent-btn--more.active {
+  color: var(--color-ink-900);
+  background: var(--color-bg-sunken);
+}
+
+.more-dots {
+  font-size: 16px;
+  letter-spacing: -2px;
+  line-height: 1;
+}
+
+.agent-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 180px;
+  padding: 6px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(15, 30, 51, 0.08);
+  z-index: 50;
+}
+
+.dropdown-enter-active,
+.dropdown-leave-active {
+  transition: all 0.2s ease;
+}
+
+.dropdown-enter-from,
+.dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.agent-dropdown__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
   color: var(--color-fg-secondary);
-  transition: color var(--duration-base) var(--ease-out);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
 }
 
-.agent-node.active .node-label {
-  color: var(--color-fg-primary);
+.agent-dropdown__item:hover {
+  background: var(--color-bg-sunken);
+  color: var(--color-ink-900);
 }
 
-.node-en {
+.dropdown-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dropdown-label {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  flex: 1;
+}
+
+.dropdown-en {
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--color-fg-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.agent-node.active .node-en {
-  color: var(--color-ink-500);
 }
 
 /* === 右侧 === */
@@ -346,61 +426,47 @@ const activeIndex = computed(() => agents.findIndex((a) => a.key === props.activ
   align-items: center;
   justify-content: center;
   transition: all var(--duration-base) var(--ease-out);
+  cursor: pointer;
 }
 
 .user-entry:hover {
   border-color: var(--color-ink-700);
   background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-sm);
 }
 
 .user-avatar {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 500;
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 600;
   color: var(--color-ink-700);
-  letter-spacing: 0.5px;
 }
 
-/* === 移动端响应式 — 三断点系统 (480/768/1024) === */
-
-/* 小桌面 768-1024px */
+/* === 响应式 === */
 @media (max-width: 1024px) {
   .top-bar { padding: 0 20px; }
   .brand-text { font-size: 16px; }
+  .agent-btn--core { padding: 6px 10px; }
 }
 
-/* 平板 480-768px */
 @media (max-width: 768px) {
-  .top-bar {
-    height: 60px;
-    padding: 0 16px;
-  }
+  .top-bar { height: 60px; padding: 0 16px; }
   .brand-text { display: none; }
-  .agent-constellation {
-    padding: 4px;
-    gap: 2px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    max-width: 100%;
-  }
-  .agent-constellation::-webkit-scrollbar { display: none; }
-  .agent-node { padding: 6px 8px; gap: 4px; flex-shrink: 0; }
-  .node-en { display: none; }
-  .node-label { font-size: 12px; }
-  .node-orbit { width: 24px; height: 24px; }
+  .agent-nav { padding: 4px; gap: 2px; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
+  .agent-nav::-webkit-scrollbar { display: none; }
+  .agent-btn--core { padding: 6px 8px; gap: 4px; flex-shrink: 0; }
+  .agent-btn__label { font-size: 12px; }
+  .agent-btn--more { padding: 6px 8px; }
   .status-pill { padding: 4px 8px; font-size: 10px; }
   .status-text { display: none; }
   .user-entry { width: 30px; height: 30px; }
 }
 
-/* 手机竖屏 <480px */
 @media (max-width: 480px) {
   .top-bar { padding: 0 12px; height: 56px; }
   .brand-mark { width: 32px; height: 32px; }
-  .agent-node { padding: 5px 6px; }
-  .node-orbit { width: 22px; height: 22px; }
+  .agent-btn--core { padding: 5px 6px; }
+  .agent-btn__status { display: none; }
   .status-pill { display: none; }
-  .constellation-line { display: none; }
 }
 </style>

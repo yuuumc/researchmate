@@ -429,6 +429,14 @@ function getAgentMeta(agent) {
   return agentMeta[agent] || { label: '系统', en: 'System', color: '#7a8ba3' }
 }
 
+// V2: 第一条 AI 回复的索引（用于 AI 生成标识）
+const firstAssistantIdx = computed(() => {
+  for (let i = 0; i < messages.value.length; i++) {
+    if (messages.value[i].role === 'assistant') return i
+  }
+  return -1
+})
+
 watch(messages, scrollToBottom, { deep: true })
 watch(messages, scheduleSave, { deep: true })
 </script>
@@ -537,6 +545,7 @@ watch(messages, scheduleSave, { deep: true })
               <div v-if="msg.role === 'user'" class="user-bubble">{{ msg.content }}</div>
 
               <div v-else class="assistant-bubble" :class="{ error: msg.error, cancelled: msg.cancelled, streaming: msg.streaming }">
+                <span v-if="i === firstAssistantIdx" class="ai-generated-badge">AI</span>
                 <MarkdownRenderer :content="msg.content" />
 
                 <div v-if="msg.knowledge_path" class="agent-card knowledge-path-wrap">
@@ -1084,6 +1093,21 @@ watch(messages, scheduleSave, { deep: true })
   line-height: 1.65;
   box-shadow: var(--shadow-sm);
   position: relative;
+}
+
+/* V2: AI 生成标识（仅第一条 AI 回复） */
+.ai-generated-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-ink-700);
+  background: color-mix(in srgb, var(--color-ink-700) 8%, transparent);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  opacity: 0.6;
 }
 
 .assistant-bubble.error {
