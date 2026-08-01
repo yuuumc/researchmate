@@ -100,6 +100,15 @@ function runSequence() {
 
   stepTimer = setTimeout(nextStep, 200)
 }
+
+// 跳过：立即结束动画进入目标页（即使首次进入也尊重用户选择权）
+function skip() {
+  clearTimeout(stepTimer)
+  clearTimeout(fadeTimer)
+  isRunning.value = false
+  isFading.value = true
+  setTimeout(() => emit('done'), 150)
+}
 </script>
 
 <template>
@@ -143,6 +152,11 @@ function runSequence() {
         ></div>
       </div>
     </div>
+
+    <!-- 跳过按钮（遮罩右下角，克制的文字按钮） -->
+    <button v-if="!isFading" class="boot-skip" @click="skip">
+      跳过 →
+    </button>
   </div>
 </template>
 
@@ -326,6 +340,32 @@ function runSequence() {
   );
   border-radius: 2px;
   transition: width 0.4s ease;
+}
+
+/* === 跳过按钮（遮罩右下角 · 克制文字按钮） === */
+.boot-skip {
+  position: absolute;
+  right: 32px;
+  bottom: 28px;
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm, 8px);
+  font-family: var(--font-serif, serif);
+  font-size: 13px;
+  color: var(--color-fg-tertiary, #7a8ba3);
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.boot-skip:hover {
+  color: var(--color-ink-900, #0f1e33);
+  background: var(--color-bg-sunken, #e9edf3);
+}
+
+.boot-skip:focus-visible {
+  outline: 2px solid var(--color-ink-700, #1e3a5f);
+  outline-offset: 2px;
 }
 
 /* === 移动端 === */
