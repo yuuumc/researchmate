@@ -50,6 +50,24 @@ const routes = [
     meta: { title: '诊断历史', agent: 'diagnose' }
   },
   {
+    path: '/diagnosis',
+    name: 'diagnosis',
+    component: () => import('@/views/DiagnosisView.vue'),
+    meta: { title: '成长诊断', agent: 'diagnose' }
+  },
+  {
+    path: '/research',
+    name: 'research',
+    component: () => import('@/views/ResearchView.vue'),
+    meta: { title: '科研探索', agent: 'research' }
+  },
+  {
+    path: '/admission',
+    name: 'admission',
+    component: () => import('@/views/AdmissionView.vue'),
+    meta: { title: '择校推荐', agent: 'admission' }
+  },
+  {
     path: '/plan',
     name: 'plan',
     component: () => import('@/views/PlanView.vue'),
