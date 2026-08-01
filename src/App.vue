@@ -6,21 +6,33 @@ import TopBar from '@/components/TopBar.vue'
 import SyncStatusBar from '@/components/SyncStatusBar.vue'
 import ConflictResolveModal from '@/components/ConflictResolveModal.vue'
 import AgentBootSequence from '@/components/AgentBootSequence.vue'
+import { bootShown, markBootShown } from '@/utils/bootOnce'
 
 const route = useRoute()
 const router = useRouter()
 const activeAgent = computed(() => route.meta.agent || 'tutor')
 const hideTopBar = computed(() => Boolean(route.meta.hideTopBar))
 
-// V2.6: 全局 Boot 序列（专属页统一开场）
-// ?boot=<agent> 触发，全屏遮罩播放 AgentBootSequence，完成后 strip 参数落到页面
+// V2.6: 全局 Boot 序列（专属页统一开场）+ 克制化（每 Agent 会话内仅首次播放）
+// ?boot=<agent> 触发：已播放过直接 strip 参数落页面（无动画）；
+// 未播放过则全屏播放 AgentBootSequence，完成后写标记并 strip 参数
 const bootAgent = ref('')
 const booting = ref(false)
+
+function stripBootParam() {
+  const { boot, ...rest } = route.query
+  router.replace({ path: route.path, query: rest })
+}
 
 watch(
   () => route.query.boot,
   (agent) => {
     if (agent && typeof agent === 'string') {
+      if (bootShown(agent)) {
+        // 本会话已播放过：直达页面，不打断
+        stripBootParam()
+        return
+      }
       bootAgent.value = agent
       booting.value = true
     }
@@ -29,10 +41,9 @@ watch(
 )
 
 function onBootDone() {
+  markBootShown(bootAgent.value)
   booting.value = false
-  // strip boot 参数，保留其余 query
-  const { boot, ...rest } = route.query
-  router.replace({ path: route.path, query: rest })
+  stripBootParam()
 }
 </script>
 
