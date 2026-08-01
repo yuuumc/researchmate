@@ -15,6 +15,7 @@ import { useSubjectStore } from './stores/subject'
 import { useAuthStore } from './stores/auth'
 import { supabase, isSupabaseConfigured } from './services/supabase'
 import { setAuthReady } from './utils/authReady'
+import { injectSeedData } from './data/seedDemo'
 
 // ============================================================
 // 学科运行时加载（v2.0 学科路由）
@@ -93,6 +94,13 @@ app.mount('#app')
 async function bootstrap() {
   // 0. Auth bootstrap（解锁路由守卫）
   await bootstrapAuth()
+
+  // 0.5 注入 Demo 种子数据（V2 · 评审展示用，幂等）
+  try {
+    injectSeedData()
+  } catch (e) {
+    console.warn('[main] 种子数据注入失败：', e)
+  }
 
   // 1. 读 URL 参数
   const urlParams = new URLSearchParams(window.location.search)
