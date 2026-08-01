@@ -79,6 +79,169 @@ export const SEED_DIAGNOSIS = {
   mastered: ['半导体物理·PN结', '数字电路·卡诺图', 'CMOS·反相器原理']
 }
 
+// 种子诊断报告（DiagnosisView · 4 层根因链展示用）
+export const SEED_DIAGNOSIS_REPORT = {
+  score: 68,
+  subject: '微电子科学与工程',
+  // 4 层根因链
+  weak_points: ['MOSFET 阈值电压推导错误', 'Verilog always 块与时序逻辑混淆'],
+  direct_causes: ['平带电压公式未掌握', '阻塞赋值与非阻塞赋值概念模糊'],
+  middle_causes: ['半导体表面势概念断层', '硬件描述语言并发模型缺失'],
+  root_causes: ['固体物理能带理论基础薄弱', '数字系统设计思维尚未建立'],
+  remediation: '建议先用 2 周补强固体物理能带与费米能级概念，再回到 MOSFET 阈值电压推导；Verilog 部分通过对比 always@(*) 与 always@(posedge clk) 的仿真波形建立时序直觉。'
+}
+
+// 种子能力星图（DiagnosisView · 能力维度展示）
+export const SEED_ABILITY_STARS = [
+  { topic: '半导体物理', star: 4, score: 65, type: 'strength' },
+  { topic: '数字电路', star: 4, score: 82, type: 'strength' },
+  { topic: 'CMOS 反相器', star: 4, score: 78, type: 'strength' },
+  { topic: 'Verilog HDL', star: 2, score: 45, type: 'weak' },
+  { topic: 'MOSFET 原理', star: 1, score: 38, type: 'weak' }
+]
+
+// 种子就业路径（CareerView · 空态红线展示）
+export const SEED_CAREER_PATHS = [
+  {
+    title: '数字 IC 设计工程师',
+    match: 82,
+    gap: ['Verilog 系统建模', '低功耗设计方法'],
+    companies: ['海思半导体', '紫光展锐', '中兴微电子'],
+    salary: '25-40K·14薪'
+  },
+  {
+    title: '模拟 IC 设计工程师',
+    match: 68,
+    gap: ['MOSFET 小信号模型', '版图基础'],
+    companies: ['圣邦微电子', '思瑞浦', '艾为电子'],
+    salary: '22-35K·14薪'
+  },
+  {
+    title: 'IC 验证工程师',
+    match: 75,
+    gap: ['UVM 方法学', 'SystemVerilog 断言'],
+    companies: ['芯原股份', '澜起科技', '兆易创新'],
+    salary: '20-32K·13薪'
+  }
+]
+
+// 种子练习题（PracticeView · 空态红线展示）
+export const SEED_QUESTIONS = [
+  {
+    type: '选择题',
+    difficulty: '中级',
+    point: 'MOSFET 阈值电压',
+    question: '当 NMOS 的衬底偏置电压 VBS < 0 时，阈值电压 Vth 将如何变化？',
+    options: ['A. 减小', 'B. 增大', 'C. 不变', 'D. 先增大后减小'],
+    answer: 'B',
+    analysis: '衬底反偏使耗尽层变宽，体电荷 Qb 增大，由 Vth = Vfb + 2φf + Qb/Cox 可知 Vth 增大，即体效应。'
+  },
+  {
+    type: '填空题',
+    difficulty: '初级',
+    point: 'Verilog 组合逻辑',
+    question: '在 Verilog 中，描述纯组合逻辑的 always 块敏感表应使用关键字 ______ 替代信号列表。',
+    answer: '(*)',
+    analysis: 'always@(*) 会让综合工具自动推导敏感信号，避免遗漏导致锁存器，是组合逻辑的推荐写法。'
+  },
+  {
+    type: '简答题',
+    difficulty: '高级',
+    point: 'CMOS 反相器',
+    question: '简述 CMOS 反相器在输入跳变过程中的功耗来源，并说明静态功耗为何接近零。',
+    answer: '动态功耗来自充放电电容（P = αCV²f）与输入跳变瞬间 PMOS/NMOS 同时导通的短路功耗；静态功耗接近零是因为稳态下始终有一个管子截止，无直流通路（理想情况）。'
+  }
+]
+
+// 种子同伴匹配（PeerView · 空态红线展示）
+export const SEED_PEER_MATCHES = [
+  {
+    name: '李同学',
+    school: '电子科技大学',
+    major: '微电子科学与工程',
+    complement: 'Verilog 项目经验丰富（8 题 OJ）',
+    common: ['目标 AI 芯片方向', '半导体物理 4★'],
+    match_score: 91
+  },
+  {
+    name: '王同学',
+    school: '西安电子科技大学',
+    major: '集成电路设计',
+    complement: 'MOSFET 仿真熟练（Cadence）',
+    common: ['Verilog 同为薄弱点', '大二'],
+    match_score: 86
+  },
+  {
+    name: '陈同学',
+    school: '东南大学',
+    major: '电子科学与技术',
+    complement: '数字电路竞赛省一',
+    common: ['目标院校浙江大学', '混合学习风格'],
+    match_score: 79
+  }
+]
+
+// 种子科研路线（ResearchView · ResearchCard 用）
+export const SEED_RESEARCH = {
+  direction: 'AI 芯片 · 数字加速器方向',
+  undergrad_path: [
+    { phase: '大二上', task: '夯实半导体物理 + 数字电路基础', difficulty: '入门' },
+    { phase: '大二下', task: '入门 Verilog / FPGA，完成 RISC-V 单周期 CPU', difficulty: '进阶' },
+    { phase: '大三上', task: '学习计算机体系结构，实现 5 级流水线', difficulty: '进阶' },
+    { phase: '大三下', task: '进入实验室，复现 AI 加速器论文（如 NVDLA 子模块）', difficulty: '高级' }
+  ],
+  research_path: [
+    { phase: '研一', task: '深度学习编译器（TVM/MLIR）+ 芯片联合优化', difficulty: '高级' },
+    { phase: '研二', task: '独立课题：面向 Transformer 的稀疏加速器设计', difficulty: '高级' }
+  ],
+  papers: [
+    { title: 'Eyeriss: A Spatial Architecture for Energy-Efficient DNN', venue: 'ISCA 2016' },
+    { title: 'A Configurable Cloud-Scale DNN Accelerator (NVDLA)', venue: 'MICRO 2018' }
+  ],
+  projects: ['RISC-V 五级流水线 CPU（FPGA）', 'MNIST 加速器（Verilog 仿真）'],
+  tech_stack: ['Verilog', 'Chisel', 'PyTorch', 'Vivado', 'Cadence']
+}
+
+// 种子择校推荐（AdmissionView · AdmissionCard 用）
+export const SEED_ADMISSION = [
+  {
+    school: '浙江大学',
+    region: '浙江',
+    tier: 'reach',
+    level: '985',
+    major: '集成电路工程',
+    year: 2026,
+    score_line: 355,
+    ratio: 6,
+    enrollment: 45,
+    reason: 'AI 芯片方向强势（集成电路学院），但竞争激烈，张同学当前 72% 能力需提升至 85%+ 方较稳。'
+  },
+  {
+    school: '电子科技大学',
+    region: '四川',
+    tier: 'match',
+    level: '985',
+    major: '集成电路工程',
+    year: 2026,
+    score_line: 330,
+    ratio: 4,
+    enrollment: 80,
+    reason: '微电子 A+ 学科，与张同学专业高度契合，分数线友好，推荐作为主攻。'
+  },
+  {
+    school: '西安电子科技大学',
+    region: '陕西',
+    tier: 'safety',
+    level: '211',
+    major: '集成电路工程',
+    year: 2026,
+    score_line: 305,
+    ratio: 3,
+    enrollment: 120,
+    reason: '集成电路 211 强校，招生量大、报录比友好，作为稳妥保底。'
+  }
+]
+
 /**
  * 注入种子数据（幂等，仅首次执行）
  * 在 main.js bootstrap 中调用
