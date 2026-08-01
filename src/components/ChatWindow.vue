@@ -1,5 +1,6 @@
 <script setup>
 import { ref, nextTick, watch, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { route } from '@/core/router'
 import { callChatWithMode } from '@/api/agent'
 import { useTraceStore } from '@/stores/trace'
@@ -21,6 +22,34 @@ import ResearchCard from './ResearchCard.vue'
 import KnowledgePathCard from './KnowledgePathCard.vue'
 import AgentIcon from './AgentIcon.vue'
 import AgentTrace from './AgentTrace.vue'
+import AgentBootSequence from './AgentBootSequence.vue'
+
+const vueRoute = useRoute()
+
+// === Agent 启动序列（V2 · 评审核心展示） ===
+const bootAgent = ref('')
+const booting = ref(false)
+
+// 从 route query 读取 agent 参数，启动 boot sequence
+watch(
+  () => vueRoute.query.agent,
+  (agent) => {
+    if (agent && typeof agent === 'string') {
+      bootAgent.value = agent
+      booting.value = true
+    }
+  },
+  { immediate: true }
+)
+
+function onBootDone() {
+  booting.value = false
+  // 如果有预填问题，自动发送
+  const q = vueRoute.query.q
+  if (q && typeof q === 'string' && q.trim()) {
+    nextTick(() => send(q))
+  }
+}
 
 const messages = ref([])
 const inputText = ref('')
@@ -406,6 +435,13 @@ watch(messages, scheduleSave, { deep: true })
 
 <template>
   <div class="chat-window">
+    <!-- Agent 启动序列（V2 · 评审核心展示） -->
+    <AgentBootSequence
+      v-if="booting"
+      :agent-key="bootAgent"
+      @done="onBootDone"
+    />
+
     <div ref="chatBodyRef" class="chat-body" @scroll="onChatScroll">
       <div v-if="restoredBanner" class="restored-banner" :class="{ noop: restoredBanner.noop }">
         <span v-if="restoredBanner.noop">没有更早的历史可加载</span>

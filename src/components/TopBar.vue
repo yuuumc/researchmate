@@ -13,13 +13,13 @@ const props = defineProps({
 const router = useRouter()
 
 // v3.1: 8 个 Agent 节点 + 主控编排器中心
+// V2: 所有 Agent 统一进入 /chat?agent=<key>，展示启动序列
 const agents = [
   {
     key: 'tutor',
     label: '导师',
     en: 'Tutor',
     icon: 'M',
-    route: '/',
     color: '#00d4aa',
     desc: '苏格拉底式教学'
   },
@@ -28,7 +28,6 @@ const agents = [
     label: '诊断',
     en: 'Diagnose',
     icon: 'D',
-    route: '/history',
     color: '#4d9de0',
     desc: '4 层根因链'
   },
@@ -37,7 +36,6 @@ const agents = [
     label: '规划',
     en: 'Planner',
     icon: 'P',
-    route: '/plan',
     color: '#ffd166',
     desc: '动态周计划'
   },
@@ -46,7 +44,6 @@ const agents = [
     label: '就业',
     en: 'Career',
     icon: '◈',
-    route: '/career',
     color: '#9b59b6',
     desc: '就业路径推荐'
   },
@@ -55,7 +52,6 @@ const agents = [
     label: '练习',
     en: 'Practice',
     icon: '✦',
-    route: '/practice',
     color: '#e74c3c',
     desc: '针对性出题'
   },
@@ -64,7 +60,6 @@ const agents = [
     label: '同伴',
     en: 'Peer',
     icon: '◍',
-    route: '/peer',
     color: '#3498db',
     desc: '互助匹配'
   },
@@ -73,7 +68,6 @@ const agents = [
     label: '择校',
     en: 'Admission',
     icon: 'A',
-    route: '/',
     color: '#ff6b6b',
     desc: '数据驱动'
   },
@@ -82,14 +76,14 @@ const agents = [
     label: '科研',
     en: 'Research',
     icon: 'X',
-    route: '/chat',
     color: '#e67e22',
     desc: '本科→研究生路线'
   }
 ]
 
 function go(agent) {
-  router.push(agent.route)
+  // V2: 所有 Agent 统一进入聊天，展示启动序列
+  router.push({ path: '/chat', query: { agent: agent.key } })
 }
 
 const activeIndex = computed(() => agents.findIndex((a) => a.key === props.activeAgent))
