@@ -1,13 +1,43 @@
 <script setup>
 import { computed } from 'vue'
 import { usePlanStore } from '@/stores/plan'
+import { useProfileStore } from '@/stores/profile'
+import { useDiagnosisStore } from '@/stores/diagnosis'
+import { getDiagnosisResultForPlan, getKnowledgeStructure } from '@/utils/diagnosisInput'
 import KnowledgeGraph from '@/components/KnowledgeGraph.vue'
 import PlanCard from '@/components/PlanCard.vue'
+import { SEED_PLAN } from '@/data/seedDemo'
 
 const planStore = usePlanStore()
+const profileStore = useProfileStore()
+const diagnosisStore = useDiagnosisStore()
+
+// #9: 知识图谱标签（与 ProfileView 一致，展示真实知识点）
+const knowledgeLabels = computed(() => getKnowledgeStructure().slice(0, 8))
+
 // P0-2 fix: store 实际暴露的 getter 是 `current`，旧版调 `plan` 永远 undefined → "当前计划" 永远空态
 const plan = computed(() => planStore.current)
 const versions = computed(() => planStore.versions || [])
+const loading = computed(() => planStore.loading)
+const error = computed(() => planStore.error)
+
+// 种子计划作为 fallback（API 未调用或失败时展示）
+const seedPlan = SEED_PLAN
+const hasApiPlan = computed(() => planStore.lastPlan !== null)
+
+// #3: 生成个性化计划——诊断结果作为规划输入
+async function generatePlan() {
+  const profile = profileStore.profile || {}
+  const diagnosisResult = getDiagnosisResultForPlan()
+
+  await planStore.runPlan({
+    student_name: profile.name || '',
+    target_major: profile.target_major || profile.major || '',
+    diagnosis_result: diagnosisResult,
+    exam_date: profile.exam_date || '',
+    weekly_hours: 15
+  })
+}
 
 // 把 ISO 时间渲染为"距今 N 天"，避免依赖 dayjs
 function timeAgo(iso) {
@@ -40,7 +70,7 @@ function adjustmentCount(v) {
 
 <template>
   <div class="plan-view">
-    <KnowledgeGraph :node-count="14" :flow-dots="true" />
+    <KnowledgeGraph :node-count="14" :flow-dots="true" :labels="knowledgeLabels" />
 
     <div class="plan-content">
       <div class="page-header">
@@ -72,20 +102,42 @@ function adjustmentCount(v) {
         </div>
       </section>
 
-      <!-- 当前计划 -->
+      <!-- 生成计划操作区 -->
+      <section class="generate-section">
+        <button
+          class="generate-btn"
+          :disabled="loading"
+          @click="generatePlan"
+        >
+          {{ loading ? 'AI 规划中…' : '生成个性化计划' }}
+        </button>
+        <span v-if="diagnosisStore.latest" class="generate-hint">
+          基于最近诊断（{{ diagnosisStore.latest.score }}分）生成
+        </span>
+        <span v-else class="generate-hint">
+          基于当前画像生成（无诊断记录时 Agent 将自行分析）
+        </span>
+        <div v-if="error" class="generate-error">
+          API 调用失败：{{ error }}（下方仍展示种子计划供参考）
+        </div>
+      </section>
+
+      <!-- 当前计划（API 生成或种子 fallback） -->
       <section v-if="plan" class="plan-section">
         <div class="section-header">
           <h2 class="section-title">当前计划</h2>
           <span class="section-en">Current Plan</span>
+          <span v-if="hasApiPlan" class="plan-badge">AI 生成</span>
+          <span v-else class="plan-badge plan-badge--seed">Demo</span>
         </div>
         <PlanCard :plan="plan" />
       </section>
 
-      <!-- 空态 -->
+      <!-- 空态：无种子也无 API 结果 -->
       <section v-else class="empty-state">
         <div class="empty-icon">◯</div>
         <div class="empty-title">还没有生成计划</div>
-        <div class="empty-desc">去对话中输入「帮我做复习计划」触发规划 Agent</div>
+        <div class="empty-desc">点击上方「生成个性化计划」按钮，AI 规划 Agent 将基于你的诊断结果生成周计划</div>
       </section>
     </div>
   </div>
@@ -245,6 +297,66 @@ function adjustmentCount(v) {
   align-items: baseline;
   gap: 10px;
   margin-bottom: 12px;
+}
+
+.plan-badge {
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  background: color-mix(in srgb, #00d4aa 15%, transparent);
+  color: #00a07d;
+}
+.plan-badge--seed {
+  background: color-mix(in srgb, #ffd166 15%, transparent);
+  color: #b8860b;
+}
+
+/* === 生成计划操作区 === */
+.generate-section {
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.generate-btn {
+  padding: 10px 24px;
+  background: var(--color-ink-900);
+  color: var(--color-fg-inverse);
+  border: none;
+  border-radius: var(--radius-full);
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.generate-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.generate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.generate-hint {
+  font-size: 12px;
+  color: var(--color-fg-tertiary);
+}
+
+.generate-error {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(255, 107, 107, 0.08);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: #d9483f;
 }
 
 .section-title {
