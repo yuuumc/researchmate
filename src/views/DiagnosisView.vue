@@ -2,14 +2,33 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProfileStore } from '@/stores/profile'
+import { useDiagnosisStore } from '@/stores/diagnosis'
+import { buildDiagnosisInput } from '@/utils/diagnosisInput'
 import DiagnosisReport from '@/components/DiagnosisReport.vue'
 import { SEED_DIAGNOSIS_REPORT, SEED_ABILITY_STARS } from '@/data/seedDemo'
 
 const router = useRouter()
 const profileStore = useProfileStore()
+const diagnosisStore = useDiagnosisStore()
 
-// 能力维度（优先用 store 实际画像，空时回退种子）
+// ========== v3.1.1: Agent API 结果 ==========
+const hasApiResult = computed(() => !!diagnosisStore.lastReport?.structured)
+const apiData = computed(() => diagnosisStore.lastReport?.structured || {})
+const loading = computed(() => diagnosisStore.loading)
+const error = computed(() => diagnosisStore.error)
+
+// 能力星图：API ability_stars 优先 → profileStore → 种子
 const abilityStars = computed(() => {
+  // API 返回 { topic: star } 对象
+  const apiStars = apiData.value.ability_stars
+  if (apiStars && typeof apiStars === 'object' && Object.keys(apiStars).length >= 3) {
+    return Object.entries(apiStars).map(([topic, star]) => ({
+      topic,
+      star,
+      score: star * 20,
+      type: star <= 2 ? 'weak' : 'strength'
+    }))
+  }
   const stars = profileStore.profile?.ability_stars
   if (stars && Object.keys(stars).length >= 3) {
     return Object.entries(stars).map(([topic, star]) => {
@@ -29,13 +48,41 @@ const abilityStars = computed(() => {
 const strengths = computed(() => abilityStars.value.filter((a) => a.type === 'strength').slice(0, 3))
 const weakPoints = computed(() => abilityStars.value.filter((a) => a.type === 'weak').slice(0, 2))
 
-const reportData = computed(() => SEED_DIAGNOSIS_REPORT)
+// 诊断报告数据：API 8 字段优先，种子 fallback
+const reportData = computed(() => {
+  if (hasApiResult.value) {
+    const s = apiData.value
+    return {
+      score: s.score ?? SEED_DIAGNOSIS_REPORT.score,
+      subject: s.subject || SEED_DIAGNOSIS_REPORT.subject,
+      weak_points: s.weak_points || [],
+      direct_causes: s.direct_causes || [],
+      middle_causes: s.middle_causes || [],
+      root_causes: s.root_causes || [],
+      remediation: s.remediation_path || ''
+    }
+  }
+  return SEED_DIAGNOSIS_REPORT
+})
 
-// 能力总评
+// 能力总评：API overall_level 优先，否则从星图均值计算
 const overallLevel = computed(() => {
+  if (apiData.value.overall_level != null) return apiData.value.overall_level
   const avg = abilityStars.value.reduce((s, a) => s + a.star, 0) / (abilityStars.value.length || 1)
   return Math.round((avg / 5) * 100)
 })
+
+// 诊断理由（v3.1.1 新增字段）
+const diagnosisReason = computed(() => apiData.value.diagnosis_reason || '')
+
+// 发起诊断
+async function generateDiagnosis() {
+  try {
+    await diagnosisStore.runDiagnosis(buildDiagnosisInput())
+  } catch {
+    // error 已在 store 中设置
+  }
+}
 
 function goChat() {
   router.push({ path: '/chat', query: { agent: 'diagnose' } })
@@ -52,10 +99,34 @@ function goChat() {
         <p class="page-subtitle">4 层根因链 · 能力星图 · 精准定位薄弱环节</p>
       </div>
 
+      <!-- 生成诊断入口 -->
+      <section class="generate-section">
+        <button
+          class="generate-btn"
+          :disabled="loading"
+          @click="generateDiagnosis"
+        >
+          <span v-if="loading" class="generate-spinner"></span>
+          <span>{{ loading ? 'AI 诊断中…' : hasApiResult ? '重新生成诊断报告' : '生成个性化诊断报告' }}</span>
+        </button>
+        <span class="generate-hint" v-if="!hasApiResult && !loading">
+          基于你的知识图谱与学习画像，由 AI 生成 8 字段结构化诊断
+        </span>
+        <span class="generate-hint" v-else-if="hasApiResult">
+          已接入真实 AI 诊断链路 · 8 字段结构化输出
+        </span>
+        <div v-if="error" class="generate-error">
+          诊断生成失败：{{ error }}
+        </div>
+      </section>
+
       <!-- 顶部概览：总分 + 能力等级 -->
       <section class="overview-row">
         <div class="overview-card overview-card--score">
-          <div class="ov-label">LAST DIAGNOSIS</div>
+          <div class="ov-label">
+            LAST DIAGNOSIS
+            <span v-if="hasApiResult" class="api-badge">AI</span>
+          </div>
           <div class="ov-score">
             <span class="ov-num">{{ reportData.score }}</span><span class="ov-unit">分</span>
           </div>
@@ -152,6 +223,18 @@ function goChat() {
         <DiagnosisReport :report="reportData" />
       </section>
 
+      <!-- 诊断理由（v3.1.1 新增字段） -->
+      <section v-if="diagnosisReason" class="section">
+        <div class="section-head">
+          <span class="section-icon">◉</span>
+          <span class="section-title">诊断理由</span>
+          <span class="section-en">Diagnosis Reason</span>
+        </div>
+        <div class="reason-card">
+          <p class="reason-text">{{ diagnosisReason }}</p>
+        </div>
+      </section>
+
       <!-- 进对话入口 -->
       <section class="cta-section">
         <div class="cta-text">
@@ -214,6 +297,105 @@ function goChat() {
   font-size: 14px;
   color: var(--color-fg-secondary);
   margin: 6px 0 0;
+}
+
+/* === 生成诊断入口 === */
+.generate-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+  padding: 16px 20px;
+  background: color-mix(in srgb, #4d9de0 5%, var(--color-bg-elevated));
+  border: 1px dashed color-mix(in srgb, #4d9de0 30%, transparent);
+  border-radius: var(--radius-lg);
+}
+
+.generate-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  background: #4d9de0;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-full);
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.generate-btn:hover:not(:disabled) {
+  background: #3a87c4;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px color-mix(in srgb, #4d9de0 30%, transparent);
+}
+
+.generate-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.generate-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.generate-hint {
+  font-size: 12px;
+  color: var(--color-fg-tertiary);
+}
+
+.generate-error {
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 12px;
+  background: color-mix(in srgb, #ff6b6b 10%, transparent);
+  border: 1px solid color-mix(in srgb, #ff6b6b 30%, transparent);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: #d9483f;
+}
+
+.api-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  margin-left: 6px;
+  background: linear-gradient(135deg, #4d9de0, #00d4aa);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.5px;
+  vertical-align: middle;
+}
+
+/* === 诊断理由 === */
+.reason-card {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-subtle);
+  border-left: 3px solid #4d9de0;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 14px 18px;
+}
+
+.reason-text {
+  font-size: 13px;
+  color: var(--color-ink-700);
+  line-height: 1.8;
+  margin: 0;
 }
 
 /* === 概览行 === */
