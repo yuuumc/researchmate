@@ -87,6 +87,11 @@ async function generateDiagnosis() {
 function goChat() {
   router.push({ path: '/chat', query: { agent: 'diagnose' } })
 }
+
+// P0 #8: 诊断完成 → 引导进入旗舰旅程下一步（规划）
+function goJourney() {
+  router.push('/journey')
+}
 </script>
 
 <template>
@@ -243,6 +248,19 @@ function goChat() {
         </div>
         <button class="cta-btn" @click="goChat">
           <span>与诊断导师对话</span>
+          <span class="cta-arrow">→</span>
+        </button>
+      </section>
+
+      <!-- P0 #8: 诊断完成 → 引导进入旗舰旅程（规划步） -->
+      <section v-if="hasApiResult" class="journey-cta-section">
+        <div class="journey-cta-content">
+          <span class="journey-cta-badge">Flagship Journey</span>
+          <span class="journey-cta-title">基于诊断结果生成个性化规划</span>
+          <span class="journey-cta-desc">进入旗舰旅程，诊断 → 规划 → 科研三步接力</span>
+        </div>
+        <button class="journey-cta-btn" @click="goJourney">
+          <span>继续旗舰旅程</span>
           <span class="cta-arrow">→</span>
         </button>
       </section>
@@ -723,9 +741,72 @@ function goChat() {
   font-size: 16px;
 }
 
+/* === 旗舰旅程引导 CTA（P0 #8） === */
+.journey-cta-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 24px;
+  margin-top: 16px;
+  background: linear-gradient(135deg, color-mix(in srgb, #9b59b6 7%, var(--color-bg-elevated)), color-mix(in srgb, #4d9de0 4%, var(--color-bg-elevated)));
+  border: 1px solid color-mix(in srgb, #9b59b6 25%, transparent);
+  border-radius: var(--radius-lg);
+}
+
+.journey-cta-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.journey-cta-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: #9b59b6;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.journey-cta-title {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-ink-900);
+}
+
+.journey-cta-desc {
+  font-size: 12px;
+  color: var(--color-fg-secondary);
+}
+
+.journey-cta-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: #9b59b6;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-full);
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.journey-cta-btn:hover {
+  background: #8e44ad;
+  transform: translateX(2px);
+}
+
 @media (max-width: 768px) {
   .overview-row { grid-template-columns: 1fr; }
   .duo-section { grid-template-columns: 1fr; }
   .cta-section { flex-direction: column; align-items: flex-start; }
+  .journey-cta-section { flex-direction: column; align-items: flex-start; }
 }
 </style>

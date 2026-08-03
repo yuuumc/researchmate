@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useProfileStore } from '@/stores/profile'
 import { useDiagnosisStore } from '@/stores/diagnosis'
 import { usePlanStore } from '@/stores/plan'
+import { useJourneyStore } from '@/stores/journey'
 import { useWrongBookStore } from '@/stores/wrongBook'
 import KnowledgeGraph from '@/components/KnowledgeGraph.vue'
 import WrongBook from '@/components/WrongBook.vue'
@@ -12,6 +13,7 @@ const router = useRouter()
 const profileStore = useProfileStore()
 const diagnosisStore = useDiagnosisStore()
 const planStore = usePlanStore()
+const journeyStore = useJourneyStore()
 const wrongBookStore = useWrongBookStore()
 
 // 欢迎语（按时段）
@@ -84,6 +86,20 @@ function goHistory() {
   router.push('/history')
 }
 
+// === 旗舰旅程入口（P0 #8）===
+const journeyStarted = computed(() => journeyStore.isStarted)
+const journeyComplete = computed(() => journeyStore.isComplete)
+const journeyProgress = computed(() => journeyStore.progress)
+const journeyCurrentTitle = computed(() => {
+  const key = journeyStore.currentStepKey
+  const step = journeyStore.stepList.find((s) => s.key === key)
+  return step ? step.title : ''
+})
+
+function goJourney() {
+  router.push('/journey')
+}
+
 // 错题本折叠状态（默认展开，便于首屏即可见）
 const wrongBookExpanded = ref(true)
 </script>
@@ -110,6 +126,34 @@ const wrongBookExpanded = ref(true)
           </p>
         </div>
         <span class="mentor-action">查看完整分析 →</span>
+      </section>
+
+      <!-- === 旗舰旅程入口卡（P0 #8 · 诊断→规划→科研三步级联） === -->
+      <section class="journey-entry-card" @click="goJourney">
+        <div class="journey-entry-content">
+          <div class="journey-entry-head">
+            <span class="journey-entry-icon">⇄</span>
+            <span class="journey-entry-badge">Flagship Journey</span>
+          </div>
+          <p class="journey-entry-title">
+            <template v-if="!journeyStarted">旗舰旅程：诊断 → 规划 → 科研</template>
+            <template v-else-if="journeyComplete">旗舰旅程已完成</template>
+            <template v-else>旗舰旅程进行中 · 当前：{{ journeyCurrentTitle }}</template>
+          </p>
+          <p class="journey-entry-sub">
+            <template v-if="!journeyStarted">三个 Agent 接力协作，共享你的学生画像</template>
+            <template v-else-if="journeyComplete">三个 Agent 已完成接力，可随时重跑任意步骤</template>
+            <template v-else>已完成 {{ journeyProgress }}%，点击继续</template>
+          </p>
+          <div v-if="journeyStarted && !journeyComplete" class="journey-entry-progress">
+            <div class="jep-track">
+              <div class="jep-fill" :style="{ width: journeyProgress + '%' }"></div>
+            </div>
+          </div>
+        </div>
+        <span class="journey-entry-action">
+          {{ !journeyStarted ? '开始旅程' : journeyComplete ? '查看旅程' : '继续旅程' }} →
+        </span>
       </section>
 
       <!-- === 顶部：欢迎 + 倒计时 === -->
@@ -443,6 +487,113 @@ const wrongBookExpanded = ref(true)
   .mentor-action {
     margin-left: 0;
   }
+}
+
+/* === 旗舰旅程入口卡（P0 #8） === */
+.journey-entry-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 24px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, #9b59b6 7%, var(--color-bg-elevated)),
+    color-mix(in srgb, #4d9de0 4%, var(--color-bg-elevated))
+  );
+  border: 1px solid color-mix(in srgb, #9b59b6 25%, transparent);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+  animation: float-up 0.5s var(--ease-out) 0.05s both;
+}
+
+.journey-entry-card:hover {
+  box-shadow: 0 4px 20px color-mix(in srgb, #9b59b6 14%, transparent);
+  border-color: color-mix(in srgb, #9b59b6 45%, transparent);
+}
+
+.journey-entry-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.journey-entry-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.journey-entry-icon {
+  color: #9b59b6;
+  font-size: 13px;
+}
+
+.journey-entry-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: #9b59b6;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.journey-entry-title {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-ink-900);
+  margin: 0;
+}
+
+.journey-entry-sub {
+  font-size: 12px;
+  color: var(--color-fg-secondary);
+  margin: 0;
+}
+
+.journey-entry-progress {
+  margin-top: 8px;
+}
+
+.jep-track {
+  height: 4px;
+  background: var(--color-bg-sunken);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.jep-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4d9de0, #9b59b6);
+  border-radius: var(--radius-full);
+  transition: width 0.6s var(--ease-out);
+}
+
+.journey-entry-action {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 13px;
+  color: #9b59b6;
+  font-weight: 600;
+  transition: transform 0.2s;
+}
+
+.journey-entry-card:hover .journey-entry-action {
+  transform: translateX(3px);
+}
+
+@media (max-width: 768px) {
+  .journey-entry-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .journey-entry-action { margin-left: 0; }
 }
 
 /* === Hero === */
