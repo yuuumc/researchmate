@@ -21,6 +21,12 @@ const props = defineProps({
   activeNodes: {
     type: Array,
     default: () => []
+  },
+  // #9: 真实知识点标签（传入后前 N 个节点显示标签而非随机点）
+  // 格式: [{ topic, star, status }] — status: mastered|weak|learning
+  labels: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -145,6 +151,12 @@ function handleResize() {
           <stop offset="60%" stop-color="#00d4aa" stop-opacity="0.3" />
           <stop offset="100%" stop-color="#00d4aa" stop-opacity="0" />
         </radialGradient>
+        <!-- 薄弱节点辉光（#9: 红色警示） -->
+        <radialGradient id="node-weak-glow">
+          <stop offset="0%" stop-color="#ff6b6b" stop-opacity="0.9" />
+          <stop offset="60%" stop-color="#ff6b6b" stop-opacity="0.3" />
+          <stop offset="100%" stop-color="#ff6b6b" stop-opacity="0" />
+        </radialGradient>
       </defs>
 
       <!-- 连线层 -->
@@ -192,13 +204,13 @@ function handleResize() {
           v-for="node in nodes"
           :key="`node-${node.id}`"
           :transform="`translate(${node.x}, ${node.y})`"
-          :class="{ active: activeNodes.includes(node.id) }"
+          :class="{ active: activeNodes.includes(node.id), labeled: node.id < labels.length }"
         >
           <!-- 辉光（活跃节点）-->
           <circle
-            v-if="activeNodes.includes(node.id)"
+            v-if="activeNodes.includes(node.id) || (labels[node.id] && labels[node.id].status === 'weak')"
             r="16"
-            fill="url(#node-active-glow)"
+            :fill="labels[node.id] && labels[node.id].status === 'weak' ? 'url(#node-weak-glow)' : 'url(#node-active-glow)'"
             class="active-glow"
           />
           <!-- 节点本体 -->
@@ -208,6 +220,14 @@ function handleResize() {
             :opacity="activeNodes.includes(node.id) ? 1 : 0.5"
             class="node-circle"
           />
+          <!-- 知识点标签（#9: labels 传入时前 N 个节点显示） -->
+          <text
+            v-if="labels[node.id]"
+            y="20"
+            text-anchor="middle"
+            class="node-label"
+            :class="'node-label--' + labels[node.id].status"
+          >{{ labels[node.id].topic }}</text>
           <!-- 漂浮动画包裹 -->
           <animateTransform
             attributeName="transform"
@@ -257,5 +277,23 @@ function handleResize() {
     opacity: 1;
     transform: scale(1.4);
   }
+}
+
+/* #9: 知识点标签样式 */
+.node-label {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 11px;
+  font-weight: 600;
+  pointer-events: none;
+  user-select: none;
+}
+.node-label--mastered {
+  fill: #00a07d;
+}
+.node-label--weak {
+  fill: #d9483f;
+}
+.node-label--learning {
+  fill: #4a6fa5;
 }
 </style>

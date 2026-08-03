@@ -7,9 +7,17 @@
 import { computed } from 'vue'
 import { useProfileStore } from '@/stores/profile'
 import KnowledgeGraph from '@/components/KnowledgeGraph.vue'
+import { getKnowledgeStructure } from '@/utils/diagnosisInput'
 
 const profileStore = useProfileStore()
 const profile = computed(() => profileStore.profile)
+
+// #9: 知识图谱真实知识点标签（注入诊断输入的数据源，同时可视化展示）
+const knowledgeLabels = computed(() => {
+  const structure = getKnowledgeStructure()
+  // 确保节点数不超过 KnowledgeGraph 的 node-count（14）
+  return structure.slice(0, 8)
+})
 
 // 基础信息
 const avatarInitial = computed(() => {
@@ -65,7 +73,7 @@ const timeline = [
 
 <template>
   <div class="profile-view">
-    <KnowledgeGraph :node-count="14" :flow-dots="true" />
+    <KnowledgeGraph :node-count="14" :flow-dots="true" :labels="knowledgeLabels" />
 
     <div class="profile-content">
       <!-- 页头 -->
