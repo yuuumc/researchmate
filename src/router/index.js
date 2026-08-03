@@ -74,6 +74,12 @@ const routes = [
     meta: { title: '复习计划', agent: 'planner' }
   },
   {
+    path: '/journey',
+    name: 'journey',
+    component: () => import('@/views/JourneyView.vue'),
+    meta: { title: '旗舰旅程', agent: 'cascade' }
+  },
+  {
     path: '/career',
     name: 'career',
     component: () => import('@/views/CareerView.vue'),
