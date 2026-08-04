@@ -56,7 +56,7 @@ const reportData = computed(() => {
     return {
       score: s.score ?? SEED_DIAGNOSIS_REPORT.score,
       subject: s.subject || SEED_DIAGNOSIS_REPORT.subject,
-      weak_points: s.weak_points || [],
+      weak_points: (s.weak_points || []).map(p => typeof p === 'object' ? p.knowledge_point || p.reason || JSON.stringify(p) : p),
       direct_causes: s.direct_causes || [],
       middle_causes: s.middle_causes || [],
       root_causes: s.root_causes || [],

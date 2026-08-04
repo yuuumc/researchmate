@@ -6,6 +6,21 @@ defineProps({
   }
 })
 
+// 清洗 LLM 输出中的 markdown / HTML 标签
+function cleanText(text) {
+  if (text == null) return ''
+  let t = String(text)
+  // Strip HTML tags
+  t = t.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '')
+  // Strip markdown code backticks
+  t = t.replace(/`{1,3}/g, '')
+  // Strip markdown bold/italic markers
+  t = t.replace(/\*{1,2}([^*]+)\*{1,2}/g, '$1')
+  // Collapse whitespace
+  t = t.replace(/\s+/g, ' ').trim()
+  return t
+}
+
 // 4 层根因链配置
 const layers = [
   { key: 'weak_points', label: '表面问题', en: 'Surface', color: '#ff6b6b', desc: '错题表现' },
@@ -72,7 +87,7 @@ const layers = [
                 class="point-chip"
                 :style="{ '--chip-color': layer.color }"
               >
-                {{ p }}
+                {{ cleanText(p) }}
               </span>
             </div>
             <div v-else class="layer-empty">— 未识别 —</div>
