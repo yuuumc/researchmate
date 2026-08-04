@@ -5,6 +5,7 @@ import { useProfileStore } from '@/stores/profile'
 import { usePlanStore } from '@/stores/plan'
 import { useResearchStore } from '@/stores/research'
 import ResearchCard from '@/components/ResearchCard.vue'
+import AiGeneratedBadge from '@/components/AiGeneratedBadge.vue'
 import { SEED_RESEARCH } from '@/data/seedDemo'
 
 const router = useRouter()
@@ -80,7 +81,7 @@ function goChat() {
       <section class="section">
         <div class="section-head">
           <span class="section-icon">◇</span>
-          <span class="section-title">科研成长路线 <span v-if="hasApiResult" class="api-badge">AI</span></span>
+          <span class="section-title">科研成长路线 <AiGeneratedBadge v-if="hasApiResult" /></span>
           <span class="section-en">Research Roadmap</span>
         </div>
         <ResearchCard :data="researchData" />

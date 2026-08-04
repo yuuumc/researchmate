@@ -4,6 +4,7 @@ import { usePracticeStore } from '@/stores/practice'
 import { useProfileStore } from '@/stores/profile'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { SEED_QUESTIONS } from '@/data/seedDemo'
+import AiGeneratedBadge from '@/components/AiGeneratedBadge.vue'
 
 const practiceStore = usePracticeStore()
 const profileStore = useProfileStore()
@@ -164,7 +165,7 @@ function toggleSeedAnswer(idx) {
       </section>
       <section v-if="questions.length" class="result-section">
         <div class="section-header">
-          <h2 class="section-title">练习题 <span v-if="hasApiResult" class="ai-badge">AI</span></h2>
+          <h2 class="section-title">练习题 <AiGeneratedBadge v-if="hasApiResult" /></h2>
           <span class="section-en">{{ questions.length }} Questions</span>
         </div>
         <div class="question-list">

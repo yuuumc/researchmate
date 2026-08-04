@@ -6,6 +6,7 @@ import { useTagInput } from '@/composables/useTagInput'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import schoolData from '@/data/employment/school-profiles.json'
 import { SEED_CAREER_PATHS } from '@/data/seedDemo'
+import AiGeneratedBadge from '@/components/AiGeneratedBadge.vue'
 
 const careerStore = useCareerStore()
 const profileStore = useProfileStore()
@@ -142,6 +143,7 @@ const seedPaths = SEED_CAREER_PATHS
         <div class="section-header">
           <h2 class="section-title">推荐路径</h2>
           <span class="section-en">Career Paths</span>
+          <AiGeneratedBadge />
         </div>
         <div class="path-cards">
           <div v-for="(path, i) in careerPaths" :key="i" class="path-card">

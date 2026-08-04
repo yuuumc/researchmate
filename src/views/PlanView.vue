@@ -6,6 +6,7 @@ import { useDiagnosisStore } from '@/stores/diagnosis'
 import { getDiagnosisResultForPlan, getKnowledgeStructure } from '@/utils/diagnosisInput'
 import KnowledgeGraph from '@/components/KnowledgeGraph.vue'
 import PlanCard from '@/components/PlanCard.vue'
+import AiGeneratedBadge from '@/components/AiGeneratedBadge.vue'
 import { SEED_PLAN } from '@/data/seedDemo'
 
 const planStore = usePlanStore()
@@ -127,7 +128,7 @@ function adjustmentCount(v) {
         <div class="section-header">
           <h2 class="section-title">当前计划</h2>
           <span class="section-en">Current Plan</span>
-          <span v-if="hasApiPlan" class="plan-badge">AI 生成</span>
+          <AiGeneratedBadge v-if="hasApiPlan" />
           <span v-else class="plan-badge plan-badge--seed">Demo</span>
         </div>
         <PlanCard :plan="plan" />

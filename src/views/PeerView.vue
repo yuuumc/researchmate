@@ -5,6 +5,7 @@ import { useProfileStore } from '@/stores/profile'
 import { useTagInput } from '@/composables/useTagInput'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { SEED_PEER_MATCHES } from '@/data/seedDemo'
+import AiGeneratedBadge from '@/components/AiGeneratedBadge.vue'
 
 const peerStore = usePeerStore()
 const profileStore = useProfileStore()
@@ -124,6 +125,7 @@ const seedMatches = SEED_PEER_MATCHES
         <div class="section-header">
           <h2 class="section-title">匹配结果</h2>
           <span class="section-en">Top {{ matches.length }}</span>
+          <AiGeneratedBadge />
         </div>
         <div class="match-cards">
           <div v-for="(m, i) in matches" :key="i" class="match-card">

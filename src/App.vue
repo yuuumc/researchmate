@@ -58,6 +58,9 @@ function onBootDone() {
           </transition>
         </router-view>
       </main>
+      <footer class="ai-global-notice">
+        ✦ 本平台内容由人工智能生成，仅供学习参考，请以官方信息为准
+      </footer>
       <SyncStatusBar />
       <ConflictResolveModal />
 
@@ -106,5 +109,14 @@ function onBootDone() {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+.ai-global-notice {
+  width: 100%;
+  padding: 8px 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--color-ink-600, #5a6b80);
+  background: color-mix(in srgb, #00d4aa 6%, transparent);
+  border-top: 1px solid color-mix(in srgb, #00d4aa 15%, transparent);
 }
 </style>

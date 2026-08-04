@@ -3,6 +3,7 @@ import { ref, nextTick, watch, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { route } from '@/core/router'
 import { callChatWithMode } from '@/api/agent'
+import AiGeneratedBadge from '@/components/AiGeneratedBadge.vue'
 import { useTraceStore } from '@/stores/trace'
 import { useProfileStore } from '@/stores/profile'
 import {
@@ -555,7 +556,7 @@ watch(messages, scheduleSave, { deep: true })
               <div v-if="msg.role === 'user'" class="user-bubble">{{ msg.content }}</div>
 
               <div v-else class="assistant-bubble" :class="{ error: msg.error, cancelled: msg.cancelled, streaming: msg.streaming }">
-                <span v-if="i === firstAssistantIdx" class="ai-generated-badge">AI</span>
+                <AiGeneratedBadge v-if="i === firstAssistantIdx" variant="block" />
                 <MarkdownRenderer :content="msg.content" />
 
                 <div v-if="msg.knowledge_path" class="agent-card knowledge-path-wrap">

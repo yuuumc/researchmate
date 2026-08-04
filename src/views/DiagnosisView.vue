@@ -5,6 +5,7 @@ import { useProfileStore } from '@/stores/profile'
 import { useDiagnosisStore } from '@/stores/diagnosis'
 import { buildDiagnosisInput } from '@/utils/diagnosisInput'
 import DiagnosisReport from '@/components/DiagnosisReport.vue'
+import AiGeneratedBadge from '@/components/AiGeneratedBadge.vue'
 import { SEED_DIAGNOSIS_REPORT, SEED_ABILITY_STARS } from '@/data/seedDemo'
 
 const router = useRouter()
@@ -224,6 +225,7 @@ function goJourney() {
           <span class="section-icon">◈</span>
           <span class="section-title">诊断结论 · 4 层根因链</span>
           <span class="section-en">Root Cause Chain</span>
+          <AiGeneratedBadge v-if="hasApiResult" />
         </div>
         <DiagnosisReport :report="reportData" />
       </section>
