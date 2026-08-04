@@ -1,10 +1,12 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { usePracticeStore } from '@/stores/practice'
+import { useProfileStore } from '@/stores/profile'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { SEED_QUESTIONS } from '@/data/seedDemo'
 
 const practiceStore = usePracticeStore()
+const profileStore = useProfileStore()
 
 const form = ref({
   knowledge_point: '',
@@ -17,6 +19,14 @@ const form = ref({
 const difficulties = ['初级', '中级', '高级']
 const questionTypes = ['选择题', '填空题', '简答题', '计算题']
 
+// 从画像薄弱点预填充知识点（#9 知识图谱联动）
+const weakTopics = computed(() => profileStore.profile?.weak_topics || [])
+onMounted(() => {
+  if (!form.value.knowledge_point && weakTopics.value.length > 0) {
+    form.value.knowledge_point = weakTopics.value[0]
+  }
+})
+
 async function submit() {
   if (!form.value.knowledge_point.trim()) return
   await practiceStore.runPractice({ ...form.value })
@@ -26,6 +36,7 @@ const questions = computed(() => practiceStore.questions)
 const result = computed(() => practiceStore.result)
 const loading = computed(() => practiceStore.loading)
 const error = computed(() => practiceStore.error)
+const hasApiResult = computed(() => practiceStore.hasResult)
 
 // 答案折叠状态
 const expandedAnswers = ref(new Set())
@@ -95,9 +106,22 @@ function toggleSeedAnswer(idx) {
         </div>
 
         <button class="submit-btn" :disabled="loading || !form.knowledge_point.trim()" @click="submit">
+          <span v-if="loading" class="submit-spinner"></span>
           {{ loading ? '生成中…' : '生成练习题' }}
         </button>
         <div v-if="error" class="error-msg">{{ error }}</div>
+      </section>
+
+      <!-- 薄弱点快捷填充 -->
+      <section v-if="weakTopics.length > 0" class="weak-tags-section">
+        <span class="weak-tags-label">薄弱知识点：</span>
+        <button
+          v-for="t in weakTopics"
+          :key="t"
+          class="weak-tag-btn"
+          :class="{ active: form.knowledge_point === t }"
+          @click="form.knowledge_point = t"
+        >{{ t }}</button>
       </section>
 
       <!-- 种子练习题（空态红线 · 评委首次进入即见内容） -->
@@ -140,7 +164,7 @@ function toggleSeedAnswer(idx) {
       </section>
       <section v-if="questions.length" class="result-section">
         <div class="section-header">
-          <h2 class="section-title">练习题</h2>
+          <h2 class="section-title">练习题 <span v-if="hasApiResult" class="ai-badge">AI</span></h2>
           <span class="section-en">{{ questions.length }} Questions</span>
         </div>
         <div class="question-list">
@@ -222,12 +246,78 @@ function toggleSeedAnswer(idx) {
 .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--color-node-active); }
 
 .submit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   padding: 12px 32px; background: var(--color-ink-900); color: var(--color-fg-inverse);
   border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600;
   cursor: pointer; transition: opacity var(--duration-fast);
 }
 .submit-btn:hover:not(:disabled) { opacity: 0.85; }
 .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.submit-spinner {
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: var(--color-fg-inverse);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 薄弱点快捷标签 */
+.weak-tags-section {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+  padding: 12px 16px;
+  background: color-mix(in srgb, #ff6b6b 5%, var(--color-bg-elevated));
+  border: 1px solid color-mix(in srgb, #ff6b6b 20%, transparent);
+  border-radius: var(--radius-md);
+}
+.weak-tags-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-fg-secondary);
+  white-space: nowrap;
+}
+.weak-tag-btn {
+  padding: 3px 10px;
+  background: var(--color-bg-base);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  color: var(--color-ink-700);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.weak-tag-btn:hover {
+  border-color: #ff6b6b;
+  color: #d9483f;
+}
+.weak-tag-btn.active {
+  background: color-mix(in srgb, #ff6b6b 15%, transparent);
+  border-color: #ff6b6b;
+  color: #d9483f;
+  font-weight: 600;
+}
+
+/* AI badge */
+.ai-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  margin-left: 4px;
+  background: linear-gradient(135deg, #4d9de0, #00d4aa);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.5px;
+  vertical-align: middle;
+}
 
 .error-msg { margin-top: 12px; padding: 10px 14px; background: rgba(255,107,107,0.08); border-radius: var(--radius-sm); color: #ff6b6b; font-size: 13px; }
 
