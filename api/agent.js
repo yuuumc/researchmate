@@ -142,7 +142,7 @@ export default async function handler(req, res) {
 
   // ---- 参数 clamp（P1 安全加固）----
   const temperature = Math.min(Math.max(Number(input.temperature) || 0.7, 0), 2)
-  const maxTokens = Math.min(Number(input.max_tokens) || 2000, 4000)
+  const maxTokens = Math.min(Number(input.max_tokens) || 4000, 8000)
 
   // ---- 调用 LLM（带 AbortController 超时）----
   const controller = new AbortController()
