@@ -1,4 +1,4 @@
-# 诊断 Agent Prompt · v3.1.1（Schema 对齐版 · 半导体/微电子）
+# 诊断 Agent Prompt · v3.2.0（4 层因果链版 · 半导体/微电子）
 
 > **版本**: 3.2.0 | **基于**: v3.1.1 | **变更**: 新增 direct_causes/middle_causes 字段，根因链从单层扩展为 4 层因果链 | **变更**: JSON 输出 Schema 对齐 diagnosis.js store
 > **对齐依据**: 旗舰多智能体工作流设计 §2.2 统一契约
