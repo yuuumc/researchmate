@@ -59,6 +59,7 @@ const AGENTS = {
   tutor:    { name: '辅导 Agent', desc: '教研模式答疑（LaTeX 规范化 + 5 维度 QA）', prompt: 'student-taoyan', ready: true },
   career:   { name: '就业 Agent', desc: '基于院校画像推荐 3 条就业路径 + 技能缺口分析', prompt: 'student-employment', ready: true },
   peer:     { name: '同伴匹配 Agent', desc: '匹配学习伙伴，构建互助小组', prompt: 'peer', ready: true },
+  research: { name: '科研 Agent', desc: '规划本科→研究生科研成长路线，推荐论文/技术栈/实验室', prompt: 'research', ready: true },
 }
 
 export default async function handler(req, res) {
@@ -123,12 +124,21 @@ export default async function handler(req, res) {
     }
   }
 
+  // research Agent: 注入规划结果
+  if (action === 'research') {
+    if (input.plan_result && typeof input.plan_result === 'object') {
+      systemPrompt += `\n\n# 规划结果（注入数据）\n\n\`\`\`json\n${JSON.stringify(input.plan_result, null, 2)}\n\`\`\`\n`
+    }
+  }
+
   // ---- 构造用户消息 ----
   const userInput = action === 'career'
     ? buildCareerQuery(input)
     : action === 'tutor'
       ? buildTutorQuery(input)
-      : JSON.stringify(input)
+      : action === 'research'
+        ? buildResearchQuery(input)
+        : JSON.stringify(input)
 
   // ---- 参数 clamp（P1 安全加固）----
   const temperature = Math.min(Math.max(Number(input.temperature) || 0.7, 0), 2)
@@ -214,4 +224,20 @@ function buildTutorQuery(input) {
   parts.push(`当前日期: ${new Date().toISOString().slice(0, 10)}`)
   parts.push(`问题: ${input.question || '请帮我梳理这个知识点。'}`)
   return parts.join('\n')
+}
+
+function buildResearchQuery(input) {
+  const parts = []
+  if (input.student_name) parts.push(`学生姓名: ${input.student_name}`)
+  if (input.target_major) parts.push(`目标专业: ${input.target_major}`)
+  if (input.target_direction) parts.push(`意向科研方向: ${input.target_direction}`)
+  if (input.current_stage) parts.push(`当前阶段: ${input.current_stage}`)
+  if (input.plan_result) parts.push(`备考计划: ${typeof input.plan_result === 'string' ? input.plan_result : JSON.stringify(input.plan_result)}`)
+
+  // 如果没有具体问题，默认请求完整科研路线
+  if (!input.question) {
+    parts.push('请根据我的专业、意向方向和备考计划，生成科研成长路线（roadmap 模式），包含路线/论文/技术栈/实验室推荐。')
+  }
+
+  return parts.join('\n') || '请生成科研成长路线。'
 }
