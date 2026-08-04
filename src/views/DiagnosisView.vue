@@ -528,6 +528,8 @@ function goJourney() {
 
 .ability-item {
   position: relative;
+  display: flex;
+  flex-direction: column;
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
@@ -587,9 +589,10 @@ function goJourney() {
 }
 
 .ability-tag {
-  position: absolute;
-  top: 12px;
-  right: 14px;
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-end;
+  margin-top: 8px;
   font-size: 10px;
   font-weight: 600;
   padding: 2px 8px;
