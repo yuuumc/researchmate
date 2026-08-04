@@ -74,6 +74,10 @@ function goProfile() {
   router.push('/profile')
 }
 
+function goHome() {
+  router.push('/')
+}
+
 const activeIndex = computed(() => coreAgents.findIndex((a) => a.key === props.activeAgent))
 </script>
 
@@ -81,7 +85,7 @@ const activeIndex = computed(() => coreAgents.findIndex((a) => a.key === props.a
   <header class="top-bar">
     <!-- 左侧：品牌 -->
     <div class="bar-left">
-      <div class="brand">
+      <div class="brand" @click="goHome" title="返回首页">
         <div class="brand-mark">
           <svg viewBox="0 0 40 40" class="brand-svg">
             <circle cx="20" cy="20" r="4" fill="#0f1e33" />
@@ -193,6 +197,12 @@ const activeIndex = computed(() => coreAgents.findIndex((a) => a.key === props.a
   display: flex;
   align-items: center;
   gap: 12px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.brand:hover {
+  opacity: 0.7;
 }
 
 .brand-mark {
