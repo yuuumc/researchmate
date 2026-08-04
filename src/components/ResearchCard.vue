@@ -8,20 +8,16 @@ const props = defineProps({
   }
 })
 
-// 难度颜色映射
-const difficultyColor = {
-  入门: '#00d4aa',
-  进阶: '#ffd166',
-  高级: '#ff6b6b'
-}
+// 检测是 API 新 schema（roadmap）还是种子旧 schema（undergrad_path）
+const isApiSchema = computed(() => Array.isArray(props.data.roadmap))
 
 // 难度标签类
 function difficultyClass(d) {
   return `diff-${d}`
 }
 
-// 合并本科 + 科研路径成单一时间线
-const fullTimeline = computed(() => {
+// === 旧 schema：合并本科 + 科研路径成单一时间线 ===
+const seedTimeline = computed(() => {
   const undergrad = (props.data.undergrad_path || []).map((p, i) => ({
     ...p,
     phase: '本科',
@@ -39,18 +35,50 @@ const fullTimeline = computed(() => {
   return [...undergrad, ...research]
 })
 
+// === 新 schema：roadmap → timeline ===
+const apiTimeline = computed(() => {
+  return (props.data.roadmap || []).map((p, i) => ({
+    phase: p.stage || `阶段 ${i + 1}`,
+    phaseEn: p.duration || '',
+    topic: p.focus || '',
+    reason: p.milestone || '',
+    color: i < 2 ? '#4d9de0' : '#e67e22',
+    idx: `r-${i}`
+  }))
+})
+
+// 统一 timeline
+const fullTimeline = computed(() => isApiSchema.value ? apiTimeline.value : seedTimeline.value)
+
 const hasTimeline = computed(() => fullTimeline.value.length > 0)
 const hasPapers = computed(() => (props.data.papers?.length || 0) > 0)
 const hasProjects = computed(() => (props.data.projects?.length || 0) > 0)
 const hasTechStack = computed(() => (props.data.tech_stack?.length || 0) > 0)
+const hasLabs = computed(() => (props.data.labs?.length || 0) > 0)
+const hasSummary = computed(() => !!props.data.summary)
+
+// tech_stack 兼容：新 schema 是 object 数组，旧 schema 是 string 数组
+const techStackItems = computed(() => {
+  const ts = props.data.tech_stack || []
+  return ts.map((t) => {
+    if (typeof t === 'string') return { name: t, priority: '', use_case: '' }
+    return { name: t.name || '', priority: t.priority || '', use_case: t.use_case || '' }
+  })
+})
 </script>
 
 <template>
   <div class="research-card">
-    <!-- 顶部方向标签 -->
+    <!-- 顶部方向/总览 -->
     <div v-if="data.direction" class="direction-bar">
       <span class="dir-label">DIRECTION</span>
       <span class="dir-name">{{ data.direction }}</span>
+    </div>
+
+    <!-- API 总览摘要 -->
+    <div v-if="hasSummary" class="summary-bar">
+      <span class="summary-icon">◈</span>
+      <span class="summary-text">{{ data.summary }}</span>
     </div>
 
     <!-- 成长路线图（本科 → 研究生）-->
@@ -75,8 +103,8 @@ const hasTechStack = computed(() => (props.data.tech_stack?.length || 0) > 0)
           <div class="step-body">
             <div class="step-head">
               <span class="step-phase" :style="{ color: step.color }">{{ step.phase }}</span>
-              <span class="step-stage">{{ step.stage }}</span>
-              <span class="step-topic">{{ step.topic }}</span>
+              <span v-if="step.phaseEn" class="step-stage">{{ step.phaseEn }}</span>
+              <span class="step-topic">{{ step.topic || step.task }}</span>
             </div>
             <div v-if="step.reason" class="step-reason">{{ step.reason }}</div>
           </div>
@@ -97,14 +125,39 @@ const hasTechStack = computed(() => (props.data.tech_stack?.length || 0) > 0)
           <div class="paper-num">{{ i + 1 }}</div>
           <div class="paper-body">
             <div class="paper-title">{{ paper.title }}</div>
-            <div v-if="paper.authors" class="paper-authors">{{ paper.authors }}</div>
-            <div v-if="paper.value" class="paper-value">{{ paper.value }}</div>
+            <div class="paper-meta">
+              <span v-if="paper.field" class="paper-field">{{ paper.field }}</span>
+              <span v-if="paper.venue" class="paper-venue">{{ paper.venue }}</span>
+              <span v-if="paper.authors" class="paper-authors">{{ paper.authors }}</span>
+              <span v-if="paper.difficulty" class="paper-difficulty" :class="difficultyClass(paper.difficulty)">{{ paper.difficulty }}</span>
+            </div>
+            <div v-if="paper.why" class="paper-value">{{ paper.why }}</div>
+            <div v-else-if="paper.value" class="paper-value">{{ paper.value }}</div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 推荐项目 -->
+    <!-- 推荐实验室/方向（新 schema） -->
+    <div v-if="hasLabs" class="section">
+      <div class="section-head">
+        <span class="section-icon">⬡</span>
+        <span class="section-title">推荐实验室</span>
+        <span class="section-en">LABS</span>
+        <span class="section-count">{{ data.labs.length }}</span>
+      </div>
+      <div class="lab-list">
+        <div v-for="(lab, i) in data.labs" :key="i" class="lab-item">
+          <div class="lab-head">
+            <span class="lab-name">{{ lab.name }}</span>
+            <span v-if="lab.direction" class="lab-direction">{{ lab.direction }}</span>
+          </div>
+          <div v-if="lab.match_reason" class="lab-reason">{{ lab.match_reason }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 推荐项目（旧 schema） -->
     <div v-if="hasProjects" class="section">
       <div class="section-head">
         <span class="section-icon">⬡</span>
@@ -115,16 +168,16 @@ const hasTechStack = computed(() => (props.data.tech_stack?.length || 0) > 0)
       <div class="project-list">
         <div v-for="(proj, i) in data.projects" :key="i" class="project-item">
           <div class="project-head">
-            <span class="project-name">{{ proj.name }}</span>
+            <span class="project-name">{{ typeof proj === 'string' ? proj : proj.name }}</span>
             <span
-              v-if="proj.difficulty"
+              v-if="typeof proj === 'object' && proj.difficulty"
               class="project-difficulty"
               :class="difficultyClass(proj.difficulty)"
             >
               {{ proj.difficulty }}
             </span>
           </div>
-          <div v-if="proj.output" class="project-output">
+          <div v-if="typeof proj === 'object' && proj.output" class="project-output">
             <span class="output-label">产出：</span>{{ proj.output }}
           </div>
         </div>
@@ -139,9 +192,11 @@ const hasTechStack = computed(() => (props.data.tech_stack?.length || 0) > 0)
         <span class="section-en">TECH STACK</span>
       </div>
       <div class="tech-list">
-        <span v-for="(tech, i) in data.tech_stack" :key="i" class="tech-item">
-          {{ tech }}
-        </span>
+        <div v-for="(tech, i) in techStackItems" :key="i" class="tech-item-wrap">
+          <span class="tech-item">{{ tech.name }}</span>
+          <span v-if="tech.priority" class="tech-priority">{{ tech.priority }}</span>
+          <span v-if="tech.use_case" class="tech-usecase">{{ tech.use_case }}</span>
+        </div>
       </div>
     </div>
   </div>
@@ -466,22 +521,157 @@ const hasTechStack = computed(() => (props.data.tech_stack?.length || 0) > 0)
   gap: 6px;
 }
 
-.tech-item {
-  padding: 4px 12px;
+.tech-item-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
   background: var(--color-bg-elevated, #fff);
   border: 1px solid var(--color-border-subtle, #e5e7eb);
   border-radius: var(--radius-full, 999px);
+  transition: all 0.2s;
+}
+
+.tech-item-wrap:hover {
+  background: rgba(230, 126, 34, 0.06);
+  border-color: #e67e22;
+}
+
+.tech-item {
   font-family: var(--font-mono, monospace);
   font-size: 11px;
   font-weight: 500;
   color: var(--color-ink-700, #374151);
+}
+
+.tech-priority {
+  font-size: 9px;
+  font-weight: 700;
+  color: #e67e22;
+  padding: 1px 4px;
+  background: rgba(230, 126, 34, 0.1);
+  border-radius: var(--radius-xs, 3px);
+}
+
+.tech-usecase {
+  font-size: 10px;
+  color: var(--color-fg-muted, #9ca3af);
+}
+
+/* === 总览摘要 === */
+.summary-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 14px;
+  background: linear-gradient(90deg, rgba(230, 126, 34, 0.08), transparent);
+  border-left: 3px solid #e67e22;
+  border-radius: var(--radius-md, 8px);
+  margin-bottom: 16px;
+}
+
+.summary-icon {
+  color: #e67e22;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.summary-text {
+  font-family: var(--font-serif, Georgia, serif);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink-900, #111827);
+  line-height: 1.5;
+}
+
+/* === 论文 meta === */
+.paper-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.paper-field {
+  font-size: 11px;
+  color: var(--color-fg-muted, #9ca3af);
+  font-family: var(--font-mono, monospace);
+}
+
+.paper-venue {
+  font-size: 11px;
+  color: var(--color-fg-muted, #9ca3af);
+  font-family: var(--font-mono, monospace);
+  font-style: italic;
+}
+
+.paper-authors {
+  font-size: 11px;
+  color: var(--color-fg-muted, #9ca3af);
+  font-family: var(--font-mono, monospace);
+  font-style: italic;
+}
+
+.paper-difficulty {
+  padding: 1px 6px;
+  border-radius: var(--radius-full, 999px);
+  font-size: 9px;
+  font-weight: 700;
+  font-family: var(--font-mono, monospace);
+}
+
+.paper-difficulty.diff-入门 { background: rgba(0, 212, 170, 0.12); color: #00a483; }
+.paper-difficulty.diff-进阶 { background: rgba(255, 209, 102, 0.18); color: #c79100; }
+.paper-difficulty.diff-高级 { background: rgba(255, 107, 107, 0.12); color: #e85555; }
+
+/* === 实验室 === */
+.lab-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lab-item {
+  padding: 12px 14px;
+  background: var(--color-bg-elevated, #fff);
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--color-border-subtle, #e5e7eb);
   transition: all 0.2s;
 }
 
-.tech-item:hover {
-  background: rgba(230, 126, 34, 0.06);
+.lab-item:hover {
   border-color: #e67e22;
+  transform: translateX(2px);
+}
+
+.lab-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.lab-name {
+  font-family: var(--font-serif, Georgia, serif);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink-900, #111827);
+}
+
+.lab-direction {
+  padding: 2px 8px;
+  background: rgba(230, 126, 34, 0.1);
+  border-radius: var(--radius-full, 999px);
+  font-size: 11px;
+  font-weight: 500;
   color: #e67e22;
+}
+
+.lab-reason {
+  font-size: 12px;
+  color: var(--color-fg-secondary, #6b7280);
+  line-height: 1.5;
 }
 
 /* === 响应式 === */
