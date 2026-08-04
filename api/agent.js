@@ -8,6 +8,7 @@
 //   - 支持 compact 模式（Groq provider 自动加载 .compact.md）
 //   - 响应体新增 structured 字段（从 LLM 输出提取 JSON 块）
 //   - v3.1.1: AbortController 超时 + 限流 + 错误脱敏 + 参数 clamp
+//   - v2.0-W1: CORS / 限流抽取至 ./_middleware.js（与 chat.js 共享）
 //
 // POST /api/agent
 // Body: { action: "diagnose|plan|practice|tutor|career|peer", input: {...} }
@@ -22,35 +23,9 @@
 
 import { getProviderConfig, validateProviderConfig, buildHeaders, buildMessages } from './llm-provider.js'
 import { loadPrompt, substitute, getSchoolProfile, getCareerPaths, shouldUseCompact, extractStructured } from './prompt-loader.js'
+import { applyCors, getClientIp, checkRateLimit, RATE_LIMIT_WINDOW_MS } from './_middleware.js'
 
 const AGENT_TIMEOUT_MS = 55000
-
-// ---- 简易限流（与 chat.js 共享 globalThis 桶，P0-6 兜底）----
-const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX || 20)
-const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 5 * 60 * 1000)
-const rateLimitBuckets = globalThis.__yanxintongRateLimitBuckets || (globalThis.__yanxintongRateLimitBuckets = new Map())
-
-function getClientIp(req) {
-  const fwd = req.headers['x-forwarded-for']
-  if (fwd) return String(fwd).split(',')[0].trim()
-  return req.headers['x-real-ip'] || (req.socket && req.socket.remoteAddress) || 'unknown'
-}
-
-function checkRateLimit(ip) {
-  const now = Date.now()
-  let bucket = rateLimitBuckets.get(ip)
-  if (!bucket || now - bucket.start >= RATE_LIMIT_WINDOW_MS) {
-    bucket = { start: now, count: 0 }
-    rateLimitBuckets.set(ip, bucket)
-  }
-  bucket.count += 1
-  if (rateLimitBuckets.size > 5000) {
-    for (const [key, value] of rateLimitBuckets) {
-      if (now - value.start >= RATE_LIMIT_WINDOW_MS) rateLimitBuckets.delete(key)
-    }
-  }
-  return bucket.count <= RATE_LIMIT_MAX
-}
 
 const AGENTS = {
   diagnose: { name: '诊断 Agent', desc: '识别学员知识薄弱点，生成分层诊断报告', prompt: 'diagnose', ready: true },
@@ -63,23 +38,10 @@ const AGENTS = {
 }
 
 export default async function handler(req, res) {
-  // ---- CORS ----
-  const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
-    .split(',').map((s) => s.trim()).filter(Boolean)
-  const requestOrigin = req.headers.origin || ''
-  const isSameOrigin = !requestOrigin
-  if (!isSameOrigin && !ALLOWED_ORIGINS.includes(requestOrigin)) {
-    return res.status(403).json({ error: 'cors_denied' })
-  }
-  res.setHeader('Vary', 'Origin')
-  res.setHeader('Access-Control-Allow-Origin', isSameOrigin ? 'null' : requestOrigin)
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  // ---- CORS（共享中间件，P0-3）----
+  if (!applyCors(req, res, '[api/agent]')) return
 
-  if (req.method === 'OPTIONS') return res.status(204).end()
-  if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' })
-
-  // ---- 限流（P0-6 兜底）----
+  // ---- 限流（共享中间件，P0-6 兜底）----
   const clientIp = getClientIp(req)
   if (!checkRateLimit(clientIp)) {
     console.warn('[api/agent] rate limited: ' + clientIp)

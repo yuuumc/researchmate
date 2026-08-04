@@ -11,41 +11,17 @@
 //   - JSON 模式 + SSE 流式模式
 //   - CORS 白名单 + 简易限流
 //   - 1 次降级重试
+//
+// v2.0-W1: CORS / 限流抽取至 ./_middleware.js（与 agent.js 共享）
 // ============================================================
 
 import { getProviderConfig, validateProviderConfig } from './llm-provider.js'
 import { loadPrompt, substitute, shouldUseCompact } from './prompt-loader.js'
+import { applyCors, getClientIp, checkRateLimit, RATE_LIMIT_WINDOW_MS } from './_middleware.js'
 
 const DEFAULT_MAX_DURATION_MS = 58000
 const STREAM_FIRST_TOKEN_TIMEOUT_MS = 30000
 const RETRY_MAX_TOKENS_RATIO = 0.5
-
-// ---- 简易限流（P0-6 兜底，Hobby plan 无 WAF）----
-const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX || 20)
-const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 5 * 60 * 1000)
-const rateLimitBuckets = globalThis.__yanxintongRateLimitBuckets || (globalThis.__yanxintongRateLimitBuckets = new Map())
-
-function getClientIp(req) {
-  const fwd = req.headers['x-forwarded-for']
-  if (fwd) return String(fwd).split(',')[0].trim()
-  return req.headers['x-real-ip'] || (req.socket && req.socket.remoteAddress) || 'unknown'
-}
-
-function checkRateLimit(ip) {
-  const now = Date.now()
-  let bucket = rateLimitBuckets.get(ip)
-  if (!bucket || now - bucket.start >= RATE_LIMIT_WINDOW_MS) {
-    bucket = { start: now, count: 0 }
-    rateLimitBuckets.set(ip, bucket)
-  }
-  bucket.count += 1
-  if (rateLimitBuckets.size > 5000) {
-    for (const [key, value] of rateLimitBuckets) {
-      if (now - value.start >= RATE_LIMIT_WINDOW_MS) rateLimitBuckets.delete(key)
-    }
-  }
-  return bucket.count <= RATE_LIMIT_MAX
-}
 
 // ---- mode → prompt 文件映射 ----
 const MODE_PROMPT_MAP = {
@@ -54,31 +30,10 @@ const MODE_PROMPT_MAP = {
 }
 
 export default async function handler(req, res) {
-  // CORS 白名单（P0-3）
-  const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-  const requestOrigin = req.headers.origin || ''
-  const isSameOrigin = !requestOrigin
-  const isOriginAllowed = isSameOrigin || ALLOWED_ORIGINS.includes(requestOrigin)
-  if (!isOriginAllowed) {
-    console.warn(`[api/chat] CORS denied for origin: ${requestOrigin}`)
-    return res.status(403).json({ error: 'cors_denied' })
-  }
-  res.setHeader('Vary', 'Origin')
-  res.setHeader('Access-Control-Allow-Origin', isSameOrigin ? 'null' : requestOrigin)
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  // CORS 白名单（共享中间件，P0-3）
+  if (!applyCors(req, res, '[api/chat]')) return
 
-  if (req.method === 'OPTIONS') {
-    return res.status(204).end()
-  }
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'method_not_allowed' })
-  }
-
-  // 简易限流（P0-6）
+  // 简易限流（共享中间件，P0-6）
   const clientIp = getClientIp(req)
   if (!checkRateLimit(clientIp)) {
     console.warn('[api/chat] rate limited: ' + clientIp)
