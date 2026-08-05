@@ -10,7 +10,8 @@ import router from './router'
 import App from './App.vue'
 import './styles/main.css'
 import './styles/tokens.css'        // v2.0 Design Tokens（UI 设计师交付）
-import './styles/theme-tokens.css'  // v2.0 深浅双主题 Token（W4 主题切换）
+import './styles/theme-tokens.css'
+import './styles/sidebar-layout.css'  // W4 侧边栏布局样式  // v2.0 深浅双主题 Token（W4 主题切换）
 import './styles/components.css'    // v2.0 yx- 组件库（UI 设计师交付）
 import { bootstrapSubject } from './utils/subjectLoader'
 import { useSubjectStore } from './stores/subject'

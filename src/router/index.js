@@ -70,6 +70,7 @@ const routes = [
   },
   {
     path: '/admission',
+    alias: '/school',
     name: 'admission',
     component: () => import('@/views/AdmissionView.vue'),
     meta: { title: '择校推荐', agent: 'admission' }
@@ -100,6 +101,7 @@ const routes = [
   },
   {
     path: '/peer',
+    alias: '/peers',
     name: 'peer',
     component: () => import('@/views/PeerView.vue'),
     meta: { title: '同伴匹配', agent: 'peer' }
