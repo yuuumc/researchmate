@@ -18,7 +18,7 @@ const router = useRouter()
 const auth = useAuthStore()
 const syncStore = useSyncStore()
 
-const visible = computed(() => syncStore.configured && auth.isAuthenticated)
+const visible = computed(() => syncStore.configured && auth.isAuthenticated && (isConflict.value || isOffline.value || status.value === 'error'))
 const status = computed(() => syncStore.status)
 const label = computed(() => syncStore.statusLabel)
 const lastText = computed(() => syncStore.lastSyncText)
