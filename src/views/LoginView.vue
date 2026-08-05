@@ -39,13 +39,15 @@ function onSuccess() {
 }
 
 onMounted(() => {
-  if (auth.isAuthenticated) dispatchByRole()
+  if (auth.isAuthenticated && !auth.isGuest) dispatchByRole()
 })
 
 watch(
-  () => auth.isAuthenticated,
-  (v) => {
-    if (v) dispatchByRole()
+  () => `${auth.isAuthenticated}:${auth.isGuest}`,
+  (val) => {
+    // Only dispatch when authenticated and not a guest (true:false)
+    // Guests stay on /login to complete real authentication
+    if (val === 'true:false') dispatchByRole()
   }
 )
 </script>

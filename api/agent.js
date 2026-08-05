@@ -30,8 +30,7 @@ function sanitizeUserInput(str, maxLen = 500) {
   if (!str) return ''
   return String(str)
     .slice(0, maxLen)
-    .replace(/[
-]+/g, ' ')
+    .replace(/\n+/g, ' ')
     .replace(/<[^>]*>/g, '')
     .trim()
 }

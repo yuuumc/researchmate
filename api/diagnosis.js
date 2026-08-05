@@ -25,8 +25,7 @@ function sanitizeUserInput(str, maxLen = 500) {
   if (!str) return ''
   return String(str)
     .slice(0, maxLen)
-    .replace(/[
-]+/g, ' ')  // Remove newlines that could break prompt structure
+    .replace(/\n+/g, ' ')  // Remove newlines that could break prompt structure
     .replace(/<[^>]*>/g, '')   // Strip HTML tags
     .trim()
 }
