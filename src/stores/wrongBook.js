@@ -21,6 +21,7 @@
 
 import { defineStore } from 'pinia'
 import { storage } from '@/utils/storage'
+import { supabase, isSupabaseConfigured } from '@/services/supabase'
 
 const STORAGE_KEY = 'wrong_book'
 
@@ -108,6 +109,77 @@ export const useWrongBookStore = defineStore('wrongBook', {
         (i) => !i.resolved || (i.resolved_at && new Date(i.resolved_at).getTime() > cutoff)
       )
       this.persist()
+    },
+
+
+    // W2 Step 3: 从 DB 加载错题
+    async loadFromDB() {
+      if (!isSupabaseConfigured) return
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const { data, error } = await supabase
+          .from('wrong_book_entries')
+          .select('id, question_id, wrong_count, last_wrong_at')
+          .eq('user_id', user.id)
+          .order('last_wrong_at', { ascending: false })
+          .limit(20)
+        if (error) {
+          console.warn('[wrongBook] loadFromDB:', error.message)
+          return
+        }
+        if (data && data.length > 0) {
+          // 拉取关联的 question 信息
+          const qIds = data.map(w => w.question_id).filter(Boolean)
+          if (qIds.length > 0) {
+            const { data: qData } = await supabase
+              .from('questions')
+              .select('id, knowledge_point, subject')
+              .in('id', qIds)
+            const qMap = {}
+            if (qData) {
+              for (const q of qData) qMap[q.id] = q
+            }
+            // Merge DB records into localStorage items
+            const dbTopics = new Set()
+            for (const w of data) {
+              const q = qMap[w.question_id]
+              if (!q) continue
+              dbTopics.add(q.knowledge_point)
+              const existing = this.items.find(i => i.topic === q.knowledge_point && !i.resolved)
+              if (existing) {
+                existing.occurrences = Math.max(existing.occurrences || 1, w.wrong_count || 1)
+                existing.last_seen = w.last_wrong_at
+              } else {
+                this.items.push({
+                  id: w.id,
+                  topic: q.knowledge_point,
+                  source: 'weak_point',
+                  ability_stars: 1,
+                  first_seen: w.last_wrong_at,
+                  last_seen: w.last_wrong_at,
+                  occurrences: w.wrong_count || 1,
+                  resolved: false,
+                  resolved_at: null,
+                  _question_id: w.question_id,
+                })
+              }
+            }
+            this.persist()
+          }
+        }
+      } catch (e) {
+        console.warn('[wrongBook] loadFromDB failed:', e)
+      }
+    },
+
+    resolveByTopic(topic) {
+      const item = this.items.find(i => i.topic === topic && !i.resolved)
+      if (item) {
+        item.resolved = true
+        item.resolved_at = new Date().toISOString()
+        this.persist()
+      }
     },
 
     clear() {

@@ -2,13 +2,19 @@
 import { ref, computed, onMounted } from 'vue'
 import { usePracticeStore } from '@/stores/practice'
 import { useProfileStore } from '@/stores/profile'
+import { useWrongBookStore } from '@/stores/wrongBook'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { SEED_QUESTIONS } from '@/data/seedDemo'
 import AiGeneratedBadge from '@/components/AiGeneratedBadge.vue'
 
 const practiceStore = usePracticeStore()
 const profileStore = useProfileStore()
+const wbStore = useWrongBookStore()
 
+// 模式切换：llm | db | retry
+const activeTab = ref('db')
+
+// LLM 模式表单
 const form = ref({
   knowledge_point: '',
   difficulty: '中级',
@@ -16,49 +22,97 @@ const form = ref({
   count: 5,
   student_level: '本科'
 })
-
 const difficulties = ['初级', '中级', '高级']
 const questionTypes = ['选择题', '填空题', '简答题', '计算题']
 
-// 从画像薄弱点预填充知识点（#9 知识图谱联动）
-const weakTopics = computed(() => profileStore.profile?.weak_topics || [])
-onMounted(() => {
-  if (!form.value.knowledge_point && weakTopics.value.length > 0) {
-    form.value.knowledge_point = weakTopics.value[0]
+// 薄弱知识点
+const weakPoints = computed(() =>
+  profileStore.profile?.weak_points || profileStore.profile?.weak_topics || []
+)
+
+onMounted(async () => {
+  if (!form.value.knowledge_point && weakPoints.value.length > 0) {
+    const first = weakPoints.value[0]
+    form.value.knowledge_point = typeof first === 'string' ? first : (first.knowledge_point || first.topic || '')
+  }
+  // 加载错题本
+  if (wbStore.unresolvedCount === 0) {
+    try { await wbStore.loadFromDB() } catch (e) { /* silent */ }
   }
 })
 
-async function submit() {
+// LLM 模式
+async function submitLLM() {
   if (!form.value.knowledge_point.trim()) return
   await practiceStore.runPractice({ ...form.value })
 }
 
-const questions = computed(() => practiceStore.questions)
-const result = computed(() => practiceStore.result)
-const loading = computed(() => practiceStore.loading)
-const error = computed(() => practiceStore.error)
-const hasApiResult = computed(() => practiceStore.hasResult)
+// DB 模式：按薄弱知识点抽题
+async function startDBPractice() {
+  const wps = weakPoints.value.map(wp =>
+    typeof wp === 'string' ? wp : (wp.knowledge_point || wp.topic || '')
+  ).filter(Boolean)
+  if (wps.length === 0) {
+    practiceStore.error = '请先完成诊断，生成薄弱知识点后再练习'
+    return
+  }
+  await practiceStore.sampleByWeakPoints(wps, 5)
+}
 
-// 答案折叠状态
-const expandedAnswers = ref(new Set())
-function toggleAnswer(idx) {
-  if (expandedAnswers.value.has(idx)) {
-    expandedAnswers.value.delete(idx)
-  } else {
-    expandedAnswers.value.add(idx)
+// 错题重练
+async function startRetry() {
+  await practiceStore.loadWrongQuestions()
+}
+
+// DB 模式判分
+const grading = ref(false)
+async function submitDBAnswers() {
+  grading.value = true
+  try {
+    await practiceStore.gradeAndPersist()
+  } catch (e) {
+    console.error('grade failed:', e)
+  } finally {
+    grading.value = false
   }
 }
 
-// 空态红线：无 Agent 结果时展示种子题目
-const showSeed = computed(() => !practiceStore.hasResult)
+// 掌握错题
+async function markResolved(questionId) {
+  await practiceStore.resolveWrongQuestion(questionId)
+}
+
+// 选择题选项
+function setChoiceAnswer(qId, idx) {
+  practiceStore.setDbAnswer(qId, String.fromCharCode(65 + idx))
+}
+
+// 状态
+const dbQuestions = computed(() => practiceStore.dbQuestions)
+const dbResults = computed(() => practiceStore.dbResults)
+const loading = computed(() => practiceStore.loading)
+const error = computed(() => practiceStore.error)
+const hasResult = computed(() => practiceStore.hasResult)
+const llmQuestions = computed(() => practiceStore.questions)
+
+const expandedAnswers = ref(new Set())
+function toggleAnswer(idx) {
+  if (expandedAnswers.value.has(idx)) expandedAnswers.value.delete(idx)
+  else expandedAnswers.value.add(idx)
+}
+
+const showSeed = computed(() => !hasResult.value && !practiceStore.hasDbQuestions)
 const seedQuestions = SEED_QUESTIONS
 const seedExpanded = ref(new Set())
 function toggleSeedAnswer(idx) {
-  if (seedExpanded.value.has(idx)) {
-    seedExpanded.value.delete(idx)
-  } else {
-    seedExpanded.value.add(idx)
-  }
+  if (seedExpanded.value.has(idx)) seedExpanded.value.delete(idx)
+  else seedExpanded.value.add(idx)
+}
+
+// 切换 tab 时清理
+function switchTab(tab) {
+  activeTab.value = tab
+  practiceStore.clear()
 }
 </script>
 
@@ -68,11 +122,210 @@ function toggleSeedAnswer(idx) {
       <div class="page-header">
         <div class="page-eyebrow"><span class="dot"></span><span>Practice Agent</span></div>
         <h1 class="page-title">练习题</h1>
-        <p class="page-subtitle">针对性出题 · 答案折叠 · 考点标签 · 解析</p>
+        <p class="page-subtitle">薄弱点抽题 · 自动判分 · 错题回写 · 错题重练</p>
       </div>
 
-      <!-- 表单 -->
-      <section class="form-section">
+      <!-- 模式切换 -->
+      <div class="tab-bar">
+        <button :class="['tab', { active: activeTab === 'db' }]" @click="switchTab('db')">
+          薄弱点练习
+        </button>
+        <button :class="['tab', { active: activeTab === 'retry' }]" @click="switchTab('retry')">
+          错题重练 <span v-if="wbStore.unresolvedCount" class="tab-badge">{{ wbStore.unresolvedCount }}</span>
+        </button>
+        <button :class="['tab', { active: activeTab === 'llm' }]" @click="switchTab('llm')">
+          AI 出题
+        </button>
+      </div>
+
+      <div v-if="error" class="error-banner">{{ error }}</div>
+
+      <!-- DB 模式 -->
+      <section v-if="activeTab === 'db'" class="db-section">
+        <div v-if="!practiceStore.hasDbQuestions && !loading" class="db-intro">
+          <div class="db-intro-card">
+            <h3>薄弱点练习</h3>
+            <p>从题库按你的薄弱知识点抽取选择/填空题，做题后自动判分，错题自动进错题本。</p>
+            <div v-if="weakPoints.length" class="weak-tags">
+              <span v-for="(wp, i) in weakPoints.slice(0, 8)" :key="i" class="weak-tag">
+                {{ typeof wp === 'string' ? wp : (wp.knowledge_point || wp.topic || JSON.stringify(wp)) }}
+              </span>
+            </div>
+            <div v-else class="no-weak">
+              <p>暂无薄弱知识点。请先完成一次 <router-link to="/diagnosis/session">混合诊断</router-link>。</p>
+            </div>
+            <button class="start-btn" @click="startDBPractice" :disabled="weakPoints.length === 0">
+              开始练习（5 题）
+            </button>
+          </div>
+        </div>
+
+        <!-- 加载中 -->
+        <div v-if="loading" class="loading-card">
+          <div class="spinner-lg"></div>
+          <p>正在从题库抽题…</p>
+        </div>
+
+        <!-- 做题 -->
+        <div v-if="practiceStore.hasDbQuestions && !dbResults" class="quiz-section">
+          <div class="quiz-bar">
+            <span class="quiz-progress">{{ practiceStore.dbAnsweredCount }}/{{ dbQuestions.length }}</span>
+            <div class="progress-track">
+              <div class="progress-fill" :style="{ width: (dbQuestions.length ? practiceStore.dbAnsweredCount / dbQuestions.length * 100 : 0) + '%' }"></div>
+            </div>
+          </div>
+
+          <div v-for="(q, idx) in dbQuestions" :key="q.id" class="question-card">
+            <div class="q-meta">
+              <span class="q-tag">{{ q.subject }}</span>
+              <span class="q-tag q-tag--type">{{ q.question_type === 'choice' ? '选择' : '填空' }}</span>
+              <span class="q-tag q-tag--diff">难度 {{ q.difficulty }}</span>
+              <span class="q-kp">{{ q.knowledge_point }}</span>
+            </div>
+            <div class="q-stem">{{ idx + 1 }}. {{ q.stem }}</div>
+
+            <div v-if="q.question_type === 'choice' && q.options" class="q-options">
+              <label v-for="(opt, i) in q.options" :key="i" class="q-option"
+                :class="{ active: practiceStore.dbAnswers[q.id] === String.fromCharCode(65 + i) }">
+                <input type="radio" :name="'pq-' + q.id" :value="String.fromCharCode(65 + i)"
+                  :checked="practiceStore.dbAnswers[q.id] === String.fromCharCode(65 + i)"
+                  @change="setChoiceAnswer(q.id, i)" />
+                <span class="opt-letter">{{ String.fromCharCode(65 + i) }}</span>
+                <span class="opt-text">{{ typeof opt === 'string' ? opt : (opt.text || opt.label || opt) }}</span>
+              </label>
+            </div>
+
+            <div v-else class="q-fill">
+              <input type="text" class="fill-input" placeholder="填写你的答案…"
+                :value="practiceStore.dbAnswers[q.id] || ''"
+                @input="practiceStore.setDbAnswer(q.id, $event.target.value)" />
+            </div>
+          </div>
+
+          <button class="submit-btn" @click="submitDBAnswers" :disabled="grading">
+            <span v-if="grading" class="spinner"></span>
+            {{ grading ? '判分中…' : '提交判分' }}
+          </button>
+        </div>
+
+        <!-- 判分结果 -->
+        <div v-if="dbResults" class="result-section">
+          <div class="result-banner" :class="{ 'result-good': dbResults.wrong === 0 }">
+            <span class="result-icon">{{ dbResults.wrong === 0 ? '🎉' : '📝' }}</span>
+            <span>答对 {{ dbResults.correct }}/{{ dbResults.total }} 题，{{ dbResults.wrong }} 题已加入错题本</span>
+          </div>
+
+          <div v-for="(d, idx) in dbResults.details" :key="d.question_id" class="result-card" :class="{ wrong: !d.is_correct }">
+            <div class="q-meta">
+              <span class="q-tag" :class="d.is_correct ? 'q-tag--ok' : 'q-tag--err'">{{ d.is_correct ? '✓ 正确' : '✗ 错误' }}</span>
+              <span class="q-tag q-tag--diff">难度 {{ d.difficulty }}</span>
+              <span class="q-kp">{{ d.knowledge_point }}</span>
+            </div>
+            <div class="q-stem">{{ idx + 1 }}. {{ d.stem }}</div>
+            <div class="answer-row">
+              <span class="answer-label">你的答案：</span>
+              <span class="answer-value" :class="{ 'wrong-text': !d.is_correct }">{{ d.user_answer || '(未作答)' }}</span>
+            </div>
+            <div v-if="!d.is_correct" class="answer-row">
+              <span class="answer-label">正确答案：</span>
+              <span class="answer-value correct-text">{{ d.correct_answer }}</span>
+            </div>
+            <button v-if="!d.is_correct" class="resolve-btn" @click="markResolved(d.question_id)">
+              已掌握，移出错题本
+            </button>
+          </div>
+
+          <div class="done-actions">
+            <button class="action-btn" @click="startDBPractice">再来一组</button>
+            <button class="action-btn action-btn--ghost" @click="switchTab('retry')">错题重练</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 错题重练模式 -->
+      <section v-if="activeTab === 'retry'" class="retry-section">
+        <div v-if="!practiceStore.hasDbQuestions && !loading && !dbResults" class="retry-intro">
+          <div class="db-intro-card">
+            <h3>错题重练</h3>
+            <p>从错题本中加载之前的错题，重新作答。答对后可标记为已掌握。</p>
+            <button class="start-btn" @click="startRetry">加载错题</button>
+          </div>
+        </div>
+
+        <div v-if="loading" class="loading-card">
+          <div class="spinner-lg"></div>
+          <p>正在加载错题…</p>
+        </div>
+
+        <!-- 同 DB 模式的做题 + 结果 UI -->
+        <div v-if="practiceStore.hasDbQuestions && !dbResults" class="quiz-section">
+          <div class="quiz-bar">
+            <span class="quiz-progress">{{ practiceStore.dbAnsweredCount }}/{{ dbQuestions.length }}</span>
+            <div class="progress-track">
+              <div class="progress-fill" :style="{ width: (dbQuestions.length ? practiceStore.dbAnsweredCount / dbQuestions.length * 100 : 0) + '%' }"></div>
+            </div>
+          </div>
+          <div v-for="(q, idx) in dbQuestions" :key="q.id" class="question-card">
+            <div class="q-meta">
+              <span class="q-tag">{{ q.subject }}</span>
+              <span class="q-tag q-tag--type">{{ q.question_type === 'choice' ? '选择' : '填空' }}</span>
+              <span class="q-kp">{{ q.knowledge_point }}</span>
+            </div>
+            <div class="q-stem">{{ idx + 1 }}. {{ q.stem }}</div>
+            <div v-if="q.question_type === 'choice' && q.options" class="q-options">
+              <label v-for="(opt, i) in q.options" :key="i" class="q-option"
+                :class="{ active: practiceStore.dbAnswers[q.id] === String.fromCharCode(65 + i) }">
+                <input type="radio" :name="'rq-' + q.id" :value="String.fromCharCode(65 + i)"
+                  :checked="practiceStore.dbAnswers[q.id] === String.fromCharCode(65 + i)"
+                  @change="setChoiceAnswer(q.id, i)" />
+                <span class="opt-letter">{{ String.fromCharCode(65 + i) }}</span>
+                <span class="opt-text">{{ typeof opt === 'string' ? opt : (opt.text || opt.label || opt) }}</span>
+              </label>
+            </div>
+            <div v-else class="q-fill">
+              <input type="text" class="fill-input" placeholder="填写你的答案…"
+                :value="practiceStore.dbAnswers[q.id] || ''"
+                @input="practiceStore.setDbAnswer(q.id, $event.target.value)" />
+            </div>
+          </div>
+          <button class="submit-btn" @click="submitDBAnswers" :disabled="grading">
+            <span v-if="grading" class="spinner"></span>
+            {{ grading ? '判分中…' : '提交判分' }}
+          </button>
+        </div>
+
+        <div v-if="dbResults" class="result-section">
+          <div class="result-banner" :class="{ 'result-good': dbResults.wrong === 0 }">
+            <span class="result-icon">{{ dbResults.wrong === 0 ? '🎉' : '📝' }}</span>
+            <span>答对 {{ dbResults.correct }}/{{ dbResults.total }} 题</span>
+          </div>
+          <div v-for="(d, idx) in dbResults.details" :key="d.question_id" class="result-card" :class="{ wrong: !d.is_correct }">
+            <div class="q-meta">
+              <span class="q-tag" :class="d.is_correct ? 'q-tag--ok' : 'q-tag--err'">{{ d.is_correct ? '✓ 正确' : '✗ 错误' }}</span>
+              <span class="q-kp">{{ d.knowledge_point }}</span>
+            </div>
+            <div class="q-stem">{{ idx + 1 }}. {{ d.stem }}</div>
+            <div class="answer-row">
+              <span class="answer-label">你的答案：</span>
+              <span class="answer-value" :class="{ 'wrong-text': !d.is_correct }">{{ d.user_answer || '(未作答)' }}</span>
+            </div>
+            <div v-if="!d.is_correct" class="answer-row">
+              <span class="answer-label">正确答案：</span>
+              <span class="answer-value correct-text">{{ d.correct_answer }}</span>
+            </div>
+            <button v-if="d.is_correct" class="resolve-btn" @click="markResolved(d.question_id)">
+              已掌握，移出错题本
+            </button>
+          </div>
+          <div class="done-actions">
+            <button class="action-btn" @click="startRetry">重新加载错题</button>
+            <button class="action-btn action-btn--ghost" @click="switchTab('db')">薄弱点练习</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- LLM 模式（保留原有） -->
+      <section v-if="activeTab === 'llm'" class="llm-section">
         <div class="form-row">
           <div class="form-group">
             <label>知识点</label>
@@ -84,8 +337,6 @@ function toggleSeedAnswer(idx) {
               <option v-for="d in difficulties" :key="d" :value="d">{{ d }}</option>
             </select>
           </div>
-        </div>
-        <div class="form-row">
           <div class="form-group">
             <label>题型</label>
             <select v-model="form.question_type">
@@ -94,275 +345,149 @@ function toggleSeedAnswer(idx) {
           </div>
           <div class="form-group">
             <label>数量</label>
-            <input v-model.number="form.count" type="number" min="1" max="20" />
-          </div>
-          <div class="form-group">
-            <label>学生水平</label>
-            <select v-model="form.student_level">
-              <option>本科</option>
-              <option>硕士</option>
-              <option>博士</option>
-            </select>
+            <input v-model.number="form.count" type="number" min="1" max="10" />
           </div>
         </div>
-
-        <button class="submit-btn" :disabled="loading || !form.knowledge_point.trim()" @click="submit">
-          <span v-if="loading" class="submit-spinner"></span>
-          {{ loading ? '生成中…' : '生成练习题' }}
+        <button class="submit-btn" @click="submitLLM" :disabled="loading">
+          <span v-if="loading" class="spinner"></span>
+          {{ loading ? 'AI 出题中…' : '生成练习题' }}
         </button>
-        <div v-if="error" class="error-msg">{{ error }}</div>
-      </section>
 
-      <!-- 薄弱点快捷填充 -->
-      <section v-if="weakTopics.length > 0" class="weak-tags-section">
-        <span class="weak-tags-label">薄弱知识点：</span>
-        <button
-          v-for="t in weakTopics"
-          :key="t"
-          class="weak-tag-btn"
-          :class="{ active: form.knowledge_point === t }"
-          @click="form.knowledge_point = t"
-        >{{ t }}</button>
-      </section>
-
-      <!-- 种子练习题（空态红线 · 评委首次进入即见内容） -->
-      <section v-if="showSeed" class="result-section seed-section">
-        <div class="section-header">
-          <h2 class="section-title">练习题 <span class="seed-badge">Demo</span></h2>
-          <span class="section-en">{{ seedQuestions.length }} Questions</span>
-        </div>
-        <div class="question-list">
-          <div v-for="(q, i) in seedQuestions" :key="i" class="question-card">
-            <div class="q-header">
-              <span class="q-num">Q{{ i + 1 }}</span>
-              <span class="q-difficulty" :class="q.difficulty">{{ q.difficulty }}</span>
-              <span class="q-type">{{ q.type }}</span>
-              <span class="q-point">{{ q.point }}</span>
+        <div v-if="hasResult && llmQuestions.length" class="llm-results">
+          <div v-for="(q, idx) in llmQuestions" :key="idx" class="question-card">
+            <div class="q-meta">
+              <span class="q-tag q-tag--type">{{ q.type || q.question_type || '题目' }}</span>
+              <span v-if="q.difficulty_label" class="q-tag q-tag--diff">{{ q.difficulty_label }}</span>
             </div>
-            <div class="q-content">{{ q.question }}</div>
-            <div v-if="q.options?.length" class="q-options">
-              <div v-for="(opt, j) in q.options" :key="j" class="q-option">
-                <span class="opt-label">{{ String.fromCharCode(65 + j) }}.</span>
+            <div class="q-stem">{{ idx + 1 }}. {{ q.stem || q.question || '' }}</div>
+            <div v-if="q.options" class="q-options">
+              <div v-for="(opt, key) in q.options" :key="key" class="q-option q-option--static">
+                <span class="opt-letter">{{ key }}</span>
                 <span class="opt-text">{{ opt }}</span>
               </div>
             </div>
-            <div class="q-answer-area">
-              <button class="answer-toggle" @click="toggleSeedAnswer(i)">
-                {{ seedExpanded.has(i) ? '收起答案' : '查看答案' }}
-              </button>
-              <div v-if="seedExpanded.has(i)" class="q-answer">
-                <div class="answer-line">
-                  <span class="answer-label">答案：</span>{{ q.answer }}
-                </div>
-                <div class="answer-line">
-                  <span class="answer-label">解析：</span>{{ q.analysis }}
-                </div>
-              </div>
+            <button class="answer-toggle" @click="toggleAnswer(idx)">
+              {{ expandedAnswers.has(idx) ? '隐藏答案' : '查看答案' }}
+            </button>
+            <div v-if="expandedAnswers.has(idx)" class="answer-block">
+              <p><strong>答案：</strong>{{ q.answer }}</p>
+              <p v-if="q.explanation"><strong>解析：</strong>{{ q.explanation }}</p>
             </div>
           </div>
         </div>
-        <p class="seed-hint">以上为针对张同学薄弱点的示例题目，填写知识点生成个性化练习</p>
-      </section>
-      <section v-if="questions.length" class="result-section">
-        <div class="section-header">
-          <h2 class="section-title">练习题 <AiGeneratedBadge v-if="hasApiResult" /></h2>
-          <span class="section-en">{{ questions.length }} Questions</span>
-        </div>
-        <div class="question-list">
-          <div v-for="(q, i) in questions" :key="i" class="question-card">
-            <div class="q-header">
-              <span class="q-num">Q{{ i + 1 }}</span>
-              <span v-if="q.difficulty" class="q-difficulty" :class="q.difficulty">{{ q.difficulty }}</span>
-              <span v-if="q.question_type" class="q-type">{{ q.question_type }}</span>
-            </div>
-            <div class="q-content">{{ q.question || q.title || q.content }}</div>
 
-            <!-- 选项 -->
-            <div v-if="q.options?.length" class="q-options">
-              <div v-for="(opt, j) in q.options" :key="j" class="q-option">
-                <span class="opt-label">{{ String.fromCharCode(65 + j) }}.</span>
-                <span class="opt-text">{{ typeof opt === 'string' ? opt : opt.text || opt.content }}</span>
-              </div>
+        <!-- 种子题目 -->
+        <div v-if="showSeed" class="seed-section">
+          <h3 class="seed-title">示例题目</h3>
+          <div v-for="(q, idx) in seedQuestions" :key="idx" class="question-card">
+            <div class="q-meta">
+              <span class="q-tag q-tag--type">{{ q.type || '题目' }}</span>
             </div>
-
-            <!-- 考点标签 -->
-            <div v-if="q.tags?.length || q.knowledge_points?.length" class="q-tags">
-              <span v-for="t in (q.tags || q.knowledge_points)" :key="t" class="q-tag">{{ t }}</span>
-            </div>
-
-            <!-- 答案折叠 -->
-            <div class="q-answer-area">
-              <button class="answer-toggle" @click="toggleAnswer(i)">
-                {{ expandedAnswers.has(i) ? '收起答案' : '查看答案' }}
-              </button>
-              <div v-if="expandedAnswers.has(i)" class="q-answer">
-                <div v-if="q.answer" class="answer-line">
-                  <span class="answer-label">答案：</span>{{ q.answer }}
-                </div>
-                <div v-if="q.analysis || q.explanation" class="answer-line">
-                  <span class="answer-label">解析：</span>
-                  <MarkdownRenderer :content="q.analysis || q.explanation" />
-                </div>
-              </div>
+            <div class="q-stem">{{ idx + 1 }}. {{ q.stem }}</div>
+            <button class="answer-toggle" @click="toggleSeedAnswer(idx)">
+              {{ seedExpanded.has(idx) ? '隐藏答案' : '查看答案' }}
+            </button>
+            <div v-if="seedExpanded.has(idx)" class="answer-block">
+              <p><strong>答案：</strong>{{ q.answer }}</p>
+              <p v-if="q.explanation"><strong>解析：</strong>{{ q.explanation }}</p>
             </div>
           </div>
         </div>
-      </section>
-
-      <!-- Markdown fallback -->
-      <section v-if="result?.content && !questions.length" class="report-section">
-        <MarkdownRenderer :content="result.content" />
       </section>
     </div>
   </div>
 </template>
 
 <style scoped>
-.practice-view { min-height: calc(100vh - 72px); }
-.page-content { max-width: 880px; margin: 0 auto; padding: 40px 32px 64px; }
+.practice-view { min-height: 100vh; background: var(--bg-base, #f4f6fa); }
+.page-content { max-width: 760px; margin: 0 auto; padding: 24px 20px 80px; }
+.page-header { margin-bottom: 24px; }
+.page-eyebrow { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #7a8ba3; font-family: var(--font-mono, monospace); margin-bottom: 8px; }
+.page-eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: #4d9de0; }
+.page-title { font-size: 28px; font-weight: 700; color: #1a2332; margin: 0 0 8px; }
+.page-subtitle { font-size: 14px; color: #5a6b80; margin: 0; }
 
-.page-header { margin-bottom: 32px; }
-.page-eyebrow {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 4px 12px; background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border-subtle); border-radius: var(--radius-full);
-  font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-500); margin-bottom: 12px;
-}
-.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-node-active); }
-.page-title { font-family: var(--font-serif); font-size: 32px; font-weight: 700; color: var(--color-ink-900); margin: 0 0 8px; }
-.page-subtitle { font-size: 13px; color: var(--color-fg-secondary); margin: 0; }
+.tab-bar { display: flex; gap: 4px; margin-bottom: 20px; background: #fff; border-radius: 12px; padding: 4px; box-shadow: 0 2px 8px rgba(0,0,0,.04); }
+.tab { flex: 1; padding: 10px; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; color: #5a6b80; background: transparent; cursor: pointer; transition: all .15s; position: relative; }
+.tab.active { background: #4d9de0; color: #fff; }
+.tab-badge { display: inline-block; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #e53e3e; color: #fff; font-size: 11px; line-height: 18px; text-align: center; margin-left: 4px; }
 
-.form-section {
-  background: var(--color-bg-elevated); border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-lg); padding: 24px; margin-bottom: 24px; box-shadow: var(--shadow-sm);
-}
-.form-row { display: flex; gap: 16px; margin-bottom: 16px; }
-.form-group { flex: 1; margin-bottom: 16px; }
-.form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--color-ink-700); margin-bottom: 6px; }
-.form-group input, .form-group select {
-  width: 100%; padding: 10px 12px; background: var(--color-bg-base);
-  border: 1px solid var(--color-border-default); border-radius: var(--radius-sm);
-  font-size: 14px; color: var(--color-ink-900);
-}
-.form-group input:focus, .form-group select:focus { outline: none; border-color: var(--color-node-active); }
+.error-banner { padding: 12px 16px; background: #fff5f5; border: 1px solid #fed7d7; border-radius: 10px; color: #c53030; font-size: 14px; margin-bottom: 16px; }
 
-.submit-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 32px; background: var(--color-ink-900); color: var(--color-fg-inverse);
-  border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600;
-  cursor: pointer; transition: opacity var(--duration-fast);
-}
-.submit-btn:hover:not(:disabled) { opacity: 0.85; }
-.submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.db-intro-card { background: #fff; border-radius: 16px; padding: 32px; box-shadow: 0 2px 12px rgba(0,0,0,.06); text-align: center; }
+.db-intro-card h3 { font-size: 18px; margin: 0 0 12px; color: #1a2332; }
+.db-intro-card p { font-size: 14px; color: #5a6b80; line-height: 1.6; margin: 0 0 20px; }
+.weak-tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 20px; }
+.weak-tag { padding: 4px 10px; background: #fff5f5; border: 1px solid #fed7d7; border-radius: 6px; font-size: 12px; color: #c53030; }
+.no-weak p { font-size: 14px; color: #7a8ba3; }
+.no-weak a { color: #4d9de0; }
 
-.submit-spinner {
-  width: 14px; height: 14px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: var(--color-fg-inverse);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
+.start-btn { padding: 12px 32px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; color: #fff; background: linear-gradient(135deg, #4d9de0, #2563eb); cursor: pointer; }
+.start-btn:disabled { opacity: .5; cursor: not-allowed; }
 
+.loading-card { text-align: center; padding: 48px; background: #fff; border-radius: 16px; }
+.spinner-lg { width: 40px; height: 40px; border: 3px solid #e8ecf3; border-top-color: #4d9de0; border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 16px; }
+.spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; margin-right: 8px; vertical-align: middle; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* 薄弱点快捷标签 */
-.weak-tags-section {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 24px;
-  padding: 12px 16px;
-  background: color-mix(in srgb, #ff6b6b 5%, var(--color-bg-elevated));
-  border: 1px solid color-mix(in srgb, #ff6b6b 20%, transparent);
-  border-radius: var(--radius-md);
-}
-.weak-tags-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-fg-secondary);
-  white-space: nowrap;
-}
-.weak-tag-btn {
-  padding: 3px 10px;
-  background: var(--color-bg-base);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-full);
-  font-size: 12px;
-  color: var(--color-ink-700);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.weak-tag-btn:hover {
-  border-color: #ff6b6b;
-  color: #d9483f;
-}
-.weak-tag-btn.active {
-  background: color-mix(in srgb, #ff6b6b 15%, transparent);
-  border-color: #ff6b6b;
-  color: #d9483f;
-  font-weight: 600;
-}
+.quiz-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.quiz-progress { font-size: 13px; color: #5a6b80; white-space: nowrap; font-family: var(--font-mono, monospace); }
+.progress-track { flex: 1; height: 6px; background: #e8ecf3; border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #4d9de0, #2563eb); transition: width .3s; }
 
-/* AI badge */
-.ai-badge {
-  display: inline-block;
-  padding: 1px 6px;
-  margin-left: 4px;
-  background: linear-gradient(135deg, #4d9de0, #00d4aa);
-  color: #fff;
-  font-size: 9px;
-  font-weight: 700;
-  border-radius: var(--radius-full);
-  letter-spacing: 0.5px;
-  vertical-align: middle;
-}
+.question-card { background: #fff; border-radius: 14px; padding: 24px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,.04); }
+.q-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.q-tag { font-size: 11px; padding: 2px 8px; border-radius: 4px; background: #eef2f7; color: #5a6b80; }
+.q-tag--type { background: #e0f2fe; color: #0369a1; }
+.q-tag--diff { background: #fef3c7; color: #92400e; }
+.q-tag--ok { background: #c6f6d5; color: #22543d; }
+.q-tag--err { background: #fed7d7; color: #742a2a; }
+.q-kp { font-size: 12px; color: #7a8ba3; }
+.q-stem { font-size: 15px; color: #1a2332; line-height: 1.7; margin-bottom: 16px; }
 
-.error-msg { margin-top: 12px; padding: 10px 14px; background: rgba(255,107,107,0.08); border-radius: var(--radius-sm); color: #ff6b6b; font-size: 13px; }
+.q-options { display: flex; flex-direction: column; gap: 8px; }
+.q-option { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 2px solid #e8ecf3; border-radius: 10px; cursor: pointer; transition: all .15s; }
+.q-option:hover { border-color: #c3daef; }
+.q-option.active { border-color: #4d9de0; background: #f0f7ff; }
+.q-option--static { cursor: default; }
+.q-option--static:hover { border-color: #e8ecf3; }
+.q-option input { margin-top: 3px; }
+.opt-letter { font-weight: 700; color: #4d9de0; min-width: 18px; }
+.opt-text { font-size: 14px; color: #3a4a5e; }
 
-.section-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
-.section-title { font-family: var(--font-serif); font-size: 18px; font-weight: 700; color: var(--color-ink-900); margin: 0; }
-.section-en { font-family: var(--font-mono); font-size: 11px; color: var(--color-fg-tertiary); letter-spacing: 1px; }
+.fill-input { width: 100%; border: 2px solid #e8ecf3; border-radius: 10px; padding: 12px; font-size: 14px; box-sizing: border-box; }
+.fill-input:focus { outline: none; border-color: #4d9de0; }
 
-.question-list { display: flex; flex-direction: column; gap: 16px; }
-.question-card { background: var(--color-bg-elevated); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-lg); padding: 20px; }
-.q-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.q-num { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--color-ink-900); }
-.q-difficulty { padding: 2px 8px; border-radius: var(--radius-xs); font-size: 11px; font-weight: 600; }
-.q-difficulty.初级 { background: var(--color-success-bg); color: var(--color-success); }
-.q-difficulty.中级 { background: rgba(255,209,102,0.15); color: #b8860b; }
-.q-difficulty.高级 { background: rgba(255,107,107,0.1); color: #ff6b6b; }
-.q-type { padding: 2px 8px; background: var(--color-bg-sunken); border-radius: var(--radius-xs); font-size: 11px; color: var(--color-fg-tertiary); }
+.submit-btn { width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; color: #fff; background: linear-gradient(135deg, #4d9de0, #2563eb); cursor: pointer; }
+.submit-btn:disabled { opacity: .6; cursor: not-allowed; }
 
-.q-content { font-size: 15px; color: var(--color-ink-900); line-height: 1.7; margin-bottom: 12px; }
-.q-options { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
-.q-option { display: flex; gap: 6px; font-size: 14px; color: var(--color-ink-700); }
-.opt-label { font-weight: 600; color: var(--color-ink-900); }
+.result-banner { display: flex; align-items: center; gap: 10px; padding: 14px 20px; background: #fff5f5; border: 1px solid #fed7d7; border-radius: 12px; font-size: 14px; color: #c53030; margin-bottom: 16px; }
+.result-banner.result-good { background: #f0fff4; border-color: #9ae6b4; color: #22543d; }
+.result-icon { font-size: 20px; }
 
-.q-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
-.q-tag { padding: 2px 8px; background: var(--color-bg-sunken); border-radius: var(--radius-xs); font-size: 11px; color: var(--color-fg-tertiary); }
+.result-card { background: #fff; border-radius: 14px; padding: 24px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.04); border-left: 4px solid #48bb78; }
+.result-card.wrong { border-left-color: #e53e3e; }
+.answer-row { display: flex; gap: 8px; font-size: 14px; margin: 6px 0; }
+.answer-label { color: #7a8ba3; white-space: nowrap; }
+.answer-value { color: #1a2332; }
+.wrong-text { color: #e53e3e; }
+.correct-text { color: #38a169; font-weight: 600; }
+.resolve-btn { margin-top: 12px; padding: 6px 16px; border: 1px solid #38a169; background: #fff; color: #38a169; border-radius: 8px; font-size: 13px; cursor: pointer; }
+.resolve-btn:hover { background: #f0fff4; }
 
-.q-answer-area { border-top: 1px solid var(--color-border-subtle); padding-top: 10px; }
-.answer-toggle { background: none; border: none; cursor: pointer; font-size: 13px; color: var(--color-node-active); font-weight: 600; padding: 4px 0; }
-.answer-toggle:hover { text-decoration: underline; }
-.q-answer { margin-top: 8px; padding: 12px; background: var(--color-bg-sunken); border-radius: var(--radius-sm); }
-.answer-line { font-size: 13px; color: var(--color-ink-700); line-height: 1.7; margin-bottom: 8px; }
-.answer-line:last-child { margin-bottom: 0; }
-.answer-label { font-weight: 600; color: var(--color-ink-900); }
+.done-actions { display: flex; gap: 12px; margin-top: 20px; }
+.action-btn { flex: 1; padding: 12px; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; background: #4d9de0; color: #fff; }
+.action-btn--ghost { background: #fff; color: #4d9de0; border: 2px solid #4d9de0; }
 
-.report-section { margin-top: 24px; }
+.form-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.form-group { flex: 1; min-width: 120px; }
+.form-group label { display: block; font-size: 13px; color: #5a6b80; margin-bottom: 4px; }
+.form-group input, .form-group select { width: 100%; padding: 10px; border: 2px solid #e8ecf3; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
 
-/* 种子展示区 */
-.seed-badge { display: inline-block; padding: 1px 8px; margin-left: 6px; background: color-mix(in srgb, #e74c3c 15%, transparent); color: #e74c3c; border-radius: var(--radius-full); font-size: 10px; font-weight: 600; font-family: var(--font-mono); vertical-align: middle; }
-.seed-section { border-left: 3px solid #e74c3c; padding-left: 16px; }
-.q-point { font-family: var(--font-mono); font-size: 11px; color: var(--color-fg-tertiary); margin-left: auto; }
-.seed-hint { margin-top: 12px; font-size: 12px; color: var(--color-fg-muted); font-style: italic; }
+.answer-toggle { margin-top: 12px; padding: 6px 14px; border: 1px solid #4d9de0; background: #fff; color: #4d9de0; border-radius: 8px; font-size: 13px; cursor: pointer; }
+.answer-block { margin-top: 12px; padding: 12px; background: #f7fafc; border-radius: 8px; font-size: 14px; line-height: 1.6; }
+.answer-block p { margin: 4px 0; }
 
-@media (max-width: 768px) {
-  .page-content { padding: 24px 16px 48px; }
-  .page-title { font-size: 26px; }
-  .form-row { flex-direction: column; gap: 0; }
-}
+.seed-section { margin-top: 32px; }
+.seed-title { font-size: 16px; color: #5a6b80; margin-bottom: 16px; }
 </style>
