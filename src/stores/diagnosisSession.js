@@ -111,7 +111,11 @@ export const useDiagnosisSessionStore = defineStore('diagnosisSession', {
           question_type: q.question_type,
           difficulty: q.difficulty,
           stem: c.stem || c.question || c.title || '',
-          options: c.options || null,
+          options: c.options
+            ? (Array.isArray(c.options)
+              ? c.options
+              : (typeof c.options === 'object' ? Object.values(c.options) : [c.options]))
+            : null,
           correct_answer: c.answer ?? c.correct_answer ?? null,
           explanation: c.explanation || c.analysis || '',
         }
