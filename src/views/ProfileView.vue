@@ -1,21 +1,23 @@
 <script setup>
 // ============================================================
-// 学生画像中心页（V2 · spec 对齐）
+// 学生画像中心页（V2 · spec 对齐 + v2.0 编辑入口）
 // 两列布局：左列 320px 基础信息卡 + AI 评价卡
 //          右列知识图谱路径 + 成长时间线
 // ============================================================
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useProfileStore } from '@/stores/profile'
+import { isSupabaseConfigured } from '@/services/supabase'
 import KnowledgeGraph from '@/components/KnowledgeGraph.vue'
 import { getKnowledgeStructure } from '@/utils/diagnosisInput'
 
+const router = useRouter()
 const profileStore = useProfileStore()
 const profile = computed(() => profileStore.profile)
 
-// #9: 知识图谱真实知识点标签（注入诊断输入的数据源，同时可视化展示）
+// #9: 知识图谱真实知识点标签
 const knowledgeLabels = computed(() => {
   const structure = getKnowledgeStructure()
-  // 确保节点数不超过 KnowledgeGraph 的 node-count（14）
   return structure.slice(0, 8)
 })
 
@@ -30,7 +32,7 @@ const stageLabel = computed(() => {
   return map[profile.value.preparation_stage] || '基础阶段'
 })
 
-// 知识图谱路径数据（5 节点三态）
+// 知识图谱路径数据
 const knowledgePath = [
   { label: '半导体物理', status: 'mastered', icon: '半' },
   { label: 'MOSFET', status: 'learning', icon: 'M' },
@@ -39,7 +41,6 @@ const knowledgePath = [
   { label: 'AI Accelerator', status: 'target', icon: 'AI' }
 ]
 
-// 连接线状态：done / active / future
 const connectorStates = computed(() => {
   const states = []
   for (let i = 0; i < knowledgePath.length - 1; i++) {
@@ -58,17 +59,20 @@ const connectorStates = computed(() => {
   return states
 })
 
-// AI 评价数据
 const strengths = computed(() => profile.value.mastered_topics || [])
 const weaknesses = computed(() => profile.value.weak_topics || [])
 
-// 成长时间线数据（Demo 种子）
 const timeline = [
   { date: '2026.08', status: 'done', text: '完成半导体物理基础学习' },
   { date: '2026.10', status: 'active', text: '掌握 Verilog HDL 数字电路设计' },
   { date: '2027.01', status: 'future', text: '完成 FPGA 项目实战' },
   { date: '2027.06', status: 'future', text: '复现 AI 芯片顶会论文' }
 ]
+
+// v2.0: 编辑画像入口（仅 Supabase 配置后显示）
+function goEdit() {
+  router.push('/profile/edit')
+}
 </script>
 
 <template>
@@ -82,100 +86,104 @@ const timeline = [
           <span class="dot"></span>
           <span>Student Profile · AI Understanding</span>
         </div>
-        <h1 class="page-title">学生画像</h1>
-        <p class="page-subtitle">AI 对你的完整理解 — 持续学习中的智能体</p>
+        <div class="page-header-row">
+          <div>
+            <h1 class="page-title">学生画像</h1>
+            <p class="page-subtitle">AI 对你的完整理解 — 持续学习中的智能体</p>
+          </div>
+          <button
+            v-if="isSupabaseConfigured"
+            class="yx-btn yx-btn--secondary yx-btn--sm"
+            @click="goEdit"
+          >编辑画像</button>
+        </div>
       </div>
 
       <!-- 两列布局 -->
       <div class="profile-layout">
-        <!-- === 左列 === -->
+        <!-- 左列：基础信息卡 -->
         <div class="profile-left">
-          <!-- 基础信息卡 -->
-          <div class="profile-info-card">
-            <div class="profile-info-card__avatar">{{ avatarInitial }}</div>
-            <h3 class="profile-info-card__name">{{ profile.name || '同学' }}</h3>
-            <p class="profile-info-card__meta">
-              {{ profile.major || '未设定专业' }} · 大二
-            </p>
-            <div class="profile-info-card__rows">
-              <div class="profile-info-card__row">
-                <span class="profile-info-card__label">目标方向</span>
-                <span class="profile-info-card__value">{{ profile.target_direction || '未设定' }}</span>
+          <div class="info-card">
+            <div class="avatar-section">
+              <div class="avatar">{{ avatarInitial }}</div>
+              <div class="avatar-info">
+                <div class="avatar-name">{{ profile.name || '未设置' }}</div>
+                <div class="avatar-major">{{ profile.target_major || profile.major || '未设置专业' }}</div>
               </div>
-              <div class="profile-info-card__row">
-                <span class="profile-info-card__label">目标院校</span>
-                <span class="profile-info-card__value">{{ profile.target_school || '未设定' }}</span>
+            </div>
+
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="info-label">目标院校</span>
+                <span class="info-value">{{ profile.target_school || '未设置' }}</span>
               </div>
-              <div class="profile-info-card__row">
-                <span class="profile-info-card__label">备考阶段</span>
-                <span class="profile-info-card__value">{{ stageLabel }}</span>
+              <div class="info-item">
+                <span class="info-label">备考阶段</span>
+                <span class="info-value">{{ stageLabel }}</span>
               </div>
-              <div class="profile-info-card__row">
-                <span class="profile-info-card__label">专业能力</span>
-                <span class="profile-info-card__value">{{ profileStore.abilityLevel }}%</span>
+              <div class="info-item">
+                <span class="info-label">学习风格</span>
+                <span class="info-value">{{ profileStore.learningStyleLabel }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">距考研</span>
+                <span class="info-value highlight">{{ profileStore.daysLeft !== null ? profileStore.daysLeft + ' 天' : '未设置' }}</span>
               </div>
             </div>
           </div>
 
           <!-- AI 评价卡 -->
-          <div class="profile-eval-card">
-            <h4 class="profile-eval-card__title">
-              AI 评价
-              <span class="profile-eval-card__ai-badge">AI</span>
-            </h4>
-            <div class="profile-eval-card__section profile-eval-card__section--strength">
-              <p class="profile-eval-card__section-title">优势</p>
-              <div class="profile-eval-card__tags">
-                <span v-for="s in strengths" :key="s" class="profile-eval-card__tag">{{ s }}</span>
-                <span v-if="strengths.length === 0" class="profile-eval-card__empty">暂无数据</span>
-              </div>
+          <div class="ai-card">
+            <div class="ai-header">
+              <span class="ai-icon">AI</span>
+              <span class="ai-title">AI 评价</span>
             </div>
-            <div class="profile-eval-card__section profile-eval-card__section--weakness">
-              <p class="profile-eval-card__section-title">待提升</p>
-              <div class="profile-eval-card__tags">
-                <span v-for="w in weaknesses" :key="w" class="profile-eval-card__tag">{{ w }}</span>
-                <span v-if="weaknesses.length === 0" class="profile-eval-card__empty">暂无数据</span>
+            <div class="ai-content">
+              <div v-if="strengths.length" class="ai-section">
+                <span class="ai-tag ai-tag--good">优势</span>
+                <div class="ai-tags">
+                  <span v-for="s in strengths" :key="s" class="topic-tag topic-tag--good">{{ s }}</span>
+                </div>
               </div>
-            </div>
-            <div class="profile-eval-card__conclusion">
-              理论基础较好，实践能力不足——建议加强 Verilog 与 FPGA 实战训练
+              <div v-if="weaknesses.length" class="ai-section">
+                <span class="ai-tag ai-tag--weak">薄弱</span>
+                <div class="ai-tags">
+                  <span v-for="w in weaknesses" :key="w" class="topic-tag topic-tag--weak">{{ w }}</span>
+                </div>
+              </div>
+              <div v-if="!strengths.length && !weaknesses.length" class="ai-empty">
+                完成诊断后 AI 将生成评价
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- === 右列 === -->
+        <!-- 右列：知识图谱 + 时间线 -->
         <div class="profile-right">
-          <!-- 知识图谱路径 -->
-          <div class="knowledge-path">
-            <h4 class="knowledge-path__title">知识图谱路径</h4>
-            <div class="knowledge-path__flow">
-              <template v-for="(node, i) in knowledgePath" :key="i">
-                <div class="knowledge-path__node" :class="'knowledge-path__node--' + node.status">
-                  <div class="knowledge-path__node-circle">{{ node.icon }}</div>
-                  <span class="knowledge-path__node-label">{{ node.label }}</span>
+          <!-- 知识路径 -->
+          <div class="path-card">
+            <h3 class="card-title">知识图谱路径</h3>
+            <div class="knowledge-path">
+              <div v-for="(node, i) in knowledgePath" :key="node.label" class="path-node-wrap">
+                <div class="path-node" :class="'path-node--' + node.status">
+                  <span class="path-icon">{{ node.icon }}</span>
+                  <span class="path-label">{{ node.label }}</span>
                 </div>
-                <div
-                  v-if="i < knowledgePath.length - 1"
-                  class="knowledge-path__connector"
-                  :class="'knowledge-path__connector--' + connectorStates[i]"
-                ></div>
-              </template>
+                <div v-if="i < knowledgePath.length - 1" class="path-connector" :class="'connector--' + (connectorStates[i] || 'future')"></div>
+              </div>
             </div>
           </div>
 
           <!-- 成长时间线 -->
-          <div class="growth-timeline">
-            <h4 class="growth-timeline__title">成长时间线</h4>
-            <div class="growth-timeline__list">
-              <div
-                v-for="(item, i) in timeline"
-                :key="i"
-                class="growth-timeline__item"
-                :class="'growth-timeline__item--' + item.status"
-              >
-                <span class="growth-timeline__dot"></span>
-                <p class="growth-timeline__date">{{ item.date }}</p>
-                <p class="growth-timeline__text">{{ item.text }}</p>
+          <div class="timeline-card">
+            <h3 class="card-title">成长时间线</h3>
+            <div class="timeline">
+              <div v-for="item in timeline" :key="item.date" class="timeline-item" :class="'timeline-item--' + item.status">
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                  <span class="timeline-date">{{ item.date }}</span>
+                  <span class="timeline-text">{{ item.text }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -188,458 +196,359 @@ const timeline = [
 <style scoped>
 .profile-view {
   position: relative;
-  min-height: calc(100vh - 72px);
-  overflow: hidden;
+  min-height: 100vh;
 }
 
 .profile-content {
   position: relative;
-  z-index: var(--z-base);
-  max-width: 1080px;
+  z-index: 1;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 40px 32px 64px;
+  padding: var(--space-8, 32px) var(--space-4, 16px) var(--space-16, 64px);
 }
 
-/* === 页头 === */
 .page-header {
-  margin-bottom: 32px;
-  animation: float-up 0.5s var(--ease-out) both;
+  margin-bottom: var(--space-8, 32px);
 }
 
 .page-eyebrow {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 12px;
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-full);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--color-ink-500);
-  letter-spacing: 0.5px;
-  margin-bottom: 12px;
+  gap: var(--space-2, 8px);
+  font-family: var(--font-display, var(--font-body, sans-serif));
+  font-size: var(--text-xs, 12px);
+  color: var(--text-muted, var(--color-fg-tertiary, #94a3b8));
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-2, 8px);
 }
 
-.dot {
+.page-eyebrow .dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--color-node-active);
-  box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.2);
+  background: var(--primary, var(--color-node-active, #22d3ee));
+}
+
+.page-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4, 16px);
 }
 
 .page-title {
-  font-family: var(--font-serif);
-  font-size: 32px;
-  font-weight: 700;
-  color: var(--color-ink-900);
-  margin: 0 0 8px;
-  letter-spacing: 1px;
+  margin: 0;
+  font-family: var(--font-display, var(--font-serif, serif));
+  font-size: var(--text-2xl, 28px);
+  color: var(--text-primary, var(--color-ink-900, #f1f5f9));
 }
 
 .page-subtitle {
-  font-size: 13px;
-  color: var(--color-fg-secondary);
-  margin: 0;
+  margin: var(--space-1, 4px) 0 0;
+  font-size: var(--text-sm, 14px);
+  color: var(--text-secondary, var(--color-fg-secondary, #94a3b8));
 }
 
-/* === 两列布局 === */
 .profile-layout {
   display: grid;
   grid-template-columns: 320px 1fr;
-  gap: 20px;
-  animation: float-up 0.5s var(--ease-out) 0.1s both;
+  gap: var(--space-6, 24px);
 }
 
-.profile-left {
+@media (max-width: 768px) {
+  .profile-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 基础信息卡 */
+.info-card {
+  background: var(--bg-surface, var(--color-bg-elevated, #12141d));
+  border-radius: var(--radius-lg, 16px);
+  padding: var(--space-6, 24px);
+  box-shadow: var(--shadow-card, 0 0 0 1px rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.4));
+}
+
+.avatar-section {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  align-items: center;
+  gap: var(--space-4, 16px);
+  margin-bottom: var(--space-6, 24px);
 }
 
-.profile-right {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-/* === 基础信息卡 === */
-.profile-info-card {
-  padding: 24px;
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 14px;
-  box-shadow: var(--shadow-sm);
-}
-
-.profile-info-card__avatar {
-  width: 64px;
-  height: 64px;
+.avatar {
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-ink-700), var(--color-success));
+  background: var(--primary-dim, rgba(34,211,238,0.12));
+  color: var(--primary, #22d3ee);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
   font-size: 24px;
   font-weight: 600;
-  margin-bottom: 16px;
 }
 
-.profile-info-card__name {
-  font-size: 18px;
+.avatar-name {
+  font-size: var(--text-lg, 18px);
   font-weight: 600;
-  color: var(--color-ink-900);
-  margin: 0 0 4px;
+  color: var(--text-primary, #f1f5f9);
 }
 
-.profile-info-card__meta {
-  font-size: 13px;
-  color: var(--color-fg-secondary);
-  margin: 0 0 16px;
+.avatar-major {
+  font-size: var(--text-sm, 14px);
+  color: var(--text-secondary, #94a3b8);
+  margin-top: 2px;
 }
 
-.profile-info-card__rows {
+.info-grid {
   display: flex;
   flex-direction: column;
+  gap: var(--space-3, 12px);
 }
 
-.profile-info-card__row {
+.info-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--color-bg-sunken);
 }
 
-.profile-info-card__row:last-child {
-  border-bottom: none;
+.info-label {
+  font-size: var(--text-sm, 14px);
+  color: var(--text-muted, #64748b);
 }
 
-.profile-info-card__label {
-  font-size: 13px;
-  color: var(--color-fg-tertiary);
-}
-
-.profile-info-card__value {
-  font-size: 13px;
+.info-value {
+  font-size: var(--text-sm, 14px);
+  color: var(--text-primary, #f1f5f9);
   font-weight: 500;
-  color: var(--color-ink-900);
 }
 
-/* === AI 评价卡 === */
-.profile-eval-card {
-  padding: 24px;
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 14px;
-  box-shadow: var(--shadow-sm);
+.info-value.highlight {
+  color: var(--primary, #22d3ee);
+  font-family: var(--font-display, sans-serif);
 }
 
-.profile-eval-card__title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-ink-900);
-  margin: 0 0 16px;
+/* AI 评价卡 */
+.ai-card {
+  margin-top: var(--space-4, 16px);
+  background: var(--bg-surface, #12141d);
+  border-radius: var(--radius-lg, 16px);
+  padding: var(--space-6, 24px);
+  box-shadow: var(--shadow-card, 0 0 0 1px rgba(255,255,255,0.08));
+}
+
+.ai-header {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2, 8px);
+  margin-bottom: var(--space-4, 16px);
 }
 
-.profile-eval-card__ai-badge {
+.ai-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--primary-dim, rgba(34,211,238,0.12));
+  color: var(--primary, #22d3ee);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 10px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--color-ink-700);
-  background: color-mix(in srgb, var(--color-ink-700) 8%, transparent);
-  padding: 2px 6px;
-  border-radius: 4px;
+  font-weight: 700;
 }
 
-.profile-eval-card__section {
-  margin-bottom: 16px;
+.ai-title {
+  font-size: var(--text-sm, 14px);
+  font-weight: 600;
+  color: var(--text-primary, #f1f5f9);
 }
 
-.profile-eval-card__section-title {
-  font-size: 12px;
-  font-weight: 500;
-  margin: 0 0 8px;
+.ai-section {
+  margin-bottom: var(--space-3, 12px);
 }
 
-.profile-eval-card__section--strength .profile-eval-card__section-title {
-  color: var(--color-success);
+.ai-tag {
+  font-size: var(--text-xs, 12px);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill, 999px);
+  margin-bottom: var(--space-2, 8px);
+  display: inline-block;
 }
 
-.profile-eval-card__section--weakness .profile-eval-card__section-title {
-  color: var(--color-warning);
+.ai-tag--good {
+  background: rgba(52,211,153,0.1);
+  color: var(--success, #34d399);
 }
 
-.profile-eval-card__tags {
+.ai-tag--weak {
+  background: rgba(248,113,113,0.1);
+  color: var(--danger, #f87171);
+}
+
+.ai-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--space-2, 8px);
 }
 
-.profile-eval-card__tag {
-  font-size: 12px;
+.topic-tag {
+  font-size: var(--text-xs, 12px);
   padding: 4px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-pill, 999px);
 }
 
-.profile-eval-card__section--strength .profile-eval-card__tag {
-  background: color-mix(in srgb, var(--color-success) 8%, transparent);
-  color: var(--color-success);
+.topic-tag--good {
+  background: rgba(52,211,153,0.1);
+  color: var(--success, #34d399);
 }
 
-.profile-eval-card__section--weakness .profile-eval-card__tag {
-  background: color-mix(in srgb, var(--color-warning) 8%, transparent);
-  color: var(--color-warning);
+.topic-tag--weak {
+  background: rgba(248,113,113,0.1);
+  color: var(--danger, #f87171);
 }
 
-.profile-eval-card__empty {
-  font-size: 12px;
-  color: var(--color-fg-muted);
-  font-style: italic;
+.ai-empty {
+  font-size: var(--text-sm, 14px);
+  color: var(--text-muted, #64748b);
 }
 
-.profile-eval-card__conclusion {
-  font-size: 12px;
-  color: var(--color-fg-secondary);
-  line-height: 1.5;
-  padding-top: 12px;
-  border-top: 1px solid var(--color-bg-sunken);
+/* 知识路径卡 */
+.path-card,
+.timeline-card {
+  background: var(--bg-surface, #12141d);
+  border-radius: var(--radius-lg, 16px);
+  padding: var(--space-6, 24px);
+  box-shadow: var(--shadow-card, 0 0 0 1px rgba(255,255,255,0.08));
+  margin-bottom: var(--space-6, 24px);
 }
 
-/* === 知识图谱路径 === */
-.knowledge-path {
-  padding: 24px;
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 14px;
-  box-shadow: var(--shadow-sm);
-  overflow-x: auto;
-}
-
-.knowledge-path__title {
-  font-size: 14px;
+.card-title {
+  margin: 0 0 var(--space-6, 24px);
+  font-size: var(--text-lg, 18px);
   font-weight: 600;
-  color: var(--color-ink-900);
-  margin: 0 0 20px;
+  color: var(--text-primary, #f1f5f9);
 }
 
-.knowledge-path__flow {
+.knowledge-path {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.path-node-wrap {
   display: flex;
   align-items: center;
-  gap: 0;
-  min-width: 600px;
 }
 
-.knowledge-path__node {
+.path-node {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
+  gap: var(--space-1, 4px);
+  min-width: 80px;
 }
 
-.knowledge-path__node-circle {
-  width: 48px;
-  height: 48px;
+.path-icon {
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
   font-weight: 600;
-  border: 2.5px solid;
-  transition: all 0.3s ease;
 }
 
-/* 已掌握 */
-.knowledge-path__node--mastered .knowledge-path__node-circle {
-  background: var(--color-success);
-  border-color: var(--color-success);
-  color: white;
+.path-node--mastered .path-icon {
+  background: rgba(52,211,153,0.15);
+  color: var(--success, #34d399);
+  border: 2px solid var(--success, #34d399);
 }
 
-/* 学习中 */
-.knowledge-path__node--learning .knowledge-path__node-circle {
-  background: color-mix(in srgb, var(--color-ink-700) 10%, var(--color-bg-elevated));
-  border-color: var(--color-ink-700);
-  color: var(--color-ink-700);
-  animation: node-pulse 2s ease-in-out infinite;
+.path-node--learning .path-icon {
+  background: var(--primary-dim, rgba(34,211,238,0.12));
+  color: var(--primary, #22d3ee);
+  border: 2px solid var(--primary, #22d3ee);
 }
 
-@keyframes node-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-ink-700) 30%, transparent); }
-  50% { box-shadow: 0 0 0 8px transparent; }
+.path-node--pending .path-icon {
+  background: var(--bg-elevated, #1a1d29);
+  color: var(--text-muted, #64748b);
+  border: 2px solid var(--border-subtle, rgba(255,255,255,0.08));
 }
 
-/* 待学习 */
-.knowledge-path__node--pending .knowledge-path__node-circle {
-  background: var(--color-bg-elevated);
-  border-color: var(--color-border-subtle);
-  color: var(--color-fg-muted);
+.path-node--target .path-icon {
+  background: rgba(168,85,247,0.1);
+  color: var(--accent, #a855f7);
+  border: 2px solid var(--accent, #a855f7);
 }
 
-/* 目标 */
-.knowledge-path__node--target .knowledge-path__node-circle {
-  background: var(--color-bg-elevated);
-  border-color: var(--color-ink-700);
-  border-style: dashed;
-  color: var(--color-ink-700);
+.path-label {
+  font-size: var(--text-xs, 12px);
+  color: var(--text-secondary, #94a3b8);
 }
 
-.knowledge-path__node-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-fg-secondary);
-  text-align: center;
-  white-space: nowrap;
-}
-
-/* 连接线 */
-.knowledge-path__connector {
-  width: 40px;
+.path-connector {
+  width: 32px;
   height: 2px;
+  margin: 0 var(--space-1, 4px);
+}
+
+.connector--done { background: var(--success, #34d399); }
+.connector--active { background: var(--primary, #22d3ee); }
+.connector--future { background: var(--border-subtle, rgba(255,255,255,0.08)); }
+
+/* 时间线 */
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+}
+
+.timeline-item {
+  display: flex;
+  gap: var(--space-3, 12px);
+  position: relative;
+}
+
+.timeline-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 16px;
+  bottom: -16px;
+  width: 2px;
+  background: var(--border-subtle, rgba(255,255,255,0.08));
+}
+
+.timeline-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-top: 4px;
   flex-shrink: 0;
 }
 
-.knowledge-path__connector--done {
-  background: var(--color-success);
+.timeline-item--done .timeline-dot { background: var(--success, #34d399); }
+.timeline-item--active .timeline-dot { background: var(--primary, #22d3ee); box-shadow: 0 0 0 4px var(--primary-dim, rgba(34,211,238,0.12)); }
+.timeline-item--future .timeline-dot { background: var(--bg-elevated, #1a1d29); border: 2px solid var(--text-muted, #64748b); }
+
+.timeline-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.knowledge-path__connector--active {
-  background: linear-gradient(to right, var(--color-success), var(--color-ink-700));
+.timeline-date {
+  font-size: var(--text-xs, 12px);
+  color: var(--text-muted, #64748b);
+  font-family: var(--font-display, var(--font-mono, monospace));
 }
 
-.knowledge-path__connector--future {
-  background: var(--color-border-subtle);
-}
-
-/* === 成长时间线 === */
-.growth-timeline {
-  padding: 24px;
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 14px;
-  box-shadow: var(--shadow-sm);
-}
-
-.growth-timeline__title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-ink-900);
-  margin: 0 0 20px;
-}
-
-.growth-timeline__list {
-  position: relative;
-  padding-left: 24px;
-}
-
-/* 竖线 */
-.growth-timeline__list::before {
-  content: '';
-  position: absolute;
-  left: 7px;
-  top: 8px;
-  bottom: 8px;
-  width: 2px;
-  background: var(--color-border-subtle);
-}
-
-.growth-timeline__item {
-  position: relative;
-  padding-bottom: 24px;
-}
-
-.growth-timeline__item:last-child {
-  padding-bottom: 0;
-}
-
-/* 三态圆点 */
-.growth-timeline__dot {
-  position: absolute;
-  left: -24px;
-  top: 4px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 2.5px solid;
-  background: var(--color-bg-elevated);
-  z-index: 1;
-}
-
-/* 已完成 */
-.growth-timeline__item--done .growth-timeline__dot {
-  border-color: var(--color-success);
-  background: var(--color-success);
-}
-
-/* 进行中 */
-.growth-timeline__item--active .growth-timeline__dot {
-  border-color: var(--color-ink-700);
-  animation: node-pulse 2s ease-in-out infinite;
-}
-
-/* 未来 */
-.growth-timeline__item--future .growth-timeline__dot {
-  border-color: var(--color-border-subtle);
-}
-
-.growth-timeline__date {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-fg-tertiary);
-  margin: 0 0 2px;
-}
-
-.growth-timeline__item--done .growth-timeline__date {
-  color: var(--color-success);
-}
-
-.growth-timeline__item--active .growth-timeline__date {
-  color: var(--color-ink-700);
-}
-
-.growth-timeline__text {
-  font-size: 14px;
-  color: var(--color-ink-900);
-  margin: 0;
-  line-height: 1.5;
-}
-
-.growth-timeline__item--future .growth-timeline__text {
-  color: var(--color-fg-tertiary);
-}
-
-/* === 响应式 === */
-@media (max-width: 768px) {
-  .profile-content { padding: 24px 16px 48px; }
-  .page-title { font-size: 26px; }
-  .profile-layout {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-  .knowledge-path__flow {
-    min-width: 500px;
-  }
-}
-
-@media (max-width: 480px) {
-  .profile-content { padding: 20px 12px 40px; }
-  .page-title { font-size: 22px; }
-  .profile-info-card,
-  .profile-eval-card,
-  .knowledge-path,
-  .growth-timeline {
-    padding: 16px;
-  }
-  .knowledge-path__flow {
-    min-width: 400px;
-  }
+.timeline-text {
+  font-size: var(--text-sm, 14px);
+  color: var(--text-primary, #f1f5f9);
 }
 </style>

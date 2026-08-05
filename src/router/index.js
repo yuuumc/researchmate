@@ -21,6 +21,12 @@ const routes = [
     meta: { title: '完善画像', requireAuth: true, hideTopBar: true }
   },
   {
+    path: '/profile/edit',
+    name: 'profile-edit',
+    component: () => import('@/views/ProfileWizardView.vue'),
+    meta: { title: '编辑画像', requireAuth: true, hideTopBar: true }
+  },
+  {
     path: '/',
     name: 'home',
     component: () => import('@/views/HomeView.vue'),
@@ -138,8 +144,8 @@ router.beforeEach(async (to) => {
     return { path: '/login', query: { redirect: to.fullPath } }
   }
 
-  // 4.5 向导拦截：已登录但未完成向导 → /profile/wizard（除非已在向导页）
-  if (auth.isAuthenticated && to.name !== 'profile-wizard' && !auth.isGuest) {
+  // 4.5 向导拦截：已登录但未完成向导 → /profile/wizard（除非已在向导/编辑页）
+  if (auth.isAuthenticated && !['profile-wizard', 'profile-edit'].includes(to.name) && !auth.isGuest) {
     try {
       const needWizard = await needsWizard()
       if (needWizard) {

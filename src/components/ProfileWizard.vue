@@ -8,17 +8,22 @@
 // 完成后 wizard_completed = true → 跳转首页
 // 对齐 PRD 第六章 + UI 设计师 yx- 组件类
 // ============================================================
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useProfileStore } from '@/stores/profile'
-import { saveProfile, completeWizard } from '@/services/profileService'
+import { saveProfile, loadProfile } from '@/services/profileService'
 import { isSupabaseConfigured } from '@/services/supabase'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 const profileStore = useProfileStore()
+
+// 编辑模式：URL 带 ?edit=1 时预填已有数据
+const isEditMode = computed(() => route.query.edit === '1')
+const loadingExisting = ref(false)
 
 const currentStep = ref(1)
 const saving = ref(false)
@@ -129,10 +134,10 @@ async function handleComplete() {
     profileStore.setTarget(form.value.target_school, form.value.target_major)
     profileStore.setExamDate(form.value.exam_date)
 
-    ElMessage.success('画像录入完成！开始你的备考之旅')
+    ElMessage.success(isEditMode ? '画像已更新' : '画像录入完成！开始你的备考之旅')
 
-    // 跳转首页
-    router.push('/')
+    // 编辑模式跳回画像页，新建模式跳首页
+    router.push(isEditMode.value ? '/profile' : '/')
   } catch (e) {
     console.error('[ProfileWizard] save failed:', e)
     ElMessage.error('保存失败：' + (e?.message || '未知错误'))
@@ -143,6 +148,31 @@ async function handleComplete() {
 
 // ---- 降级：未配置 Supabase ----
 const degraded = !isSupabaseConfigured
+
+// ---- 编辑模式：预填已有数据 ----
+onMounted(async () => {
+  if (!isEditMode.value || !isSupabaseConfigured) return
+  loadingExisting.value = true
+  try {
+    const existing = await loadProfile()
+    if (existing) {
+      form.value.nickname = existing.nickname || ''
+      form.value.target_school = existing.target_school || ''
+      form.value.target_major = existing.target_major || ''
+      form.value.exam_year = existing.exam_year || 2027
+      form.value.mastered_skills = existing.mastered_skills || []
+      form.value.weak_points = existing.weak_points || []
+      form.value.self_assessment = existing.self_assessment || {}
+      form.value.exam_date = existing.exam_date || ''
+      form.value.weekly_hours = existing.weekly_hours || 20
+    }
+  } catch (e) {
+    console.warn('[ProfileWizard] load existing failed:', e)
+    ElMessage.warning('无法加载已有画像，请重新填写')
+  } finally {
+    loadingExisting.value = false
+  }
+})
 </script>
 
 <template>
@@ -172,7 +202,7 @@ const degraded = !isSupabaseConfigured
 
       <!-- Step 1: 基础信息 -->
       <div v-show="currentStep === 1" class="yx-card wizard-step">
-        <h2 class="wizard-title">基础信息</h2>
+        <h2 class="wizard-title">{{ isEditMode ? '编辑基础信息' : '基础信息' }}</h2>
         <p class="wizard-subtitle">先告诉我们怎么称呼你</p>
 
         <div class="wizard-field">
