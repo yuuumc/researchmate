@@ -9,6 +9,7 @@
 import { defineStore } from 'pinia'
 import { storage } from '@/utils/storage'
 import { callAgent } from '@/api/agent'
+import { supabase, isSupabaseConfigured } from '@/services/supabase'
 
 const STORAGE_KEY = 'diagnosis_history'
 
@@ -59,6 +60,50 @@ export const useDiagnosisStore = defineStore('diagnosis', {
     clear() {
       this.history = []
       this.persist()
+    },
+
+
+    // v2.1-W2: 从 diagnoses 表加载历史（混合模式写入的记录）
+    async loadFromDB() {
+      if (!isSupabaseConfigured) return
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const { data, error } = await supabase
+          .from('diagnoses')
+          .select('id, structured, score, created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(10)
+        if (error) {
+          console.warn('[diagnosis] loadFromDB error:', error.message)
+          return
+        }
+        if (data && data.length > 0) {
+          const dbRecords = data.map(row => {
+            const s = row.structured || {}
+            return {
+              id: row.id,
+              timestamp: row.created_at,
+              score: row.score ?? s.score ?? null,
+              subject: s.subject || '',
+              weak_points: Array.isArray(s.weak_points) ? s.weak_points : [],
+              root_causes: s.root_causes || s.direct_causes || [],
+              raw_report: '',
+              topics_snapshot: [],
+              ability_stars_snapshot: s.ability_stars || {},
+              _source: 'db'
+            }
+          })
+          // Merge: DB records first, then localStorage-only records (not in DB)
+          const dbIds = new Set(dbRecords.map(r => r.id))
+          const localOnly = this.history.filter(h => !dbIds.has(h.id))
+          this.history = [...dbRecords, ...localOnly]
+          this.persist()
+        }
+      } catch (e) {
+        console.warn('[diagnosis] loadFromDB failed:', e)
+      }
     },
 
     // v3.1: 调用 Agent API 执行诊断

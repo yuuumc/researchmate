@@ -24,6 +24,11 @@ echarts.use([
 ])
 
 const diagStore = useDiagnosisStore()
+
+// W2: 从 DB 加载诊断历史
+;(async () => {
+  try { await diagStore.loadFromDB() } catch (e) { /* silent */ }
+})()
 const history = computed(() => diagStore.history)
 
 // 趋势图数据：X = 诊断时间，Y = 平均 ability_stars
@@ -142,6 +147,9 @@ function handleResize() {
   if (chartInstance) chartInstance.resize()
 }
 
+onMounted(async () => {
+  await diagStore.loadFromDB()
+})
 onMounted(() => {
   nextTick(initChart)
   resizeObserver = new ResizeObserver(handleResize)

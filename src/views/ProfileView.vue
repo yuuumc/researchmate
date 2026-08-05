@@ -60,7 +60,7 @@ const connectorStates = computed(() => {
 })
 
 const strengths = computed(() => profile.value.mastered_topics || [])
-const weaknesses = computed(() => profile.value.weak_topics || [])
+const weaknesses = computed(() => profile.value.weak_topics || profile.value.weak_points || [])
 
 const timeline = [
   { date: '2026.08', status: 'done', text: '完成半导体物理基础学习' },
