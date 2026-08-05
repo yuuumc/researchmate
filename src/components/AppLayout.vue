@@ -87,14 +87,8 @@ function handleToggleTheme() {
 // ---- User menu ----
 const userMenuOpen = ref(false)
 function toggleUserMenu() {
-  if (!auth.isAuthenticated) {
-    router.push('/login')
-    return
-  }
-  if (auth.isGuest) {
-    router.push('/login')
-    return
-  }
+  // Always toggle the dropdown menu — never redirect directly.
+  // Guest sees "登录/注册" button inside the menu; logged-in user sees profile + signOut.
   userMenuOpen.value = !userMenuOpen.value
 }
 
@@ -268,14 +262,27 @@ onBeforeUnmount(() => {
 
           <!-- User dropdown -->
           <div v-if="userMenuOpen" class="yx-sidebar__dropdown">
-            <button class="yx-sidebar__dropdown-item" @click="goProfile">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              学生画像
-            </button>
-            <button class="yx-sidebar__dropdown-item yx-sidebar__dropdown-item--danger" @click="handleSignOut">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>
-              退出登录
-            </button>
+            <!-- Guest menu: login/register -->
+            <template v-if="isGuest">
+              <div class="yx-sidebar__dropdown-header">
+                <span class="yx-sidebar__dropdown-tag">游客模式</span>
+              </div>
+              <button class="yx-sidebar__dropdown-item yx-sidebar__dropdown-item--primary" @click="goLogin">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5M15 12H3"/></svg>
+                登录 / 注册
+              </button>
+            </template>
+            <!-- Logged-in menu: profile + signOut -->
+            <template v-else>
+              <button class="yx-sidebar__dropdown-item" @click="goProfile">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                学生画像
+              </button>
+              <button class="yx-sidebar__dropdown-item yx-sidebar__dropdown-item--danger" @click="handleSignOut">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>
+                退出登录
+              </button>
+            </template>
           </div>
         </div>
 

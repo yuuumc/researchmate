@@ -745,3 +745,31 @@
     display: none;
   }
 }
+
+
+/* Guest dropdown header */
+.yx-sidebar__dropdown-header {
+  padding: 8px 14px 4px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 2px;
+}
+
+.yx-sidebar__dropdown-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--warning) 15%, transparent);
+  color: var(--warning);
+}
+
+/* Primary dropdown item (login/register highlight) */
+.yx-sidebar__dropdown-item--primary {
+  color: var(--primary) !important;
+  font-weight: 600;
+}
+
+.yx-sidebar__dropdown-item--primary:hover {
+  background: color-mix(in srgb, var(--primary) 10%, transparent) !important;
+}
