@@ -110,6 +110,12 @@ function toggleSeedAnswer(idx) {
 }
 
 // 切换 tab 时清理
+// W3-3: AI 出题结果加入练习
+function addToPractice() {
+  practiceStore.addLLMToPractice(form.value.knowledge_point, form.value.difficulty)
+  activeTab.value = 'db'
+}
+
 function switchTab(tab) {
   activeTab.value = tab
   practiceStore.clear()
@@ -354,6 +360,12 @@ function switchTab(tab) {
         </button>
 
         <div v-if="hasResult && llmQuestions.length" class="llm-results">
+          <div class="add-to-practice-bar">
+            <button class="add-practice-btn" @click="addToPractice">
+              加入练习（{{ llmQuestions.length }} 题）
+            </button>
+            <span class="add-practice-hint">转为可做题模式，支持答题判分</span>
+          </div>
           <div v-for="(q, idx) in llmQuestions" :key="idx" class="question-card">
             <div class="q-meta">
               <span class="q-tag q-tag--type">{{ q.type || q.question_type || '题目' }}</span>
@@ -490,4 +502,40 @@ function switchTab(tab) {
 
 .seed-section { margin-top: 32px; }
 .seed-title { font-size: 16px; color: #5a6b80; margin-bottom: 16px; }
+
+/* W3-3: 加入练习 */
+.add-to-practice-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+}
+
+.add-practice-btn {
+  padding: 8px 18px;
+  background: var(--color-node-active);
+  color: var(--color-fg-inverse);
+  border: none;
+  border-radius: var(--radius-full);
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.add-practice-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.add-practice-hint {
+  font-size: 11px;
+  color: var(--color-fg-tertiary);
+}
 </style>

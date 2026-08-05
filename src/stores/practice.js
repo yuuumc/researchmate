@@ -380,6 +380,42 @@ export const usePracticeStore = defineStore('practice', {
       if (q) wbStore.resolveByTopic(q.knowledge_point)
     },
 
+
+    // ---- W3-3: AI 出题结果加入练习 ----
+    addLLMToPractice(knowledgePoint, difficulty) {
+      const llmQs = this.questions
+      if (!llmQs.length) return
+
+      this.dbQuestions = llmQs.map((q, idx) => {
+        const qType = (q.type || q.question_type || '').includes('选择') ? 'choice' : 'fill'
+        const opts = q.options
+          ? (typeof q.options === 'object' && !Array.isArray(q.options)
+            ? Object.entries(q.options).map(([k, v]) => k + '. ' + v)
+            : (Array.isArray(q.options) ? q.options : []))
+          : null
+        return {
+          id: 'ai_' + Date.now() + '_' + idx,
+          subject: 'AI生成',
+          knowledge_point: knowledgePoint || 'AI生成',
+          question_type: qType,
+          difficulty: difficulty || '中级',
+          stem: q.stem || q.question || '',
+          options: opts,
+          correct_answer: q.answer ?? q.correct_answer ?? null,
+          explanation: q.explanation || q.analysis || '',
+        }
+      })
+
+      this.dbAnswers = {}
+      for (const q of this.dbQuestions) {
+        this.dbAnswers[q.id] = ''
+      }
+      this.dbResults = null
+      this.mode = 'db'
+
+      return this.dbQuestions
+    },
+
     clear() {
       this.result = null
       this.error = null
