@@ -1,8 +1,8 @@
 <script setup>
 // ============================================================
-// AuthModal · 手机号 OTP 登录/注册（v2.5）
+// AuthModal · 邮箱 OTP 登录/注册（v2.5）
 // ============================================================
-// - 手机号 OTP：supabase.auth.signInWithOtp 发码 → auth store verifyOtp 验码
+// - 邮箱 OTP：supabase.auth.signInWithOtp 发码 → auth store verifyOtp 验码
 // - 微信扫码：占位（Supabase dashboard provider 未开，禁用态 + 提示）
 // - 未配置 Supabase：优雅降级卡片（本地单机模式说明），不白屏不报错
 // - mode="modal" 浮层 / mode="inline" 内嵌（LoginView 用）
@@ -123,7 +123,7 @@ function guestLogin() {
             <button class="btn btn-guest" @click="guestLogin">游客体验</button>
           </div>
 
-          <!-- 手机号 OTP -->
+          <!-- 邮箱 OTP -->
           <template v-else>
             <h3 class="auth-title">{{ step === 'email' ? '邮箱登录 / 注册' : '输入验证码' }}</h3>
             <p class="auth-subtitle">
@@ -158,7 +158,7 @@ function guestLogin() {
                 v-model="code"
                 class="input code-input"
                 type="text"
-                inputmode="numeric"
+                inputmode="email"
                 maxlength="6"
                 placeholder="6 位验证码"
                 :disabled="verifying"
@@ -215,16 +215,16 @@ function guestLogin() {
           {{ step === 'email' ? '未注册的邮箱将自动创建账号' : `验证码已发送至 ${email}` }}
         </p>
 
-        <div v-if="step === 'phone'" class="auth-form">
+        <div v-if="step === 'email'" class="auth-form">
           <div class="phone-input-row">
-            <span class="phone-prefix">+86</span>
+            
             <input
-              v-model="phone"
+              v-model="email"
               class="input"
-              type="tel"
-              inputmode="numeric"
-              maxlength="11"
-              placeholder="请输入 11 位手机号"
+              type="email"
+              inputmode="email"
+              maxlength="100"
+              placeholder="请输入邮箱地址"
               :disabled="sending"
               @keyup.enter="sendCode"
             />
@@ -244,7 +244,7 @@ function guestLogin() {
             v-model="code"
             class="input code-input"
             type="text"
-            inputmode="numeric"
+            inputmode="email"
             maxlength="6"
             placeholder="6 位验证码"
             :disabled="verifying"
