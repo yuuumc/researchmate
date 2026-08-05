@@ -99,16 +99,16 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * 手机号 OTP 登录
-     * @param {string} phone - E.164 格式（如 +8613800138000）
+     * 邮箱 OTP 登录
+     * @param {string} email - 邮箱地址
      * @param {string} token - 6 位验证码
      */
-    async verifyOtp(phone, token) {
+    async verifyOtp(email, token) {
       this.lastError = null
       const { data, error } = await supabase.auth.verifyOtp({
-        phone,
+        email,
         token,
-        type: 'sms'
+        type: 'email'
       })
       if (error) {
         this.lastError = error

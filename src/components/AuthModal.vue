@@ -20,8 +20,8 @@ const emit = defineEmits(['close', 'success'])
 
 const auth = useAuthStore()
 
-const step = ref('phone') // phone | code
-const phone = ref('')
+const step = ref('email') // email | code
+const email = ref('')
 const code = ref('')
 const sending = ref(false)
 const verifying = ref(false)
@@ -29,9 +29,8 @@ const errorMsg = ref('')
 const countdown = ref(0)
 let countdownTimer = null
 
-const phoneValid = computed(() => /^1[3-9]\d{9}$/.test(phone.value.trim()))
+const emailValid = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim()))
 const codeValid = computed(() => /^\d{6}$/.test(code.value.trim()))
-const e164Phone = computed(() => `+86${phone.value.trim()}`)
 
 function startCountdown() {
   countdown.value = 60
@@ -49,21 +48,21 @@ onBeforeUnmount(() => {
 })
 
 async function sendCode() {
-  if (!phoneValid.value || sending.value || countdown.value > 0) return
+  if (!emailValid.value || sending.value || countdown.value > 0) return
   sending.value = true
   errorMsg.value = ''
   try {
     const { error } = await supabase.auth.signInWithOtp({
-      phone: e164Phone.value,
+      email: email.value.trim(),
       options: { shouldCreateUser: true }
     })
     if (error) throw error
     step.value = 'code'
     startCountdown()
-    ElMessage.success('验证码已发送，请查收短信')
+    ElMessage.success('验证码已发送，请查收邮件')
   } catch (e) {
     console.error('[auth-modal] sendCode failed:', e)
-    errorMsg.value = e?.message || '验证码发送失败，请稍后重试'
+    errorMsg.value = e?.message || '验证码发送失败，请检查邮箱地址'
   } finally {
     sending.value = false
   }
@@ -74,7 +73,7 @@ async function verify() {
   verifying.value = true
   errorMsg.value = ''
   try {
-    await auth.verifyOtp(e164Phone.value, code.value.trim())
+    await auth.verifyOtp(email.value.trim(), code.value.trim())
     ElMessage.success('登录成功')
     emit('success')
     if (props.mode === 'modal') emit('close')
@@ -86,8 +85,8 @@ async function verify() {
   }
 }
 
-function backToPhone() {
-  step.value = 'phone'
+function backToEmail() {
+  step.value = 'email'
   code.value = ''
   errorMsg.value = ''
 }
@@ -126,28 +125,27 @@ function guestLogin() {
 
           <!-- 手机号 OTP -->
           <template v-else>
-            <h3 class="auth-title">{{ step === 'phone' ? '手机号登录 / 注册' : '输入验证码' }}</h3>
+            <h3 class="auth-title">{{ step === 'email' ? '邮箱登录 / 注册' : '输入验证码' }}</h3>
             <p class="auth-subtitle">
-              {{ step === 'phone' ? '未注册的手机号将自动创建账号' : `验证码已发送至 +86 ${phone}` }}
+              {{ step === 'email' ? '未注册的邮箱将自动创建账号' : `验证码已发送至 ${email}` }}
             </p>
 
-            <div v-if="step === 'phone'" class="auth-form">
+            <div v-if="step === 'email'" class="auth-form">
               <div class="phone-input-row">
-                <span class="phone-prefix">+86</span>
                 <input
-                  v-model="phone"
+                  v-model="email"
                   class="input"
-                  type="tel"
-                  inputmode="numeric"
-                  maxlength="11"
-                  placeholder="请输入 11 位手机号"
+                  type="email"
+                  inputmode="email"
+                  maxlength="100"
+                  placeholder="请输入邮箱地址"
                   :disabled="sending"
                   @keyup.enter="sendCode"
                 />
               </div>
               <button
                 class="btn btn-primary btn-block"
-                :disabled="!phoneValid || sending"
+                :disabled="!emailValid || sending"
                 :class="{ 'is-loading': sending }"
                 @click="sendCode"
               >
@@ -175,7 +173,7 @@ function guestLogin() {
                 {{ verifying ? '验证中…' : '登录' }}
               </button>
               <div class="code-actions">
-                <button class="btn-link" @click="backToPhone">换个手机号</button>
+                <button class="btn-link" @click="backToEmail">换个邮箱</button>
                 <button
                   class="btn-link"
                   :disabled="countdown > 0"
@@ -212,9 +210,9 @@ function guestLogin() {
       </div>
 
       <template v-else>
-        <h3 class="auth-title">{{ step === 'phone' ? '手机号登录 / 注册' : '输入验证码' }}</h3>
+        <h3 class="auth-title">{{ step === 'email' ? '邮箱登录 / 注册' : '输入验证码' }}</h3>
         <p class="auth-subtitle">
-          {{ step === 'phone' ? '未注册的手机号将自动创建账号' : `验证码已发送至 +86 ${phone}` }}
+          {{ step === 'email' ? '未注册的邮箱将自动创建账号' : `验证码已发送至 ${email}` }}
         </p>
 
         <div v-if="step === 'phone'" class="auth-form">
@@ -233,7 +231,7 @@ function guestLogin() {
           </div>
           <button
             class="btn btn-primary btn-block"
-            :disabled="!phoneValid || sending"
+            :disabled="!emailValid || sending"
             :class="{ 'is-loading': sending }"
             @click="sendCode"
           >
@@ -261,7 +259,7 @@ function guestLogin() {
             {{ verifying ? '验证中…' : '登录' }}
           </button>
           <div class="code-actions">
-            <button class="btn-link" @click="backToPhone">换个手机号</button>
+            <button class="btn-link" @click="backToEmail">换个邮箱</button>
             <button class="btn-link" :disabled="countdown > 0" @click="sendCode">
               {{ countdown > 0 ? `${countdown}s 后可重发` : '重新发送' }}
             </button>
