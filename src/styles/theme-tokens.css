@@ -1,0 +1,363 @@
+/* ============================================================
+ * 研芯通 v2.0 深浅双主题 Token 规范
+ * 来源：UI 设计方案第二章 + W4 走查 H-2 修复
+ *
+ * 用法：
+ *   <link rel="stylesheet" href="theme-tokens.css">
+ *   默认暗色（:root 即暗色）
+ *   亮色：<html data-theme="light"> 或 document.documentElement.dataset.theme = 'light'
+ *   暗色：<html data-theme="dark">  或 document.documentElement.dataset.theme = 'dark'
+ *
+ * 变量分三层：
+ *   A) 设计系统 Token（--bg-base / --text-primary / --primary 等，W1 已交付，新组件用）
+ *   B) 兼容映射 Token（--color-bg-elevated / --color-ink-900 等，现有代码用，映射到 A 层）
+ *   C) 组件专用 Token（--chart-* / --glass-* 等，图表/毛玻璃等需随主题调整的组件用）
+ *
+ * 铁律：A/B/C 三层在 :root 和 [data-theme="light"] 中必须逐一对应、无一遗漏。
+ * ============================================================ */
+
+/* ============================================================
+ * A 层：设计系统 Token（新组件用这套）
+ * ============================================================ */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* ---- 背景 ---- */
+  --bg-base: #0a0b12;
+  --bg-surface: #12141d;
+  --bg-elevated: #1a1d29;
+
+  /* ---- 文字 ---- */
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+
+  /* ---- 主色/强调 ---- */
+  --primary: #22d3ee;
+  --primary-dim: rgba(34, 211, 238, 0.12);
+  --primary-dim-strong: rgba(34, 211, 238, 0.20);
+  --secondary: #3b82f6;
+  --accent: #a855f7;
+  --accent-2: #ec4899;
+
+  /* ---- 状态色 ---- */
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+
+  /* ---- 边框 ---- */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-default: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.20);
+
+  /* ---- 阴影 ---- */
+  --shadow-card: 0 0 0 1px var(--border-subtle), 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-card-hover: 0 0 0 1px rgba(34, 211, 238, 0.35), 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 24px rgba(34, 211, 238, 0.12);
+  --shadow-focus: 0 0 0 3px rgba(34, 211, 238, 0.25);
+  --shadow-elevated: 0 0 0 1px var(--border-subtle), 0 16px 48px rgba(0, 0, 0, 0.5);
+
+  /* ---- 毛玻璃 ---- */
+  --glass-bg: rgba(18, 20, 29, 0.70);
+  --glass-blur: blur(16px) saturate(140%);
+
+  /* ---- 渐变（Hero 唯一允许） ---- */
+  --gradient-hero: radial-gradient(120% 90% at 70% 0%, rgba(34, 211, 238, 0.08) 0%, rgba(168, 85, 247, 0.05) 40%, var(--bg-base) 75%);
+
+  /* ---- 字体 ---- */
+  --font-body: "HarmonyOS Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-display: "Space Grotesk", "HarmonyOS Sans SC", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", monospace;
+
+  /* ---- 字号 ---- */
+  --text-xs: 12px; --text-sm: 14px; --text-base: 16px; --text-lg: 20px;
+  --text-xl: 24px; --text-2xl: 30px; --text-3xl: 38px; --text-4xl: 48px;
+
+  /* ---- 行高 ---- */
+  --leading-body: 1.6; --leading-title: 1.3;
+
+  /* ---- 间距（8px 栅格） ---- */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-6: 24px; --space-8: 32px; --space-12: 48px; --space-16: 64px;
+
+  /* ---- 圆角 ---- */
+  --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 24px; --radius-pill: 999px;
+
+  /* ---- 动效 ---- */
+  --ease-snappy: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-soft: cubic-bezier(0.33, 1, 0.68, 1);
+  --dur-fast: 150ms; --dur-base: 300ms; --dur-slow: 600ms;
+
+  /* ---- 层级 ---- */
+  --z-nav: 100; --z-modal: 200; --z-toast: 300;
+
+  /* ============================================================
+   * B 层：兼容映射 Token（现有代码用 --color-* 系列，映射到 A 层）
+   * 全栈确认 TopBar 用了 --color-bg-elevated / --color-ink-900 /
+   * --color-border-subtle 等，这里逐一映射，确保现有组件零改动即可适配双主题。
+   * ============================================================ */
+
+  /* --color-bg-* → --bg-* */
+  --color-bg-base: var(--bg-base);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-elevated: var(--bg-elevated);
+
+  /* --color-ink-* → --text-*（ink-900 最深=primary, ink-500=secondary, ink-300=muted） */
+  --color-ink-900: var(--text-primary);
+  --color-ink-700: var(--text-primary);
+  --color-ink-500: var(--text-secondary);
+  --color-ink-300: var(--text-muted);
+
+  /* --color-text-* 别名（部分组件可能用这个命名） */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+
+  /* --color-primary / --color-accent → --primary / --accent */
+  --color-primary: var(--primary);
+  --color-primary-dim: var(--primary-dim);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+
+  /* --color-border-* → --border-* */
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+
+  /* --color-status-* → --success / --warning / --danger */
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+
+  /* --color-shadow-* → --shadow-* */
+  --color-shadow-card: var(--shadow-card);
+  --color-shadow-elevated: var(--shadow-elevated);
+
+  /* ---- B 层扩展：grep 排查发现的表外变量 ---- */
+
+  /* bg 层级扩展 */
+  --color-bg-sunken: #08090e;        /* 凹陷区（暗色比 base 更深）*/
+  --color-bg-deep: #08090e;          /* 深色区块 */
+  --color-surface-default: var(--bg-surface);
+  --color-neutral-bg: var(--bg-elevated);
+
+  /* ink-100 → 边框级 */
+  --color-ink-100: var(--border-subtle);
+
+  /* node-* 状态色（知识图谱节点用）*/
+  --color-node-active: var(--primary);
+  --color-node-weak: var(--danger);
+  --color-node-warn: var(--warning);
+  --color-node-info: var(--secondary);
+
+  /* error/info 系列别名 */
+  --color-error: var(--danger);
+  --color-error-bg: rgba(248, 113, 113, 0.10);
+  --color-info: var(--secondary);
+  --color-info-bg: rgba(59, 130, 246, 0.10);
+
+  /* success-bg / warning-bg */
+  --color-success-bg: rgba(52, 211, 153, 0.10);
+  --color-warning-bg: rgba(251, 191, 36, 0.10);
+
+  /* fg-* 系列 */
+  --color-fg-primary: var(--text-primary);
+  --color-fg-secondary: var(--text-secondary);
+  --color-fg-tertiary: var(--text-muted);
+  --color-fg-inverse: var(--bg-base);
+  --color-fg-muted: var(--text-muted);
+
+  /* brand-* 系列 → primary 色阶 */
+  --color-brand-50: var(--primary-dim);
+  --color-brand-100: var(--primary-dim);
+  --color-brand-400: var(--primary);
+  --color-brand-500: var(--primary);
+  --color-brand-600: var(--primary);
+  --color-brand-700: var(--primary);
+
+  /* ============================================================
+   * C 层：组件专用 Token（需随主题调整的组件）
+   * ============================================================ */
+
+  /* 图表配色（暗色用高饱和霓虹，亮色用深饱和） */
+  --chart-1: #22d3ee;   /* 青 · 主数据系列 */
+  --chart-2: #3b82f6;   /* 蓝 · 第二系列 */
+  --chart-3: #a855f7;   /* 紫 · 第三系列 */
+  --chart-4: #ec4899;   /* 粉 · 第四系列 */
+  --chart-5: #fbbf24;   /* 黄 · 第五系列 */
+  --chart-grid: rgba(255, 255, 255, 0.06);   /* 图表网格线 */
+  --chart-axis: var(--text-muted);            /* 坐标轴文字 */
+  --chart-tooltip-bg: var(--bg-elevated);     /* tooltip 背景 */
+  --chart-tooltip-border: var(--border-subtle);
+
+  /* 导航栏 */
+  --nav-bg: var(--glass-bg);
+  --nav-blur: var(--glass-blur);
+  --nav-text: var(--text-secondary);
+  --nav-text-active: var(--primary);
+  --nav-indicator: var(--primary);
+
+  /* 输入框 */
+  --input-bg: var(--bg-base);
+  --input-border: var(--border-subtle);
+  --input-border-hover: rgba(34, 211, 238, 0.35);
+  --input-border-focus: var(--primary);
+  --input-text: var(--text-primary);
+  --input-placeholder: var(--text-muted);
+
+  /* 骨架屏 */
+  --skeleton-bg: var(--bg-elevated);
+  --skeleton-sweep: rgba(34, 211, 238, 0.08);
+
+  /* 标签/徽章底色（10% 语义色底） */
+  --tag-primary-bg: var(--primary-dim);
+  --tag-success-bg: rgba(52, 211, 153, 0.10);
+  --tag-warning-bg: rgba(251, 191, 36, 0.10);
+  --tag-danger-bg: rgba(248, 113, 113, 0.10);
+  --tag-accent-bg: rgba(168, 85, 247, 0.10);
+
+  /* boot overlay（走查 H-1 修复后保留的轻量 loading） */
+  --overlay-bg: rgba(10, 11, 18, 0.80);
+  --overlay-blur: blur(8px);
+  --overlay-text: var(--text-secondary);
+
+  /* 主题切换按钮 */
+  --theme-toggle-bg: var(--bg-elevated);
+  --theme-toggle-icon: var(--text-secondary);
+  --theme-toggle-icon-active: var(--primary);
+}
+
+/* ============================================================
+ * 亮色主题
+ * ============================================================ */
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* ---- A 层：设计系统 Token ---- */
+  --bg-base: #f6f8fc;
+  --bg-surface: #ffffff;
+  --bg-elevated: #ffffff;
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+
+  --primary: #0891b2;
+  --primary-dim: rgba(8, 145, 178, 0.10);
+  --primary-dim-strong: rgba(8, 145, 178, 0.18);
+  --secondary: #2563eb;
+  --accent: #7c3aed;
+  --accent-2: #db2777;
+
+  --success: #059669;
+  --warning: #d97706;
+  --danger: #dc2626;
+
+  --border-subtle: rgba(15, 23, 42, 0.08);
+  --border-default: rgba(15, 23, 42, 0.12);
+  --border-strong: rgba(15, 23, 42, 0.20);
+
+  --shadow-card: 0 0 0 1px var(--border-subtle), 0 4px 16px rgba(15, 23, 42, 0.06);
+  --shadow-card-hover: 0 0 0 1px rgba(8, 145, 178, 0.35), 0 8px 24px rgba(15, 23, 42, 0.10);
+  --shadow-focus: 0 0 0 3px rgba(8, 145, 178, 0.25);
+  --shadow-elevated: 0 0 0 1px var(--border-subtle), 0 16px 48px rgba(15, 23, 42, 0.12);
+
+  --glass-bg: rgba(255, 255, 255, 0.70);
+  --glass-blur: blur(16px) saturate(140%);
+
+  --gradient-hero: radial-gradient(120% 90% at 70% 0%, rgba(8, 145, 178, 0.06) 0%, rgba(124, 58, 237, 0.04) 40%, var(--bg-base) 75%);
+
+  /* 字体/字号/行高/间距/圆角/动效/层级 — 两套主题完全相同，不重复定义 */
+  /* （继承 :root 的值，不需要在此重复声明） */
+
+  /* ---- B 层：兼容映射（自动跟随 A 层，也不需要重复声明） ---- */
+  /* （var() 引用在运行时解析，A 层变了 B 层自动变） */
+
+  /* ---- C 层：组件专用（需随主题调整的） ---- */
+  --chart-1: #0891b2;
+  --chart-2: #2563eb;
+  --chart-3: #7c3aed;
+  --chart-4: #db2777;
+  --chart-5: #d97706;
+  --chart-grid: rgba(15, 23, 42, 0.06);
+  --chart-axis: var(--text-muted);
+  --chart-tooltip-bg: var(--bg-elevated);
+  --chart-tooltip-border: var(--border-subtle);
+
+  --nav-bg: var(--glass-bg);
+  --nav-blur: var(--glass-blur);
+  --nav-text: var(--text-secondary);
+  --nav-text-active: var(--primary);
+  --nav-indicator: var(--primary);
+
+  --input-bg: var(--bg-base);
+  --input-border: var(--border-subtle);
+  --input-border-hover: rgba(8, 145, 178, 0.35);
+  --input-border-focus: var(--primary);
+  --input-text: var(--text-primary);
+  --input-placeholder: var(--text-muted);
+
+  --skeleton-bg: var(--bg-elevated);
+  --skeleton-sweep: rgba(8, 145, 178, 0.06);
+
+  --tag-primary-bg: var(--primary-dim);
+  --tag-success-bg: rgba(5, 150, 105, 0.10);
+  --tag-warning-bg: rgba(217, 119, 6, 0.10);
+  --tag-danger-bg: rgba(220, 38, 38, 0.10);
+  --tag-accent-bg: rgba(124, 58, 237, 0.10);
+
+  --overlay-bg: rgba(246, 248, 252, 0.80);
+  --overlay-blur: blur(8px);
+  --overlay-text: var(--text-secondary);
+
+  --theme-toggle-bg: var(--bg-elevated);
+  --theme-toggle-icon: var(--text-secondary);
+  --theme-toggle-icon-active: var(--primary);
+
+  /* ---- B 层扩展（亮色显式覆盖，仅非 var() 引用的） ---- */
+  --color-bg-sunken: #eaeef5;
+  --color-bg-deep: #0f1e33;
+  --color-error-bg: rgba(220, 38, 38, 0.08);
+  --color-info-bg: rgba(37, 99, 235, 0.08);
+  --color-success-bg: rgba(5, 150, 105, 0.08);
+  --color-warning-bg: rgba(217, 119, 6, 0.08);
+}
+
+/* ============================================================
+ * 主题切换按钮样式（可直接用）
+ * ============================================================ */
+.yx-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--theme-toggle-bg);
+  color: var(--theme-toggle-icon);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-snappy),
+              border-color var(--dur-fast) var(--ease-snappy),
+              box-shadow var(--dur-fast) var(--ease-snappy);
+}
+.yx-theme-toggle:hover { color: var(--theme-toggle-icon-active); border-color: var(--primary-dim-strong); }
+.yx-theme-toggle:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
+.yx-theme-toggle svg { width: 18px; height: 18px; }
+
+/* 暗色模式显示太阳图标（点击切亮色）；亮色模式显示月亮图标（点击切暗色） */
+[data-theme="dark"] .yx-theme-toggle__sun { display: block; }
+[data-theme="dark"] .yx-theme-toggle__moon { display: none; }
+[data-theme="light"] .yx-theme-toggle__sun { display: none; }
+[data-theme="light"] .yx-theme-toggle__moon { display: block; }
+
+/* ============================================================
+ * 动效降级（全局）
+ * ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

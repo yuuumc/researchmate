@@ -3,6 +3,7 @@ import { useRouter } from 'vue-router'
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import AgentIcon from './AgentIcon.vue'
 import { useAuthStore } from '@/stores/auth'
+import { toggleTheme, getCurrentTheme } from '@/composables/useTheme'
 
 const props = defineProps({
   activeAgent: {
@@ -114,6 +115,12 @@ const avatarChar = computed(() => {
   if (!name || name === '未登录') return '?'
   return name.charAt(0)
 })
+
+const currentTheme = ref(getCurrentTheme())
+
+function handleToggleTheme() {
+  currentTheme.value = toggleTheme()
+}
 </script>
 
 <template>
@@ -204,6 +211,17 @@ const avatarChar = computed(() => {
         <span class="status-dot"></span>
         <span class="status-text">8 Agents · Online</span>
       </div>
+
+      <!-- 主题切换按钮 -->
+      <button class="yx-theme-toggle" @click="handleToggleTheme" title="切换主题">
+        <svg class="yx-theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+        </svg>
+        <svg class="yx-theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+      </button>
 
       <!-- 用户菜单下拉 -->
       <div ref="userMenuRef" class="user-menu-wrap">
@@ -679,6 +697,7 @@ const avatarChar = computed(() => {
   .guest-pill { padding: 4px 8px; font-size: 10px; }
   .guest-text { display: none; }
   .user-entry { width: 30px; height: 30px; }
+  :deep(.yx-theme-toggle) { width: 30px; height: 30px; }
 }
 
 @media (max-width: 480px) {

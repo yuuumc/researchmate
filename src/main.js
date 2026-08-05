@@ -10,6 +10,7 @@ import router from './router'
 import App from './App.vue'
 import './styles/main.css'
 import './styles/tokens.css'        // v2.0 Design Tokens（UI 设计师交付）
+import './styles/theme-tokens.css'  // v2.0 深浅双主题 Token（W4 主题切换）
 import './styles/components.css'    // v2.0 yx- 组件库（UI 设计师交付）
 import { bootstrapSubject } from './utils/subjectLoader'
 import { useSubjectStore } from './stores/subject'
@@ -17,6 +18,7 @@ import { useAuthStore } from './stores/auth'
 import { supabase, isSupabaseConfigured } from './services/supabase'
 import { setAuthReady } from './utils/authReady'
 import { injectSeedData } from './data/seedDemo'
+import { initTheme } from './composables/useTheme'
 
 // ============================================================
 // Auth bootstrap（v2.5 + v2.0 向导拦截）
@@ -63,6 +65,7 @@ app.component('ElConfigProvider', ElConfigProvider)
 app.mount('#app')
 
 async function bootstrap() {
+  initTheme()
   await bootstrapAuth()
   try { injectSeedData() } catch (e) { console.warn('[main] 种子数据注入失败：', e) }
   const urlParams = new URLSearchParams(window.location.search)

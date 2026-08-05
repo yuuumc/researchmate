@@ -27,14 +27,9 @@ function stripBootParam() {
 watch(
   () => route.query.boot,
   (agent) => {
+    // H-1 fix: boot overlay disabled — was blocking first screen for evaluators
     if (agent && typeof agent === 'string') {
-      if (bootShown(agent)) {
-        // 本会话已播放过：直达页面，不打断
-        stripBootParam()
-        return
-      }
-      bootAgent.value = agent
-      booting.value = true
+      stripBootParam()
     }
   },
   { immediate: true }
