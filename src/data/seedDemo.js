@@ -11,6 +11,7 @@
 
 import { useProfileStore } from '@/stores/profile'
 import { usePlanStore } from '@/stores/plan'
+import { useAuthStore } from '@/stores/auth'
 import { storage } from '@/utils/storage'
 
 const SEED_FLAG = 'seed_demo_v2'
@@ -249,6 +250,13 @@ export const SEED_ADMISSION = [
 export function injectSeedData() {
   // 已注入过则跳过
   if (storage.get(SEED_FLAG)) return
+
+  // 已登录的真实用户（非游客）不注入种子数据——避免新注册用户看到假数据
+  const authStore = useAuthStore()
+  if (authStore.isAuthenticated && !authStore.isGuest) {
+    storage.set(SEED_FLAG, true)
+    return
+  }
 
   const profileStore = useProfileStore()
 

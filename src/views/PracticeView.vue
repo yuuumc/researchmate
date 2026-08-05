@@ -49,6 +49,9 @@ async function submitLLM() {
 
 // DB 模式：按薄弱知识点抽题
 async function startDBPractice() {
+  if (starting.value) return
+  starting.value = true
+  try {
   const wps = weakPoints.value.map(wp =>
     typeof wp === 'string' ? wp : (wp.knowledge_point || wp.topic || '')
   ).filter(Boolean)
@@ -57,15 +60,29 @@ async function startDBPractice() {
     return
   }
   await practiceStore.sampleByWeakPoints(wps, 5)
+  } catch (e) {
+    console.error('[practice] startDBPractice failed:', e)
+  } finally {
+    starting.value = false
+  }
 }
 
 // 错题重练
 async function startRetry() {
+  if (starting.value) return
+  starting.value = true
+  try {
   await practiceStore.loadWrongQuestions()
+  } catch (e) {
+    console.error('[practice] startRetry failed:', e)
+  } finally {
+    starting.value = false
+  }
 }
 
 // DB 模式判分
 const grading = ref(false)
+const starting = ref(false)
 async function submitDBAnswers() {
   grading.value = true
   try {
@@ -160,8 +177,8 @@ function switchTab(tab) {
             <div v-else class="no-weak">
               <p>暂无薄弱知识点。请先完成一次 <router-link to="/diagnosis/session">混合诊断</router-link>。</p>
             </div>
-            <button class="start-btn" @click="startDBPractice" :disabled="weakPoints.length === 0">
-              开始练习（5 题）
+            <button class="start-btn" @click="startDBPractice" :disabled="weakPoints.length === 0 || starting">
+              {{ starting ? "加载中…" : "开始练习（5 题）" }}
             </button>
           </div>
         </div>
@@ -242,7 +259,7 @@ function switchTab(tab) {
           </div>
 
           <div class="done-actions">
-            <button class="action-btn" @click="startDBPractice">再来一组</button>
+            <button class="action-btn" @click="startDBPractice" :disabled="starting">{{ starting ? "加载中…" : "再来一组" }}</button>
             <button class="action-btn action-btn--ghost" @click="switchTab('retry')">错题重练</button>
           </div>
         </div>
@@ -254,7 +271,7 @@ function switchTab(tab) {
           <div class="db-intro-card">
             <h3>错题重练</h3>
             <p>从错题本中加载之前的错题，重新作答。答对后可标记为已掌握。</p>
-            <button class="start-btn" @click="startRetry">加载错题</button>
+            <button class="start-btn" @click="startRetry" :disabled="starting">{{ starting ? "加载中…" : "加载错题" }}</button>
           </div>
         </div>
 
@@ -324,7 +341,7 @@ function switchTab(tab) {
             </button>
           </div>
           <div class="done-actions">
-            <button class="action-btn" @click="startRetry">重新加载错题</button>
+            <button class="action-btn" @click="startRetry" :disabled="starting">{{ starting ? "加载中…" : "重新加载错题" }}</button>
             <button class="action-btn action-btn--ghost" @click="switchTab('db')">薄弱点练习</button>
           </div>
         </div>

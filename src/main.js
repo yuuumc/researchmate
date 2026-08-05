@@ -83,4 +83,12 @@ async function bootstrap() {
   }
 }
 
+// 全局未捕获 Promise rejection 兜底——避免请求静默失败导致按钮没反应
+window.addEventListener('unhandledrejection', (e) => {
+  console.error('[global] unhandled rejection:', e.reason)
+})
+window.addEventListener('error', (e) => {
+  console.error('[global] uncaught error:', e.error || e.message)
+})
+
 bootstrap()
