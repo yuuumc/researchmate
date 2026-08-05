@@ -2,28 +2,23 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { isSupabaseConfigured } from '@/services/supabase'
 import { whenAuthReady } from '@/utils/authReady'
+import { needsWizard } from '@/services/profileService'
 
 // ============================================================
-// 路由表（v2.5 增 /login + /teacher/*）
+// 路由表（v2.0 + ProfileWizard）
 // ============================================================
-// public: /login（未配置 Supabase 时也允许）
-// requireAuth: /, /chat, /profile, /history, /plan（未配置时跳过）
-// requireTeacher: /teacher/* （需 isTeacher || hasTeacherClasses）
-//
-// 守卫顺序：
-//   1. 公开路由放行
-//   2. 未配置 Supabase → 全放行（优雅降级）
-//   3. 等 whenAuthReady()（防止首屏 user=null 误判）
-//   4. requireAuth 未登录 → /login?redirect=...
-//   5. requireTeacher 但非教师 → /
-// ============================================================
-
 const routes = [
   {
     path: '/login',
     name: 'login',
     component: () => import('@/views/LoginView.vue'),
     meta: { title: '登录', public: true, hideTopBar: true }
+  },
+  {
+    path: '/profile/wizard',
+    name: 'profile-wizard',
+    component: () => import('@/views/ProfileWizardView.vue'),
+    meta: { title: '完善画像', requireAuth: true, hideTopBar: true }
   },
   {
     path: '/',
@@ -132,7 +127,7 @@ router.beforeEach(async (to) => {
   // 2. 未配置 Supabase → 优雅降级，全放行
   if (!isSupabaseConfigured) return true
 
-  // 3. 等 bootstrap 完成（user 已被 onAuthStateChange 写入 auth store）
+  // 3. 等 bootstrap 完成
   await whenAuthReady()
 
   const auth = useAuthStore()
@@ -143,10 +138,22 @@ router.beforeEach(async (to) => {
     return { path: '/login', query: { redirect: to.fullPath } }
   }
 
-  // 5. requireTeacher：业务真相 + UI 速判（双源），需 fresh loadTeacherClasses
+  // 4.5 向导拦截：已登录但未完成向导 → /profile/wizard（除非已在向导页）
+  if (auth.isAuthenticated && to.name !== 'profile-wizard' && !auth.isGuest) {
+    try {
+      const needWizard = await needsWizard()
+      if (needWizard) {
+        return { path: '/profile/wizard' }
+      }
+    } catch (e) {
+      // needsWizard 失败不阻塞导航
+      console.warn('[router] wizard check failed:', e)
+    }
+  }
+
+  // 5. requireTeacher
   if (to.meta.requireTeacher) {
     if (auth.isTeacher || auth.hasTeacherClasses) return true
-    // 双源都不满足时再 fresh load 一次（防止初始 bootstrap 还没拉到 classes）
     await auth.loadTeacherClasses()
     if (auth.isTeacher || auth.hasTeacherClasses) return true
     return { path: '/' }

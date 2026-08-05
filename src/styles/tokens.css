@@ -1,0 +1,136 @@
+/* ============================================================
+ * 研芯通 v2.0 Design Tokens
+ * 来源：研芯通 v2.0 科技感 UI 设计方案 第二章（B40Fd3fCAoYkP6xmu94cSnILnBe）
+ * 用法：<link rel="stylesheet" href="tokens.css">
+ *   默认暗色；亮色模式在 <html> 或根容器上设 data-theme="light"
+ *   开发只消费变量，禁止硬编码色值/阴影/缓动
+ * ============================================================ */
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* ---- 色彩 · 背景层 ---- */
+  --bg-base: #0a0b12;             /* 页面底色（带蓝紫调近黑，非纯黑） */
+  --bg-surface: #12141d;          /* 卡片/面板底 */
+  --bg-elevated: #1a1d29;         /* 悬浮/模态 */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+
+  /* ---- 色彩 · 文字层 ---- */
+  --text-primary: #f1f5f9;        /* 对 bg-surface 对比度 ≥ 12:1 */
+  --text-secondary: #94a3b8;      /* 对比度 ≈ 5.9:1（AA 通过） */
+  --text-muted: #64748b;          /* 辅助/占位，不承载关键信息 */
+
+  /* ---- 色彩 · 品牌/语义 ---- */
+  --primary: #22d3ee;             /* 青 · 主视觉/链接/进度（禁用于正文） */
+  --primary-dim: rgba(34, 211, 238, 0.12);   /* 主色 12% 底（hover 填充） */
+  --primary-dim-strong: rgba(34, 211, 238, 0.2);
+  --secondary: #3b82f6;           /* 蓝 · 图表第二色 */
+  --accent: #a855f7;              /* 紫 · 关键 CTA 强调 */
+  --accent-2: #ec4899;            /* 粉 · 高亮/完成态 */
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+
+  /* ---- 字体 ---- */
+  --font-body: "HarmonyOS Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-display: "Space Grotesk", "HarmonyOS Sans SC", sans-serif; /* 数字/西文 */
+  --font-mono: "JetBrains Mono", "SF Mono", monospace;              /* 数据等宽 */
+
+  /* 字号阶梯（1.25 比例） */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 20px;
+  --text-xl: 24px;
+  --text-2xl: 30px;
+  --text-3xl: 38px;               /* 关键数据（分数/倒计时）用 3xl 起 */
+  --text-4xl: 48px;
+
+  --leading-body: 1.6;
+  --leading-title: 1.3;
+
+  /* ---- 间距（8px 栅格） ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ---- 圆角 ---- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+
+  /* ---- 阴影（暗色用辉光，禁硬偏移阴影） ---- */
+  --shadow-card: 0 0 0 1px var(--border-subtle), 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-card-hover: 0 0 0 1px rgba(34, 211, 238, 0.35), 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 24px rgba(34, 211, 238, 0.12);
+  --shadow-focus: 0 0 0 3px rgba(34, 211, 238, 0.25);   /* focus 辉光环，键盘可见 */
+  --shadow-elevated: 0 0 0 1px var(--border-subtle), 0 16px 48px rgba(0, 0, 0, 0.5);
+
+  /* ---- 毛玻璃（导航/模态/悬浮卡，用于分层而非装饰） ---- */
+  --glass-bg: rgba(18, 20, 29, 0.7);
+  --glass-blur: blur(16px) saturate(140%);
+
+  /* ---- Hero 深空能带渐变（全局唯一允许的渐变） ---- */
+  --gradient-hero: radial-gradient(120% 90% at 70% 0%, rgba(34, 211, 238, 0.08) 0%, rgba(168, 85, 247, 0.05) 40%, var(--bg-base) 75%);
+
+  /* ---- 动效 Token ---- */
+  --ease-snappy: cubic-bezier(0.16, 1, 0.3, 1);   /* 主缓动，入场/展开 */
+  --ease-out-soft: cubic-bezier(0.33, 1, 0.68, 1); /* 退出/收起 */
+  --dur-fast: 150ms;    /* hover/focus 微交互 */
+  --dur-base: 300ms;    /* 卡片、转场 */
+  --dur-slow: 600ms;    /* 数据动效（雷达/滚动） */
+
+  /* ---- 层级 ---- */
+  --z-nav: 100;
+  --z-toast: 300;
+  --z-modal: 200;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg-base: #f6f8fc;
+  --bg-surface: #ffffff;
+  --bg-elevated: #ffffff;
+  --border-subtle: rgba(15, 23, 42, 0.08);
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+
+  --primary: #0891b2;             /* 白底加深保 AA */
+  --primary-dim: rgba(8, 145, 178, 0.1);
+  --primary-dim-strong: rgba(8, 145, 178, 0.18);
+  --secondary: #2563eb;
+  --accent: #7c3aed;
+  --accent-2: #db2777;
+  --success: #059669;
+  --warning: #d97706;
+  --danger: #dc2626;
+
+  --shadow-card: 0 0 0 1px var(--border-subtle), 0 4px 16px rgba(15, 23, 42, 0.06);
+  --shadow-card-hover: 0 0 0 1px rgba(8, 145, 178, 0.35), 0 8px 24px rgba(15, 23, 42, 0.1);
+  --shadow-focus: 0 0 0 3px rgba(8, 145, 178, 0.25);
+  --shadow-elevated: 0 0 0 1px var(--border-subtle), 0 16px 48px rgba(15, 23, 42, 0.12);
+
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --gradient-hero: radial-gradient(120% 90% at 70% 0%, rgba(8, 145, 178, 0.06) 0%, rgba(124, 58, 237, 0.04) 40%, var(--bg-base) 75%);
+}
+
+/* ---- 动效降级（全局强制） ---- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
