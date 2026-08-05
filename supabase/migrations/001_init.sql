@@ -21,8 +21,8 @@ create table profiles (
   nickname text,
   avatar_url text,
   -- Step 2 学情自评
-  target_school text not null,
-  target_major text not null,          -- 半导体物理/微电子器件/集成电路设计
+  target_school text,
+  target_major text,          -- 半导体物理/微电子器件/集成电路设计
   exam_year int default 2027,
   mastered_skills jsonb default '[]',  -- 已掌握知识点
   weak_points jsonb default '[]',      -- 薄弱知识点
@@ -183,18 +183,21 @@ create policy wrong_book_entries_owner on wrong_book_entries
 -- 10. 注册触发器 — auth.users → profiles 空行
 -- ============================================================
 -- 新用户注册后自动插入 profiles 空行（wizard_completed=false）
-create or replace function handle_new_user()
-returns trigger as $$
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = ''
+as $$
 begin
-  insert into profiles (user_id) values (new.id);
+  insert into public.profiles (user_id) values (new.id);
   return new;
 end;
-$$ language plpgsql security definer;
+$$;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
-  for each row execute function handle_new_user();
+  for each row execute function public.handle_new_user();
 
 -- ============================================================
 -- 11. updated_at 自动维护（profiles）
