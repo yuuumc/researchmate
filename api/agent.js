@@ -25,6 +25,17 @@ import { getProviderConfig, validateProviderConfig, buildHeaders, buildMessages 
 import { loadPrompt, substitute, getSchoolProfile, getCareerPaths, shouldUseCompact, extractStructured } from './prompt-loader.js'
 import { applyCors, getClientIp, checkRateLimit, RATE_LIMIT_WINDOW_MS } from './_middleware.js'
 
+// P1: Sanitize user input to prevent prompt injection
+function sanitizeUserInput(str, maxLen = 500) {
+  if (!str) return ''
+  return String(str)
+    .slice(0, maxLen)
+    .replace(/[
+]+/g, ' ')
+    .replace(/<[^>]*>/g, '')
+    .trim()
+}
+
 const AGENT_TIMEOUT_MS = 55000
 
 const AGENTS = {
@@ -49,7 +60,11 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: 'rate_limited' })
   }
 
-  const { action, input = {} } = req.body || {}
+  const { action, input = {} } = req.body
+  // P1: Sanitize string inputs to prevent prompt injection
+  if (input.userInput) input.userInput = sanitizeUserInput(input.userInput, 2000)
+  if (input.student_name) input.student_name = sanitizeUserInput(input.student_name, 100)
+  if (input.target_major) input.target_major = sanitizeUserInput(input.target_major, 100) || {}
   if (!action) return res.status(400).json({ error: 'missing_action' })
   if (!AGENTS[action]) {
     return res.status(400).json({ error: 'unknown_action', available: Object.keys(AGENTS) })

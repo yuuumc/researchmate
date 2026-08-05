@@ -81,23 +81,29 @@ export const useDiagnosisSessionStore = defineStore('diagnosisSession', {
     },
 
     async sampleObjective() {
-      // 每学科抽 2 题（choice/fill），混合难度
+      // Batch query: single .in() instead of per-subject loop (N+1 fix)
       const all = []
-      for (const subject of SUBJECTS) {
-        const { data, error } = await supabase
-          .from('questions')
-          .select('id, subject, knowledge_point, question_type, difficulty, content')
-          .eq('subject', subject)
-          .eq('status', 'published')
-          .in('question_type', ['choice', 'fill'])
-          .limit(20)
-        if (error) {
-          console.warn('[diagnosisSession] sample ' + subject + ' error:', error.message)
-          continue
+      const { data, error } = await supabase
+        .from('questions')
+        .select('id, subject, knowledge_point, question_type, difficulty, content')
+        .eq('status', 'published')
+        .in('question_type', ['choice', 'fill'])
+        .in('subject', SUBJECTS)
+        .limit(100)
+      if (error) {
+        console.warn('[diagnosisSession] batch sample error:', error.message)
+      } else if (data) {
+        // Group by subject, take 2 per subject
+        const bySubject = {}
+        for (const q of data) {
+          if (!bySubject[q.subject]) bySubject[q.subject] = []
+          if (bySubject[q.subject].length < 2) bySubject[q.subject].push(q)
         }
-        if (data && data.length > 0) {
-          const shuffled = data.sort(() => Math.random() - 0.5)
-          all.push(...shuffled.slice(0, 2))
+        for (const subj of SUBJECTS) {
+          if (bySubject[subj]) {
+            const shuffled = bySubject[subj].sort(() => Math.random() - 0.5)
+            all.push(...shuffled.slice(0, 2))
+          }
         }
       }
       // 标准化结构

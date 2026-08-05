@@ -197,6 +197,8 @@ function goEdit() {
 .profile-view {
   position: relative;
   min-height: 100vh;
+  background: var(--color-bg-sunken, #f8f9fa);
+  color: var(--color-ink-900, #1a1a2e);
 }
 
 .profile-content {

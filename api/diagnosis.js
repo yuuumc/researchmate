@@ -20,6 +20,17 @@ import { getProviderConfig, validateProviderConfig, buildHeaders, buildMessages 
 import { loadPrompt, substitute, extractStructured } from './prompt-loader.js'
 import { applyCors, getClientIp, checkRateLimit, RATE_LIMIT_WINDOW_MS } from './_middleware.js'
 
+// P1: Sanitize user input to prevent prompt injection
+function sanitizeUserInput(str, maxLen = 500) {
+  if (!str) return ''
+  return String(str)
+    .slice(0, maxLen)
+    .replace(/[
+]+/g, ' ')  // Remove newlines that could break prompt structure
+    .replace(/<[^>]*>/g, '')   // Strip HTML tags
+    .trim()
+}
+
 const TIMEOUT_MS = 55000
 
 export default async function handler(req, res) {

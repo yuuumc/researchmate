@@ -89,9 +89,8 @@ export function installSanitizeHooks(purify, origin) {
       const src = node.getAttribute('src')
       if (src != null) {
         const allowed =
-          IMG_SRC_PATTERNS[0].test(src) || // 1) 自有 CDN
-          IMG_SRC_PATTERNS[2].test(src) || // 3) data:image 合法子集
-          (currentOrigin && isSameOrigin(src, currentOrigin)) // 2) 同源
+          (currentOrigin && isSameOrigin(src, currentOrigin)) || // 1) 同源
+          IMG_SRC_PATTERNS[1].test(src) // 2) data:image 合法子集
         if (!allowed) {
           // 不在白名单 → 剥 src（保留 alt 让 UI 占位可读）
           node.removeAttribute('src')

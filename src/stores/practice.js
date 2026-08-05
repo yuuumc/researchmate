@@ -75,25 +75,29 @@ export const usePracticeStore = defineStore('practice', {
           throw new Error('无薄弱知识点，请先完成诊断')
         }
 
-        // 按知识点抽题（每个知识点最多 2 题）
+        // Batch query: single .in() instead of per-kp loop (N+1 fix)
+        const kpList = kps.map(kp => typeof kp === 'string' ? kp : (kp.knowledge_point || kp.topic || '')).filter(Boolean)
         const all = []
-        for (const kp of kps) {
-          const kpStr = typeof kp === 'string' ? kp : (kp.knowledge_point || kp.topic || '')
-          if (!kpStr) continue
+        if (kpList.length > 0) {
           const { data, error } = await supabase
             .from('questions')
             .select('id, subject, knowledge_point, question_type, difficulty, content')
             .eq('status', 'published')
-            .eq('knowledge_point', kpStr)
+            .in('knowledge_point', kpList)
             .in('question_type', ['choice', 'fill'])
-            .limit(5)
-          if (error) {
-            console.warn('[practice] sample ' + kpStr + ':', error.message)
-            continue
-          }
-          if (data && data.length > 0) {
-            const shuffled = data.sort(() => Math.random() - 0.5)
-            all.push(...shuffled.slice(0, 2))
+            .limit(50)
+          if (!error && data) {
+            // Group by knowledge_point, take 2 per kp
+            const byKp = {}
+            for (const q of data) {
+              if (!byKp[q.knowledge_point]) byKp[q.knowledge_point] = []
+              if (byKp[q.knowledge_point].length < 2) byKp[q.knowledge_point].push(q)
+            }
+            for (const kp of Object.values(byKp)) {
+              all.push(...kp)
+            }
+            // Shuffle the combined result
+            all.sort(() => Math.random() - 0.5)
           }
         }
 
