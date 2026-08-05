@@ -626,3 +626,122 @@
     padding: 16px;
   }
 }
+
+
+/* ============================================================
+   Collapsed sidebar tooltips (W4 fix)
+   Pure CSS ::after + content: attr(data-label)
+   Only visible in collapsed mode; mobile drawer unaffected
+   ============================================================ */
+
+/* Remove overflow clipping in collapsed mode so tooltips can escape */
+.yx-sidebar--collapsed .yx-sidebar__nav {
+  overflow: visible;
+}
+
+.yx-sidebar--collapsed .yx-sidebar__footer {
+  overflow: visible;
+}
+
+/* Nav item tooltip */
+.yx-sidebar--collapsed .yx-sidebar__item {
+  position: relative;
+}
+
+.yx-sidebar--collapsed .yx-sidebar__item::after {
+  content: attr(data-label);
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 5px 10px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  border-radius: 6px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-subtle);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease, transform 150ms ease;
+  z-index: 200;
+}
+
+.yx-sidebar--collapsed .yx-sidebar__item:hover::after {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(-50%) translateX(2px);
+}
+
+/* Toggle button tooltip */
+.yx-sidebar--collapsed .yx-sidebar__toggle {
+  position: absolute; /* keep original */
+}
+
+.yx-sidebar--collapsed .yx-sidebar__toggle::after {
+  content: attr(data-label);
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 5px 10px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  border-radius: 6px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-subtle);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+  z-index: 200;
+}
+
+.yx-sidebar--collapsed .yx-sidebar__toggle:hover::after {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* User area tooltip */
+.yx-sidebar--collapsed .yx-sidebar__user {
+  position: relative;
+}
+
+.yx-sidebar--collapsed .yx-sidebar__user::after {
+  content: attr(data-label);
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 5px 10px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  border-radius: 6px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-subtle);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+  z-index: 200;
+}
+
+.yx-sidebar--collapsed .yx-sidebar__user:hover::after {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Ensure tooltips hidden in mobile drawer (drawer shows full sidebar) */
+@media (max-width: 768px) {
+  .yx-sidebar--collapsed .yx-sidebar__item::after,
+  .yx-sidebar--collapsed .yx-sidebar__toggle::after,
+  .yx-sidebar--collapsed .yx-sidebar__user::after {
+    display: none;
+  }
+}

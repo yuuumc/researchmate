@@ -176,7 +176,7 @@ onBeforeUnmount(() => {
       }"
     >
       <!-- Toggle button (desktop) -->
-      <button class="yx-sidebar__toggle" @click="toggleCollapsed" aria-label="折叠侧栏">
+      <button class="yx-sidebar__toggle" @click="toggleCollapsed" aria-label="折叠侧栏" :data-label="collapsed ? '展开侧栏' : '折叠侧栏'">
         <svg v-if="!collapsed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M15 18l-6-6 6-6" />
         </svg>
@@ -210,6 +210,7 @@ onBeforeUnmount(() => {
           :to="item.path"
           class="yx-sidebar__item"
           :class="{ 'yx-sidebar__item--active': isCurrent(item.path) }"
+          :data-label="item.label"
           @click="onNavClick"
         >
           <!-- Icons -->
@@ -228,6 +229,7 @@ onBeforeUnmount(() => {
           :to="item.path"
           class="yx-sidebar__item"
           :class="{ 'yx-sidebar__item--active': isCurrent(item.path) }"
+          :data-label="item.label"
           @click="onNavClick"
         >
           <svg v-if="item.icon === 'briefcase'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
@@ -251,7 +253,7 @@ onBeforeUnmount(() => {
 
         <!-- User area -->
         <div ref="userMenuRef" style="position: relative;">
-          <div class="yx-sidebar__user" @click="toggleUserMenu">
+          <div class="yx-sidebar__user" :data-label="auth.displayName" @click="toggleUserMenu">
             <div class="yx-sidebar__avatar">{{ avatarChar }}</div>
             <div class="yx-sidebar__user-info">
               <div class="yx-sidebar__user-name">{{ auth.displayName }}</div>
