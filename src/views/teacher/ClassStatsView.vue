@@ -159,6 +159,10 @@ function handleResize() {
   subjectInstance?.resize()
 }
 
+function handleThemeChange() {
+  nextTick(initCharts)
+}
+
 onMounted(async () => {
   if (!isSupabaseConfigured) {
     loading.value = false
@@ -175,6 +179,7 @@ onMounted(async () => {
       subjectChartRef.value && resizeObserver.observe(subjectChartRef.value)
     }
     window.addEventListener('resize', handleResize)
+    window.addEventListener('theme-changed', handleThemeChange)
   } catch (e) {
     console.error('[class-stats] load failed:', e)
     error.value = e?.message || '加载学情失败'
@@ -186,6 +191,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   if (resizeObserver) resizeObserver.disconnect()
   window.removeEventListener('resize', handleResize)
+  window.removeEventListener('theme-changed', handleThemeChange)
   abilityInstance?.dispose()
   weakInstance?.dispose()
   subjectInstance?.dispose()

@@ -150,10 +150,12 @@ onMounted(() => {
   resizeObserver = new ResizeObserver(handleResize)
   if (chartRef.value) resizeObserver.observe(chartRef.value)
   window.addEventListener('resize', handleResize)
+  window.addEventListener('theme-changed', initChart)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
+  window.removeEventListener('theme-changed', initChart)
   if (resizeObserver) {
     resizeObserver.disconnect()
     resizeObserver = null

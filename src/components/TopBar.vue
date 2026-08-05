@@ -447,7 +447,7 @@ function handleToggleTheme() {
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border-subtle);
   border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(15, 30, 51, 0.08);
+  box-shadow: var(--shadow-lg);
   z-index: 50;
 }
 
@@ -605,7 +605,7 @@ function handleToggleTheme() {
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border-subtle);
   border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(15, 30, 51, 0.12);
+  box-shadow: var(--shadow-lg);
   z-index: 50;
 }
 
