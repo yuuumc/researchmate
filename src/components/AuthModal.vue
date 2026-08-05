@@ -54,7 +54,13 @@ async function sendCode() {
   try {
     const { error } = await supabase.auth.signInWithOtp({
       email: email.value.trim(),
-      options: { shouldCreateUser: true }
+      options: {
+        shouldCreateUser: true,
+        // magic link 兜底回跳地址：邮件模板改为 {{ .Token }} 后验证码是主路径；
+        // 若用户点了链接则回 /login，由 bootstrap 的 getSession + onAuthStateChange
+        // 自动捡起 URL hash 中的 session 完成登录（detectSessionInUrl 默认开启）
+        emailRedirectTo: `${window.location.origin}/login`
+      }
     })
     if (error) throw error
     step.value = 'code'
