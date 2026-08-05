@@ -1,11 +1,11 @@
 // ============================================================
-// Auth store（v2.0 多用户 SaaS · 数据层 · v3.2 游客登录）
+// Auth store（v2.6 邮箱+密码登录）
 // ============================================================
 // 登录路径：
 //   1) bootstrap 自动恢复（useAuthBootstrap.bindAuthUser）
-//   2) verifyOtp 手机号 OTP
-//   3) wechatLogin 微信扫码（v2.5 接 Provider，v2.0 留 stub）
-//   4) guestLogin 游客登录（v3.2 · 比赛/演示用，不走 Supabase）
+//   2) signUp 邮箱+密码注册（Confirm email 关闭后注册即登录）
+//   3) signIn 邮箱+密码登录
+//   4) guestLogin 游客登录（比赛/演示用，不走 Supabase）
 //
 // 教师身份 = 双源（user_metadata.role UI 速判 + classes.teacher_id 业务真相）
 // 业务过滤全靠 Supabase RLS，前端不传 user_id
@@ -32,11 +32,11 @@ export const useAuthStore = defineStore('auth', {
     /** 业务真相：teacherClasses 非空（双源之一） */
     hasTeacherClasses: (state) => state.teacherClasses.length > 0,
     userId: (state) => (state.user && state.user.id) || null,
-    phone: (state) => (state.user && state.user.phone) || null,
+    email: (state) => (state.user && state.user.email) || null,
     displayName: (state) => {
       if (!state.user) return '未登录'
       const meta = state.user.user_metadata || {}
-      return meta.name || state.user.phone || '已登录用户'
+      return meta.name || state.user.email || '已登录用户'
     },
     /** 是否为游客用户（未经 Supabase 认证） */
     isGuest: (state) => Boolean(state.user && state.user.user_metadata && state.user.user_metadata.is_guest)
@@ -99,17 +99,34 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * 邮箱 OTP 登录
+     * 邮箱+密码注册
+     * 需要 Supabase Dashboard 关闭 Authentication → Providers → Email → Confirm email
+     * 关闭后 signUp 成功即自动创建 session，无需邮件确认
      * @param {string} email - 邮箱地址
-     * @param {string} token - 6 位验证码
+     * @param {string} password - 密码（至少 6 位）
      */
-    async verifyOtp(email, token) {
+    async signUp(email, password) {
       this.lastError = null
-      const { data, error } = await supabase.auth.verifyOtp({
-        email,
-        token,
-        type: 'email'
-      })
+      const { data, error } = await supabase.auth.signUp({ email, password })
+      if (error) {
+        this.lastError = error
+        throw error
+      }
+      // 状态同步由 onAuthStateChange → bindAuthUser 触发；这里额外主动拉一次班级
+      if (data && data.user) {
+        await this.loadTeacherClasses()
+      }
+      return data
+    },
+
+    /**
+     * 邮箱+密码登录
+     * @param {string} email - 邮箱地址
+     * @param {string} password - 密码
+     */
+    async signIn(email, password) {
+      this.lastError = null
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
         this.lastError = error
         throw error
@@ -143,7 +160,7 @@ export const useAuthStore = defineStore('auth', {
       const guestId = 'guest_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)
       const guestUser = {
         id: guestId,
-        phone: null,
+        email: null,
         user_metadata: {
           name: '游客用户',
           role: 'student',

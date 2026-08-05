@@ -5,7 +5,7 @@
 // onAuthStateChange 监听登录/登出/refresh
 // 两者都调 bindAuthUser，把 auth.users.id 注入到 profile store
 //
-// 三处登录路径（bootstrap 自动恢复 / verifyOtp / wechatLogin）
+// 三处登录路径（bootstrap 自动恢复 / signUp+signIn / wechatLogin）
 // 都通过 bindAuthUser → auth.loadTeacherClasses() 触发教师班级加载
 // ============================================================
 import { useAuthStore } from '@/stores/auth'
