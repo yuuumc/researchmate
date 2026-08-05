@@ -104,11 +104,11 @@ async function handleSignOut() {
   } catch (e) {
     console.error('[AppLayout] signOut failed:', e)
   }
-  router.push('/login')
+  window.location.href = '/login'
 }
 
 function goLogin() {
-  router.push('/login')
+  window.location.href = '/login'
 }
 
 // ---- Computed ----

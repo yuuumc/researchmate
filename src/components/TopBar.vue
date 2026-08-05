@@ -95,7 +95,7 @@ function goHome() {
 
 function goLogin() {
   userMenuOpen.value = false
-  router.push('/login')
+  window.location.href = '/login'
 }
 
 async function handleSignOut() {
@@ -105,7 +105,7 @@ async function handleSignOut() {
   } catch (e) {
     console.error('[TopBar] signOut failed:', e)
   }
-  router.push('/login')
+  window.location.href = '/login'
 }
 
 const activeIndex = computed(() => coreAgents.findIndex((a) => a.key === props.activeAgent))

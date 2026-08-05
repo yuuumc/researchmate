@@ -1,10 +1,12 @@
 <script setup>
 // ============================================================
-// AuthModal · 邮箱+密码 登录/注册（v2.6）
+// AuthModal · 邮箱+密码 登录/注册（v2.7 · 数据隔离）
 // ============================================================
 // - 注册：supabase.auth.signUp({ email, password })，Confirm email 关闭后注册即登录
 // - 登录：supabase.auth.signInWithPassword({ email, password })
 // - 状态同步由 onAuthStateChange → bindAuthUser 触发
+// - 登录/注册成功后强制页面刷新（window.location.href），确保 Pinia store
+//   从清空后的 localStorage 重新初始化，不残留游客数据
 // - mode="modal" 浮层 / mode="inline" 内嵌（LoginView 用）
 // - 未配置 Supabase：优雅降级卡片（本地单机模式说明），不白屏不报错
 // ============================================================
@@ -46,13 +48,17 @@ async function submit() {
   try {
     if (authMode.value === 'register') {
       await auth.signUp(email.value.trim(), password.value)
-      ElMessage.success('注册成功，欢迎加入！')
+      ElMessage.success('注册成功，即将进入...')
     } else {
       await auth.signIn(email.value.trim(), password.value)
-      ElMessage.success('登录成功')
+      ElMessage.success('登录成功，即将进入...')
     }
-    emit('success')
-    if (props.mode === 'modal') emit('close')
+    // 强制页面刷新：auth store 已清除游客 localStorage 数据，
+    // 刷新后 Pinia store 从干净 localStorage 重新初始化，
+    // router guard 自动分发（新用户→wizard，老用户→chat/teacher）
+    setTimeout(() => {
+      window.location.href = '/'
+    }, 500)
   } catch (e) {
     console.error('[auth-modal] submit failed:', e)
     errorMsg.value = e?.message || (authMode.value === 'register' ? '注册失败，请稍后重试' : '登录失败，请检查邮箱和密码')

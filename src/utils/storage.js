@@ -68,5 +68,21 @@ export const storage = {
     Object.keys(localStorage)
       .filter((k) => k.startsWith(PREFIX))
       .forEach((k) => localStorage.removeItem(k))
+  },
+
+  /**
+   * 清空用户业务数据（保留主题设置）
+   * 用于登录/注册/退出时清除游客或旧用户的数据，实现数据隔离
+   * 清除：profile / diagnosis / plan / wrong_book / journey / subject / chat history / seed flag
+   * 保留：yanxintong-theme（主题用连字符前缀，不在 yanxintong_ 范围内）
+   */
+  clearUserData() {
+    // 清除所有 yanxintong_ 前缀的业务数据（含聊天记录 localStorage）
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith(PREFIX))
+      .forEach((k) => localStorage.removeItem(k))
+    // 清除非前缀格式的游客/反馈数据
+    try { localStorage.removeItem('yanxintong.guest') } catch {}
+    try { localStorage.removeItem('yxt_feedback') } catch {}
   }
 }
