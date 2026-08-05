@@ -18,13 +18,21 @@
   flex-direction: column;
   background: var(--bg-elevated);
   border-right: 1px solid var(--border-subtle);
-  transition: width var(--duration-base, 200ms) var(--ease-out, ease);
-  position: relative;
+  transition: width var(--duration-base, 200ms) var(--ease-out, ease), margin-left var(--duration-base, 200ms) var(--ease-out, ease);
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
   z-index: var(--z-sticky, 60);
 }
 
 .yx-sidebar--collapsed {
   width: 64px;
+}
+
+/* When sidebar is collapsed, shift main content to match */
+.yx-sidebar--collapsed ~ .yx-main {
+  margin-left: 64px;
 }
 
 .yx-sidebar--user-pinned {
@@ -403,9 +411,12 @@
 .yx-main {
   flex: 1;
   min-width: 0;
+  margin-left: 240px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  height: 100vh;
+  transition: margin-left var(--duration-base, 200ms) var(--ease-out, ease);
 }
 
 /* Slim topbar */
@@ -493,6 +504,7 @@
   overflow-x: hidden;
   padding: 24px;
   min-width: 0;
+  /* content scrolls independently, sidebar stays fixed */
 }
 
 .yx-content--centered {
@@ -534,6 +546,9 @@
   .yx-sidebar:not(.yx-sidebar--user-pinned) {
     width: 64px;
   }
+  .yx-sidebar:not(.yx-sidebar--user-pinned) ~ .yx-main {
+    margin-left: 64px;
+  }
   .yx-sidebar:not(.yx-sidebar--user-pinned) .yx-sidebar__title,
   .yx-sidebar:not(.yx-sidebar--user-pinned) .yx-sidebar__subtitle,
   .yx-sidebar:not(.yx-sidebar--user-pinned) .yx-sidebar__item-text,
@@ -564,6 +579,16 @@
     transform: translateX(-100%);
     transition: transform var(--duration-base, 200ms) var(--ease-out, ease);
     z-index: 100;
+  }
+
+  /* Mobile: sidebar is drawer, main takes full width */
+  .yx-main {
+    margin-left: 0 !important;
+  }
+
+  /* Reset collapsed margin in mobile */
+  .yx-sidebar--collapsed ~ .yx-main {
+    margin-left: 0;
   }
 
   .yx-sidebar--mobile-open {
