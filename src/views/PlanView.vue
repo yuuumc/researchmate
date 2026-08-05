@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { usePlanStore } from '@/stores/plan'
 import { useProfileStore } from '@/stores/profile'
 import { useDiagnosisStore } from '@/stores/diagnosis'
@@ -13,20 +13,25 @@ const planStore = usePlanStore()
 const profileStore = useProfileStore()
 const diagnosisStore = useDiagnosisStore()
 
-// #9: 知识图谱标签（与 ProfileView 一致，展示真实知识点）
+// #9: 知识图谱标签
 const knowledgeLabels = computed(() => getKnowledgeStructure().slice(0, 8))
 
-// P0-2 fix: store 实际暴露的 getter 是 `current`，旧版调 `plan` 永远 undefined → "当前计划" 永远空态
 const plan = computed(() => planStore.current)
 const versions = computed(() => planStore.versions || [])
 const loading = computed(() => planStore.loading)
 const error = computed(() => planStore.error)
+const progress = computed(() => planStore.progress)
+const completionRate = computed(() => planStore.completionRate)
 
-// 种子计划作为 fallback（API 未调用或失败时展示）
 const seedPlan = SEED_PLAN
 const hasApiPlan = computed(() => planStore.lastPlan !== null)
 
-// #3: 生成个性化计划——诊断结果作为规划输入
+// W3-2: 页面加载时尝试从数据库恢复计划
+onMounted(async () => {
+  await planStore.fetchActivePlan()
+})
+
+// 生成个性化计划
 async function generatePlan() {
   const profile = profileStore.profile || {}
   const diagnosisResult = getDiagnosisResultForPlan()
@@ -40,7 +45,11 @@ async function generatePlan() {
   })
 }
 
-// 把 ISO 时间渲染为"距今 N 天"，避免依赖 dayjs
+// W3-2: 切换任务完成状态
+function onToggleTask({ weekNum, taskIndex }) {
+  planStore.toggleTask(weekNum, taskIndex)
+}
+
 function timeAgo(iso) {
   if (!iso) return ''
   const ms = Date.now() - new Date(iso).getTime()
@@ -59,7 +68,6 @@ function timeAgo(iso) {
   return new Date(iso).toLocaleDateString('zh-CN')
 }
 
-// 调整条目数（keep + strengthen + drop）
 function adjustmentCount(v) {
   if (!v || !v.adjustments) return 0
   const a = v.adjustments
@@ -123,6 +131,20 @@ function adjustmentCount(v) {
         </div>
       </section>
 
+      <!-- W3-2: 总体进度条 -->
+      <section v-if="plan && hasApiPlan" class="progress-section">
+        <div class="progress-header">
+          <span class="progress-label">总体完成度</span>
+          <span class="progress-value">{{ completionRate }}%</span>
+        </div>
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" :style="{ width: completionRate + '%' }"></div>
+        </div>
+        <div class="progress-hint">
+          点击下方任务勾选完成状态，进度自动保存
+        </div>
+      </section>
+
       <!-- 当前计划（API 生成或种子 fallback） -->
       <section v-if="plan" class="plan-section">
         <div class="section-header">
@@ -131,10 +153,15 @@ function adjustmentCount(v) {
           <AiGeneratedBadge v-if="hasApiPlan" />
           <span v-else class="plan-badge plan-badge--seed">Demo</span>
         </div>
-        <PlanCard :plan="plan" />
+        <PlanCard
+          :plan="plan"
+          :interactive="hasApiPlan"
+          :progress="progress"
+          @toggle-task="onToggleTask"
+        />
       </section>
 
-      <!-- 空态：无种子也无 API 结果 -->
+      <!-- 空态 -->
       <section v-else class="empty-state">
         <div class="empty-icon">◯</div>
         <div class="empty-title">还没有生成计划</div>
@@ -160,9 +187,7 @@ function adjustmentCount(v) {
 }
 
 /* === 页头 === */
-.page-header {
-  margin-bottom: 32px;
-}
+.page-header { margin-bottom: 32px; }
 
 .page-eyebrow {
   display: inline-flex;
@@ -274,9 +299,7 @@ function adjustmentCount(v) {
   color: var(--color-ink-900);
 }
 
-.vb-node.current .vb-num {
-  color: var(--color-node-warn);
-}
+.vb-node.current .vb-num { color: var(--color-node-warn); }
 
 .vb-time {
   font-family: var(--font-mono);
@@ -374,6 +397,57 @@ function adjustmentCount(v) {
   color: var(--color-fg-tertiary);
   letter-spacing: 1px;
   text-transform: uppercase;
+}
+
+/* W3-2: 进度条 */
+.progress-section {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+
+.progress-label {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink-900);
+}
+
+.progress-value {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-node-active);
+}
+
+.progress-bar-track {
+  height: 8px;
+  background: var(--color-bg-sunken);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-node-active) 0%, #00d4aa 100%);
+  border-radius: var(--radius-full);
+  transition: width 0.4s var(--ease-out);
+}
+
+.progress-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--color-fg-tertiary);
 }
 
 /* === 空态 === */

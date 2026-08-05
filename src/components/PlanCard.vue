@@ -1,10 +1,41 @@
 <script setup>
-defineProps({
+const props = defineProps({
   plan: {
+    type: Object,
+    default: () => ({})
+  },
+  // W3-2: 交互模式（可点击复选框）
+  interactive: {
+    type: Boolean,
+    default: false
+  },
+  // W3-2: 进度数据 { [weekNum]: [taskIndex, ...] }
+  progress: {
     type: Object,
     default: () => ({})
   }
 })
+
+const emit = defineEmits(['toggle-task'])
+
+function isTaskDone(week, taskIndex) {
+  const wn = week.week || 0
+  return (props.progress[wn] || []).includes(taskIndex)
+}
+
+function onToggle(week, taskIndex) {
+  if (!props.interactive) return
+  const wn = week.week || 0
+  emit('toggle-task', { weekNum: wn, taskIndex })
+}
+
+function weekProgress(week) {
+  const tasks = week.tasks || []
+  if (!tasks.length) return 0
+  const wn = week.week || 0
+  const done = (props.progress[wn] || []).length
+  return Math.round((done / tasks.length) * 100)
+}
 </script>
 
 <template>
@@ -37,15 +68,27 @@ defineProps({
             <span class="week-title">{{ week.theme || week.title || `第 ${week.week || idx + 1} 周` }}</span>
             <span v-if="week.current" class="week-tag current">本周</span>
             <span v-else-if="week.status === 'done'" class="week-tag done">已完成</span>
+            <span v-if="interactive && (week.tasks?.length)" class="week-progress-tag">
+              {{ weekProgress(week) }}%
+            </span>
           </div>
           <div v-if="week.tasks?.length" class="week-tasks">
             <div
               v-for="(task, ti) in week.tasks"
               :key="ti"
               class="task-item"
-              :class="{ done: task.done }"
+              :class="{
+                done: interactive ? isTaskDone(week, ti) : (typeof task === 'object' ? task.done : false),
+                clickable: interactive
+              }"
+              @click="onToggle(week, ti)"
             >
-              <span class="task-check">{{ task.done ? '✓' : '○' }}</span>
+              <span class="task-check">
+                {{ interactive
+                  ? (isTaskDone(week, ti) ? '✓' : '○')
+                  : (typeof task === 'object' ? (task.done ? '✓' : '○') : '○')
+                }}
+              </span>
               <span class="task-text">{{ typeof task === 'string' ? task : task.text || task.name }}</span>
             </div>
           </div>
@@ -83,9 +126,7 @@ defineProps({
   gap: 16px;
 }
 
-.goal-block {
-  flex: 1;
-}
+.goal-block { flex: 1; }
 
 .goal-label {
   font-family: var(--font-mono);
@@ -139,9 +180,7 @@ defineProps({
   position: relative;
 }
 
-.week-item:last-child {
-  padding-bottom: 0;
-}
+.week-item:last-child { padding-bottom: 0; }
 
 .week-item:not(:last-child)::before {
   content: '';
@@ -225,6 +264,18 @@ defineProps({
   color: var(--color-fg-tertiary);
 }
 
+/* W3-2: 周进度标签 */
+.week-progress-tag {
+  margin-left: auto;
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--color-node-active) 12%, transparent);
+  color: var(--color-node-active);
+}
+
 .week-tasks {
   display: flex;
   flex-direction: column;
@@ -239,6 +290,19 @@ defineProps({
   font-size: 12px;
   color: var(--color-ink-700);
   line-height: 1.6;
+}
+
+/* W3-2: 可点击样式 */
+.task-item.clickable {
+  cursor: pointer;
+  padding: 3px 6px;
+  margin: -3px -6px;
+  border-radius: var(--radius-xs);
+  transition: background 0.15s ease;
+}
+
+.task-item.clickable:hover {
+  background: var(--color-bg-elevated);
 }
 
 .task-check {
@@ -278,9 +342,7 @@ defineProps({
   text-transform: uppercase;
 }
 
-.focus-text {
-  color: var(--color-ink-700);
-}
+.focus-text { color: var(--color-ink-700); }
 
 /* === 备注 === */
 .plan-note {
@@ -295,8 +357,5 @@ defineProps({
   color: var(--color-ink-700);
 }
 
-.note-icon {
-  color: var(--color-info);
-  flex-shrink: 0;
-}
+.note-icon { color: var(--color-info); flex-shrink: 0; }
 </style>
