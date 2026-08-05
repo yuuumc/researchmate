@@ -57,6 +57,12 @@ const routes = [
     meta: { title: '成长诊断', agent: 'diagnose' }
   },
   {
+    path: '/diagnosis/session',
+    name: 'diagnosis-session',
+    component: () => import('@/views/DiagnosisSessionView.vue'),
+    meta: { title: '混合诊断', requireAuth: true, agent: 'diagnose' }
+  },
+  {
     path: '/research',
     name: 'research',
     component: () => import('@/views/ResearchView.vue'),

@@ -107,6 +107,7 @@ function goJourney() {
 
       <!-- 生成诊断入口 -->
       <section class="generate-section">
+        <button class="generate-btn generate-btn--mixed" @click="router.push('/diagnosis/session')">开始混合诊断（做题模式）</button>
         <button
           class="generate-btn"
           :disabled="loading"
@@ -813,5 +814,10 @@ function goJourney() {
   .duo-section { grid-template-columns: 1fr; }
   .cta-section { flex-direction: column; align-items: flex-start; }
   .journey-cta-section { flex-direction: column; align-items: flex-start; }
+}
+
+.generate-btn--mixed {
+  background: linear-gradient(135deg, #38b2ac, #319795);
+  margin-bottom: 12px;
 }
 </style>
