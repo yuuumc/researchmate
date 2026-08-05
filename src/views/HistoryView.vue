@@ -44,7 +44,17 @@ const trendData = computed(() => {
     .filter((d) => d.avg_stars != null)
 })
 
+const themeKey = ref(0)
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || undefined
+}
+function onThemeChanged() {
+  themeKey.value++
+  nextTick(initChart)
+}
+
 const trendOption = computed(() => {
+  void themeKey.value // re-evaluate on theme change
   if (trendData.value.length === 0) return null
   const x = trendData.value.map((d) => new Date(d.time).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' }))
   const yStars = trendData.value.map((d) => Number(d.avg_stars.toFixed(2)))
@@ -53,9 +63,9 @@ const trendOption = computed(() => {
     grid: { top: 36, right: 24, bottom: 32, left: 40 },
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(15, 30, 51, 0.95)',
+      backgroundColor: cssVar('--bg-elevated') || 'rgba(15, 30, 51, 0.95)',
       borderColor: 'transparent',
-      textStyle: { color: '#f4f6fa', fontSize: 12 },
+      textStyle: { color: cssVar('--text-primary') || '#f4f6fa', fontSize: 12 },
       formatter: (params) => {
         if (!params?.length) return ''
         const i = params[0].dataIndex
@@ -67,16 +77,16 @@ const trendOption = computed(() => {
     xAxis: {
       type: 'category',
       data: x,
-      axisLine: { lineStyle: { color: '#dde2eb' } },
-      axisLabel: { color: '#7a8ba3', fontSize: 11, fontFamily: 'var(--font-mono)' }
+      axisLine: { lineStyle: { color: cssVar('--border-subtle') || '#dde2eb' } },
+      axisLabel: { color: cssVar('--text-muted') || '#7a8ba3', fontSize: 11, fontFamily: 'var(--font-mono)' }
     },
     yAxis: {
       type: 'value',
       min: 0,
       max: 5,
       axisLine: { show: false },
-      splitLine: { lineStyle: { color: '#e8ecf3', type: 'dashed' } },
-      axisLabel: { color: '#7a8ba3', fontSize: 11, fontFamily: 'var(--font-mono)' }
+      splitLine: { lineStyle: { color: cssVar('--border-subtle') || '#e8ecf3', type: 'dashed' } },
+      axisLabel: { color: cssVar('--text-muted') || '#7a8ba3', fontSize: 11, fontFamily: 'var(--font-mono)' }
     },
     series: [
       {
@@ -150,12 +160,12 @@ onMounted(() => {
   resizeObserver = new ResizeObserver(handleResize)
   if (chartRef.value) resizeObserver.observe(chartRef.value)
   window.addEventListener('resize', handleResize)
-  window.addEventListener('theme-changed', initChart)
+  window.addEventListener('theme-changed', onThemeChanged)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
-  window.removeEventListener('theme-changed', initChart)
+  window.removeEventListener('theme-changed', onThemeChanged)
   if (resizeObserver) {
     resizeObserver.disconnect()
     resizeObserver = null

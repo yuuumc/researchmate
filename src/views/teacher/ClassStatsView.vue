@@ -57,6 +57,7 @@ const overviewCards = computed(() => {
 const subjectLabelMap = { microelectronics: '微电子', cs: '计算机', unknown: '未知' }
 
 const abilityOption = computed(() => {
+  void themeKey.value
   const dist = stats.value?.ability_distribution || {}
   return {
     tooltip: { trigger: 'axis' },
@@ -64,13 +65,13 @@ const abilityOption = computed(() => {
     xAxis: {
       type: 'category',
       data: ['1 星', '2 星', '3 星', '4 星', '5 星'],
-      axisLine: { lineStyle: { color: '#c8d3e0' } },
-      axisLabel: { color: '#3d5a80', fontSize: 12 }
+      axisLine: { lineStyle: { color: cssVar('--border-subtle') || '#c8d3e0' } },
+      axisLabel: { color: cssVar('--text-secondary') || '#3d5a80', fontSize: 12 }
     },
     yAxis: {
       type: 'value',
-      splitLine: { lineStyle: { color: '#e3e8f0' } },
-      axisLabel: { color: '#7a8ba3', fontSize: 12 }
+      splitLine: { lineStyle: { color: cssVar('--border-subtle') || '#e3e8f0' } },
+      axisLabel: { color: cssVar('--text-muted') || '#7a8ba3', fontSize: 12 }
     },
     series: [{
       type: 'bar',
@@ -88,6 +89,7 @@ const abilityOption = computed(() => {
 })
 
 const weakOption = computed(() => {
+  void themeKey.value
   const list = stats.value?.weak_top_topics || []
   const labels = list.map((x) => x.topic)
   const counts = list.map((x) => x.count)
@@ -115,19 +117,20 @@ const weakOption = computed(() => {
 })
 
 const subjectOption = computed(() => {
+  void themeKey.value
   const list = (stats.value?.subject_distribution || []).map((s) => ({
     name: subjectLabelMap[s.subject] || s.subject,
     value: s.count
   }))
   return {
     tooltip: { trigger: 'item' },
-    legend: { bottom: 0, textStyle: { color: '#3d5a80', fontSize: 12 } },
+    legend: { bottom: 0, textStyle: { color: cssVar('--text-secondary') || '#3d5a80', fontSize: 12 } },
     series: [{
       type: 'pie',
       radius: ['45%', '72%'],
       center: ['50%', '45%'],
       avoidLabelOverlap: true,
-      label: { show: true, formatter: '{b}\n{d}%', color: '#1e3a5f', fontSize: 12 },
+      label: { show: true, formatter: '{b}\n{d}%', color: cssVar('--text-primary') || '#1e3a5f', fontSize: 12 },
       labelLine: { length: 8, length2: 8 },
       data: list.length ? list : [{ name: '暂无', value: 0, itemStyle: { color: '#eaeef5' } }],
       color: ['#1e3a5f', '#4d9de0', '#00d4aa', '#ffd166', '#7c5cbf']
@@ -153,6 +156,11 @@ function initCharts() {
   }
 }
 
+const themeKey = ref(0)
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || undefined
+}
+
 function handleResize() {
   abilityInstance?.resize()
   weakInstance?.resize()
@@ -160,6 +168,7 @@ function handleResize() {
 }
 
 function handleThemeChange() {
+  themeKey.value++
   nextTick(initCharts)
 }
 
