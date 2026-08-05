@@ -9,6 +9,8 @@
 // 后续：接入 Supabase profile 表 + 认知模型计算
 // ============================================================
 
+import { applyCors } from './_middleware.js'
+
 const PROFILE_SCHEMA = {
   identity: {
     id: 'string (uuid)',
@@ -36,19 +38,7 @@ const PROFILE_SCHEMA = {
 }
 
 export default async function handler(req, res) {
-  const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
-    .split(',').map((s) => s.trim()).filter(Boolean)
-  const requestOrigin = req.headers.origin || ''
-  const isSameOrigin = !requestOrigin
-  if (!isSameOrigin && !ALLOWED_ORIGINS.includes(requestOrigin)) {
-    return res.status(403).json({ error: 'cors_denied' })
-  }
-  res.setHeader('Vary', 'Origin')
-  res.setHeader('Access-Control-Allow-Origin', isSameOrigin ? 'null' : requestOrigin)
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-
-  if (req.method === 'OPTIONS') return res.status(204).end()
+  if (!applyCors(req, res, '[api/profile]', 'GET, POST, OPTIONS')) return
 
   if (req.method === 'GET') {
     const { id } = req.query || {}

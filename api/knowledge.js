@@ -10,23 +10,10 @@
 // ============================================================
 
 import { getProviderConfig, validateProviderConfig, listProviders } from './llm-provider.js'
+import { applyCors } from './_middleware.js'
 
 export default async function handler(req, res) {
-  // CORS 白名单复用
-  const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
-    .split(',').map((s) => s.trim()).filter(Boolean)
-  const requestOrigin = req.headers.origin || ''
-  const isSameOrigin = !requestOrigin
-  if (!isSameOrigin && !ALLOWED_ORIGINS.includes(requestOrigin)) {
-    return res.status(403).json({ error: 'cors_denied' })
-  }
-  res.setHeader('Vary', 'Origin')
-  res.setHeader('Access-Control-Allow-Origin', isSameOrigin ? 'null' : requestOrigin)
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-
-  if (req.method === 'OPTIONS') return res.status(204).end()
-  if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' })
+  if (!applyCors(req, res, '[api/knowledge]')) return
 
   const { query, subject, limit = 5 } = req.body || {}
   if (!query) return res.status(400).json({ error: 'missing_query' })

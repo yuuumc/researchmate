@@ -1,7 +1,7 @@
 // ============================================================
 // 共享中间件 - CORS 白名单（P0-3）+ 简易限流（P0-6 兜底）
 // ============================================================
-// agent.js / chat.js 共用。
+// agent.js / chat.js / diagnosis.js / knowledge.js / profile.js 共用。
 // 限流桶挂在 globalThis，跨模块、跨 warm serverless 实例共享。
 // ============================================================
 
@@ -35,7 +35,8 @@ export function checkRateLimit(ip) {
 // CORS 白名单校验 + 预检处理 + 方法限制。
 // 返回 true = 继续处理业务；false = 响应已发出（403/204/405），handler 直接 return。
 // tag 用于拒绝时打日志（如 '[api/chat]'）。
-export function applyCors(req, res, tag) {
+// methods 可选，默认 'POST, OPTIONS'；支持 'GET, POST, OPTIONS' 等自定义方法列表。
+export function applyCors(req, res, tag, methods = 'POST, OPTIONS') {
   const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
     .split(',')
     .map((s) => s.trim())
@@ -52,14 +53,15 @@ export function applyCors(req, res, tag) {
 
   res.setHeader('Vary', 'Origin')
   res.setHeader('Access-Control-Allow-Origin', isSameOrigin ? 'null' : requestOrigin)
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', methods)
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
 
   if (req.method === 'OPTIONS') {
     res.status(204).end()
     return false
   }
-  if (req.method !== 'POST') {
+  const allowedMethods = methods.split(',').map((m) => m.trim())
+  if (!allowedMethods.includes(req.method)) {
     res.status(405).json({ error: 'method_not_allowed' })
     return false
   }
