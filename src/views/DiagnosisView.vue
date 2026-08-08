@@ -7,10 +7,25 @@ import { buildDiagnosisInput } from '@/utils/diagnosisInput'
 import DiagnosisReport from '@/components/DiagnosisReport.vue'
 import AiGeneratedBadge from '@/components/AiGeneratedBadge.vue'
 import { SEED_DIAGNOSIS_REPORT, SEED_ABILITY_STARS } from '@/data/seedDemo'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const profileStore = useProfileStore()
 const diagnosisStore = useDiagnosisStore()
+const authStore = useAuthStore()
+
+// 是否有真实诊断数据（API 结果 / profile 能力星图 / 诊断历史记录）
+// 已登录用户无数据时显示空状态，不回退到种子 mock
+const hasRealData = computed(() => {
+  if (hasApiResult.value) return true
+  // 游客：profile 被 injectSeedData 注入了种子画像 → 有数据
+  if (authStore.isGuest) return true
+  // 已登录用户：检查 profile 是否有真实能力星图（>=3 项）或诊断历史
+  const stars = profileStore.profile?.ability_stars
+  if (stars && Object.keys(stars).length >= 3) return true
+  if (diagnosisStore.count > 0) return true
+  return false
+})
 
 // ========== v3.1.1: Agent API 结果 ==========
 const hasApiResult = computed(() => !!diagnosisStore.lastReport?.structured)
@@ -43,7 +58,7 @@ const abilityStars = computed(() => {
       }
     })
   }
-  return SEED_ABILITY_STARS
+  return []
 })
 
 const strengths = computed(() => abilityStars.value.filter((a) => a.type === 'strength').slice(0, 3))
@@ -63,7 +78,7 @@ const reportData = computed(() => {
       remediation: s.remediation_path || ''
     }
   }
-  return SEED_DIAGNOSIS_REPORT
+  return null
 })
 
 // 能力总评：API overall_level 优先，否则从星图均值计算
@@ -127,8 +142,17 @@ function goJourney() {
         </div>
       </section>
 
+      <!-- 空状态：无诊断数据 -->
+      <section v-if="!hasRealData && !loading" class="empty-state-card">
+        <div class="empty-icon">◯</div>
+        <div class="empty-title">尚未进行诊断</div>
+        <div class="empty-desc">完成一次混合诊断或生成 AI 诊断报告后，这里将展示你的能力星图、优势薄弱点和 4 层根因链</div>
+        <button class="empty-btn" @click="router.push('/diagnosis/session')">开始混合诊断</button>
+        <button class="empty-btn empty-btn--ghost" @click="generateDiagnosis" :disabled="loading">生成 AI 诊断报告</button>
+      </section>
+
       <!-- 顶部概览：总分 + 能力等级 -->
-      <section class="overview-row">
+      <section v-if="hasRealData" class="overview-row">
         <div class="overview-card overview-card--score">
           <div class="ov-label">
             LAST DIAGNOSIS
@@ -155,7 +179,7 @@ function goJourney() {
       </section>
 
       <!-- 能力星图 -->
-      <section class="section">
+      <section v-if="hasRealData" class="section">
         <div class="section-head">
           <span class="section-icon">★</span>
           <span class="section-title">能力星图</span>
@@ -191,7 +215,7 @@ function goJourney() {
       </section>
 
       <!-- 优势 / 薄弱点 双栏 -->
-      <section class="duo-section">
+      <section v-if="hasRealData" class="duo-section">
         <div class="duo-card duo-card--strength">
           <div class="duo-head">
             <span class="duo-icon">▲</span>
@@ -221,7 +245,7 @@ function goJourney() {
       </section>
 
       <!-- 诊断结论：4 层根因链（复用 DiagnosisReport） -->
-      <section class="section">
+      <section v-if="hasRealData" class="section">
         <div class="section-head">
           <span class="section-icon">◈</span>
           <span class="section-title">诊断结论 · 4 层根因链</span>
@@ -819,5 +843,63 @@ function goJourney() {
 .generate-btn--mixed {
   background: linear-gradient(135deg, #38b2ac, #319795);
   margin-bottom: 12px;
+}
+/* 空状态卡片 */
+.empty-state-card {
+  text-align: center;
+  padding: 64px 32px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  margin-bottom: 32px;
+}
+.empty-state-card .empty-icon {
+  font-size: 48px;
+  color: var(--color-fg-muted);
+  margin-bottom: 16px;
+}
+.empty-state-card .empty-title {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  color: var(--color-ink-900);
+  margin-bottom: 8px;
+}
+.empty-state-card .empty-desc {
+  font-size: 14px;
+  color: var(--color-fg-tertiary);
+  max-width: 400px;
+  margin: 0 auto 24px;
+  line-height: 1.6;
+}
+.empty-state-card .empty-btn {
+  display: block;
+  width: 240px;
+  margin: 0 auto 12px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-ink-700);
+  color: var(--color-fg-inverse);
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.empty-state-card .empty-btn:hover:not(:disabled) {
+  background: var(--color-ink-900);
+  box-shadow: var(--shadow-md);
+}
+.empty-state-card .empty-btn--ghost {
+  background: transparent;
+  color: var(--color-ink-500);
+  border: 1px solid var(--color-border-default);
+}
+.empty-state-card .empty-btn--ghost:hover:not(:disabled) {
+  border-color: var(--color-ink-500);
+  color: var(--color-ink-700);
+  background: var(--color-bg-sunken);
+}
+.empty-state-card .empty-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

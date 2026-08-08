@@ -5,6 +5,7 @@ import { useProfileStore } from '@/stores/profile'
 import { useWrongBookStore } from '@/stores/wrongBook'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { SEED_QUESTIONS } from '@/data/seedDemo'
+import { useAuthStore } from '@/stores/auth'
 import AiGeneratedBadge from '@/components/AiGeneratedBadge.vue'
 
 const practiceStore = usePracticeStore()
@@ -118,8 +119,9 @@ function toggleAnswer(idx) {
   else expandedAnswers.value.add(idx)
 }
 
-const showSeed = computed(() => !hasResult.value && !practiceStore.hasDbQuestions)
+const showSeed = computed(() => !hasResult.value && !practiceStore.hasDbQuestions && authStore.isGuest)
 const seedQuestions = SEED_QUESTIONS
+const authStore = useAuthStore()
 const seedExpanded = ref(new Set())
 function toggleSeedAnswer(idx) {
   if (seedExpanded.value.has(idx)) seedExpanded.value.delete(idx)
