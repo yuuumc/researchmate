@@ -4,6 +4,7 @@ import { usePeerStore } from '@/stores/peer'
 import { useProfileStore } from '@/stores/profile'
 import { useTagInput } from '@/composables/useTagInput'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
+import { stripStructuredJson } from '@/utils/stripStructuredJson'
 import { SEED_PEER_MATCHES } from '@/data/seedDemo'
 import AiGeneratedBadge from '@/components/AiGeneratedBadge.vue'
 
@@ -162,7 +163,7 @@ const seedMatches = SEED_PEER_MATCHES
 
       <!-- Markdown fallback -->
       <section v-if="result?.content && !matches.length" class="report-section">
-        <MarkdownRenderer :content="result.content" />
+        <MarkdownRenderer :content="stripStructuredJson(result.content, { hasStructured: !!result.structured })" />
       </section>
     </div>
   </div>

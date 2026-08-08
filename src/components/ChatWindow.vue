@@ -16,6 +16,7 @@ import {
 } from '@/utils/persist'
 import KnowledgeGraph from './KnowledgeGraph.vue'
 import MarkdownRenderer from './MarkdownRenderer.vue'
+import { stripStructuredJson } from '@/utils/stripStructuredJson'
 import DiagnosisReport from './DiagnosisReport.vue'
 import PlanCard from './PlanCard.vue'
 import AdmissionCard from './AdmissionCard.vue'
@@ -450,6 +451,16 @@ const firstAssistantIdx = computed(() => {
 
 watch(messages, scrollToBottom, { deep: true })
 watch(messages, scheduleSave, { deep: true })
+
+// 清理展示内容：剥离原文中的结构化 JSON 代码块
+// 有 structured 卡片时直接删；无卡片但 JSON 含 schema 键也删；流式时处理未闭合 fence
+function displayContent(msg) {
+  if (!msg || !msg.content) return ''
+  return stripStructuredJson(msg.content, {
+    hasStructured: !!msg.structured,
+    streaming: !!msg.streaming
+  })
+}
 </script>
 
 <template>
@@ -557,7 +568,7 @@ watch(messages, scheduleSave, { deep: true })
 
               <div v-else class="assistant-bubble" :class="{ error: msg.error, cancelled: msg.cancelled, streaming: msg.streaming }">
                 <AiGeneratedBadge v-if="i === firstAssistantIdx" variant="block" />
-                <MarkdownRenderer :content="msg.content" />
+                <MarkdownRenderer :content="displayContent(msg)" />
 
                 <div v-if="msg.knowledge_path" class="agent-card knowledge-path-wrap">
                   <KnowledgePathCard :path="msg.knowledge_path" />

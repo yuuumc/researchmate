@@ -4,6 +4,7 @@ import { useCareerStore } from '@/stores/career'
 import { useProfileStore } from '@/stores/profile'
 import { useTagInput } from '@/composables/useTagInput'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
+import { stripStructuredJson } from '@/utils/stripStructuredJson'
 import schoolData from '@/data/employment/school-profiles.json'
 import { SEED_CAREER_PATHS } from '@/data/seedDemo'
 import AiGeneratedBadge from '@/components/AiGeneratedBadge.vue'
@@ -176,7 +177,7 @@ const seedPaths = SEED_CAREER_PATHS
           <h2 class="section-title">详细报告</h2>
           <span class="section-en">Full Report</span>
         </div>
-        <MarkdownRenderer :content="result.content" />
+        <MarkdownRenderer :content="stripStructuredJson(result.content, { hasStructured: !!result.structured })" />
       </section>
     </div>
   </div>
