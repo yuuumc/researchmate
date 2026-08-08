@@ -58,24 +58,40 @@ const abilityStars = computed(() => {
       }
     })
   }
+  // 游客 fallback：profile 可能为空（store reset 后），用种子星图
+  if (authStore.isGuest) {
+    return SEED_ABILITY_STARS
+  }
   return []
 })
 
 const strengths = computed(() => abilityStars.value.filter((a) => a.type === 'strength').slice(0, 3))
 const weakPoints = computed(() => abilityStars.value.filter((a) => a.type === 'weak').slice(0, 2))
 
-// 诊断报告数据：API 8 字段优先，种子 fallback
+// 诊断报告数据：API 优先，游客用种子 demo，无数据返回 null
 const reportData = computed(() => {
   if (hasApiResult.value) {
     const s = apiData.value
     return {
-      score: s.score ?? SEED_DIAGNOSIS_REPORT.score,
-      subject: s.subject || SEED_DIAGNOSIS_REPORT.subject,
+      score: s.score ?? '—',
+      subject: s.subject || '—',
       weak_points: (s.weak_points || []).map(p => typeof p === 'object' ? p.knowledge_point || p.reason || JSON.stringify(p) : p),
       direct_causes: s.direct_causes || [],
       middle_causes: s.middle_causes || [],
       root_causes: s.root_causes || [],
       remediation: s.remediation_path || ''
+    }
+  }
+  // 游客：显示种子 demo 数据（评委展示用）
+  if (authStore.isGuest) {
+    return {
+      score: SEED_DIAGNOSIS_REPORT.score,
+      subject: SEED_DIAGNOSIS_REPORT.subject,
+      weak_points: (SEED_DIAGNOSIS_REPORT.weak_points || []).map(p => typeof p === 'object' ? p.knowledge_point || p.reason || JSON.stringify(p) : p),
+      direct_causes: SEED_DIAGNOSIS_REPORT.direct_causes || [],
+      middle_causes: SEED_DIAGNOSIS_REPORT.middle_causes || [],
+      root_causes: SEED_DIAGNOSIS_REPORT.root_causes || [],
+      remediation: SEED_DIAGNOSIS_REPORT.remediation || ''
     }
   }
   return null
@@ -152,7 +168,7 @@ function goJourney() {
       </section>
 
       <!-- 顶部概览：总分 + 能力等级 -->
-      <section v-if="hasRealData" class="overview-row">
+      <section v-if="hasRealData && reportData" class="overview-row">
         <div class="overview-card overview-card--score">
           <div class="ov-label">
             LAST DIAGNOSIS

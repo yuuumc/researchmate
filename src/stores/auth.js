@@ -18,6 +18,8 @@ import { defineStore } from 'pinia'
 import { supabase } from '@/services/supabase'
 import { realListClasses } from '@/services/teacher'
 import { storage } from '@/utils/storage'
+import { useProfileStore } from '@/stores/profile'
+import { useDiagnosisStore } from '@/stores/diagnosis'
 
 const GUEST_STORAGE_KEY = 'yanxintong.guest'
 
@@ -85,6 +87,13 @@ export const useAuthStore = defineStore('auth', {
      */
     clearLocalUserData() {
       storage.clearUserData()
+      // 重置 Pinia store 内存状态，清除游客种子数据残留
+      try {
+        useProfileStore().$reset()
+        useDiagnosisStore().$reset()
+      } catch (e) {
+        console.warn('[auth] Pinia store reset failed:', e)
+      }
     },
 
     /**
