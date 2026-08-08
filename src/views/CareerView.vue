@@ -24,8 +24,9 @@ const form = ref({
   student_name: profileStore.profile?.name || profileStore.profile?.user_id || '',
   target_school: profileStore.profile?.target_school || '',
   target_major: profileStore.profile?.target_major || profileStore.profile?.major || '集成电路工程',
-  mastered_skills: [],
-  weak_points: []
+  // P1-3: 从画像注入已掌握 / 薄弱知识点，不再初始化为空
+  mastered_skills: [...(profileStore.profile?.mastered_topics || [])],
+  weak_points: [...(profileStore.profile?.weak_topics || [])]
 })
 
 const { input: skillInput, add: addSkill, remove: removeSkill } = useTagInput(form, 'mastered_skills')
@@ -34,6 +35,14 @@ const { input: weakInput, add: addWeak, remove: removeWeak } = useTagInput(form,
 async function submit() {
   if (!form.value.student_name || !form.value.target_school) return
   await careerStore.runCareer({ ...form.value })
+  // P1-3: 推荐结果中的技能缺口回写画像薄弱点
+  const paths = careerStore.result?.structured?.career_paths || []
+  const gaps = new Set()
+  paths.forEach((p) => {
+    ;(p.target_roles || []).forEach((r) => (r.skill_gaps || []).forEach((g) => gaps.add(g)))
+    ;(p.gap_skills || p.gap || []).forEach((g) => gaps.add(g))
+  })
+  gaps.forEach((g) => profileStore.addWeakTopic(g))
 }
 
 const careerPaths = computed(() => careerStore.careerPaths)

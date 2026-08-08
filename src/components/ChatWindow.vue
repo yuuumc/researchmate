@@ -145,12 +145,22 @@ const modeOptions = [
 function selectMode(m) {
   chatMode.value = m
 }
-// 就业模式需要 profile 字段
+// 画像上下文（P2-5：全模式注入，非 employment 模式也传 profile）
 const modeProfile = computed(() => {
-  if (chatMode.value !== 'employment') return {}
+  const p = profileStore.profile || {}
+  const stars = p.ability_stars || {}
+  const abilitySummary = Object.keys(stars).length
+    ? Object.entries(stars).map(([t, s]) => `${t}(${s}星)`).join('、')
+    : ''
   return {
-    target_school: profileStore.profile?.target_school || '',
-    target_major: profileStore.profile?.target_major || profileStore.profile?.major || ''
+    name: p.name || '',
+    target_school: p.target_school || '',
+    target_major: p.target_major || p.major || '',
+    weak_topics: p.weak_topics || [],
+    ability_stars: stars,
+    ability_summary: abilitySummary,
+    last_diagnosis_score: p.last_diagnosis_score ?? null,
+    preparation_stage: p.preparation_stage || ''
   }
 })
 

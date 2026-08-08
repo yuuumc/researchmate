@@ -15,8 +15,9 @@ const form = ref({
   student_name: profileStore.profile?.name || profileStore.profile?.user_id || '',
   target_school: profileStore.profile?.target_school || '',
   target_major: profileStore.profile?.target_major || profileStore.profile?.major || '集成电路工程',
-  mastered_skills: [],
-  weak_points: []
+  // P1-3: 从画像注入已掌握 / 薄弱知识点，不再初始化为空
+  mastered_skills: [...(profileStore.profile?.mastered_topics || [])],
+  weak_points: [...(profileStore.profile?.weak_topics || [])]
 })
 
 const { input: skillInput, add: addSkill, remove: removeSkill } = useTagInput(form, 'mastered_skills')
@@ -25,6 +26,13 @@ const { input: weakInput, add: addWeak, remove: removeWeak } = useTagInput(form,
 async function submit() {
   if (!form.value.student_name) return
   await peerStore.runPeer({ ...form.value })
+  // P1-3: 推荐结果中若含技能缺口字段，回写画像薄弱点
+  const matches = peerStore.result?.structured?.matches || []
+  const gaps = new Set()
+  matches.forEach((m) => {
+    ;(m.gap_skills || m.skill_gaps || []).forEach((g) => gaps.add(g))
+  })
+  gaps.forEach((g) => profileStore.addWeakTopic(g))
 }
 
 const matches = computed(() => peerStore.matches)
