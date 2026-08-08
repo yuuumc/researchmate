@@ -43,7 +43,20 @@ export function applyCors(req, res, tag, methods = 'POST, OPTIONS') {
     .filter(Boolean)
   const requestOrigin = req.headers.origin || ''
   const isSameOrigin = !requestOrigin
-  const isOriginAllowed = isSameOrigin || ALLOWED_ORIGINS.includes(requestOrigin)
+
+  // P0 修复（自定义域名 403）：Origin 的 host 与请求 Host 一致时视为同源放行。
+  // 场景：yanxintong.researchkit.online 等 Vercel 自定义域名访问时，
+  // Origin=https://yanxintong.researchkit.online 而 ALLOWED_ORIGINS 只配了
+  // vercel.app → 403 cors_denied。Origin host == Host 说明请求确实从本站页面
+  // 发出；CSRF 跨站请求 Origin≠Host 仍被拦截，安全性不降低。
+  let originHost = ''
+  try {
+    originHost = requestOrigin ? new URL(requestOrigin).host : ''
+  } catch { originHost = '' }
+  const requestHost = String(req.headers.host || '')
+  const isOriginAllowed = isSameOrigin
+    || ALLOWED_ORIGINS.includes(requestOrigin)
+    || (originHost !== '' && originHost === requestHost)
 
   if (!isOriginAllowed) {
     if (tag) console.warn(`${tag} CORS denied for origin: ${requestOrigin}`)

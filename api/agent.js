@@ -118,7 +118,10 @@ export default async function handler(req, res) {
 
   // ---- 参数 clamp（P1 安全加固）----
   const temperature = Math.min(Math.max(Number(input.temperature) || 0.7, 0), 2)
-  const maxTokens = Math.min(Number(input.max_tokens) || 4000, 8000)
+  // P0 修复：plan 输出长（markdown 正文 + JSON 结构化块），4000 易触顶截断
+  // 导致 JSON 不完整 → structured 解析失败 → 前端「返回内容为空」。plan 默认 8000。
+  const defaultMaxTokens = action === 'plan' ? 8000 : 4000
+  const maxTokens = Math.min(Number(input.max_tokens) || defaultMaxTokens, 8000)
 
   // ---- 调用 LLM（带 AbortController 超时）----
   const controller = new AbortController()
@@ -151,8 +154,18 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json()
-    const content = data.choices?.[0]?.message?.content || ''
+    const choice = data.choices?.[0]
+    const content = choice?.message?.content || ''
+    const finishReason = choice?.finish_reason || null
+    // P0 修复：截断监控——finish_reason=length 说明 max_tokens 触顶，
+    // JSON 块不完整会导致 structured 解析失败
+    if (finishReason === 'length') {
+      console.warn(`[api/agent] ${action} truncated by max_tokens=${maxTokens}, completion=${data.usage?.completion_tokens}`)
+    }
     const structured = extractStructured(content)
+    if (!structured && content) {
+      console.warn(`[api/agent] ${action} structured parse failed, content_len=${content.length}, tail=${content.slice(-80)}`)
+    }
 
     return res.status(200).json({
       status: 'active',
@@ -160,6 +173,7 @@ export default async function handler(req, res) {
       agentInfo: { name: agentInfo.name, description: agentInfo.desc },
       content,
       structured,
+      finish_reason: finishReason,
       provider: { name: config.provider, model: config.model },
       usage: data.usage || null,
     })

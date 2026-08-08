@@ -100,10 +100,34 @@ export const usePlanStore = defineStore('plan', {
     },
 
     // v3.1: 调用 Agent API 生成计划
+    // P0 修复：LLM 输出有波动（偶发 JSON 截断/格式变体），
+    // 失败后自动退避重试 1 次再报错，大幅提升感知成功率
     async runPlan(input) {
       this.loading = true
       this.error = null
+      const MAX_ATTEMPTS = 2 // 首次 + 1 次自动重试
+      let lastErr = null
       try {
+        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+          try {
+            return await this._runPlanOnce(input, attempt)
+          } catch (e) {
+            lastErr = e
+            console.warn(`[plan] 第 ${attempt}/${MAX_ATTEMPTS} 次生成失败:`, e.message)
+            if (attempt < MAX_ATTEMPTS) {
+              await new Promise((r) => setTimeout(r, 1500))
+            }
+          }
+        }
+        this.error = lastErr?.message || '计划生成失败'
+        throw lastErr
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // 单次生成尝试（被 runPlan 重试包装）
+    async _runPlanOnce(input, attempt = 1) {
         const res = await callAgent('plan', input)
         let s = res.structured || {}
 
@@ -128,6 +152,7 @@ export const usePlanStore = defineStore('plan', {
         const normalized = normalizePlanStructured(s)
 
         console.info('[plan] normalize result:', {
+          attempt,
           weeks_count: Array.isArray(normalized.weeks) ? normalized.weeks.length : 0,
           source: s?.plan?.stages ? 'plan.stages' : (s?.stages ? 'top.stages' : (s?.weeks ? 'top.weeks' : 'none')),
         })
@@ -154,12 +179,6 @@ export const usePlanStore = defineStore('plan', {
         await this.savePlanToDB(planItem)
 
         return this.lastPlan
-      } catch (e) {
-        this.error = e.message
-        throw e
-      } finally {
-        this.loading = false
-      }
     },
 
     // W3-2: 保存计划到 Supabase plans 表
