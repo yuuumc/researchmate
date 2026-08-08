@@ -81,7 +81,11 @@ export function buildDiagnosisInput(overrides = {}) {
  */
 export function isValidDiagnosisRecord(record) {
   if (!record) return false
-  if (typeof record.score === 'number' && !Number.isNaN(record.score)) return true
+  // score > 0 才算有效诊断分数（score=0 通常是空壳/失败残留；
+  // 真实 0 分诊断必然带 weak_points/root_causes，由后续条件兜住）
+  const hasValidScore = typeof record.score === 'number'
+    && !Number.isNaN(record.score) && record.score > 0
+  if (hasValidScore) return true
   if (Array.isArray(record.weak_points) && record.weak_points.length > 0) return true
   if (Array.isArray(record.root_causes) && record.root_causes.length > 0) return true
   if (typeof record.raw_report === 'string' && record.raw_report.trim()) return true

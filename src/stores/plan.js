@@ -107,9 +107,12 @@ export const usePlanStore = defineStore('plan', {
         const res = await callAgent('plan', input)
         const s = res.structured || {}
 
-        // P0 修复：规划结果为空（structured 缺失或无 weeks）时直接抛错，
-        // 不落库、不生成空版本——否则 CURRENT PLAN 会渲染一张空白卡片
-        if (!Array.isArray(s.weeks) || s.weeks.length === 0) {
+        // P0 修复：plan prompt 输出的是 stages（含 weekly_plans）结构，
+        // 前端 PlanCard 需要 weeks 数组——normalize 展开后再校验
+        const normalized = normalizePlanStructured(s)
+
+        // 校验：normalize 后仍无 weeks = LLM 确实没返回有效计划
+        if (!Array.isArray(normalized.weeks) || normalized.weeks.length === 0) {
           throw new Error('AI 未能生成有效计划（返回内容为空），请重试')
         }
 
@@ -120,8 +123,8 @@ export const usePlanStore = defineStore('plan', {
 
         const planItem = this.addPlan({
           based_on_diagnosis: input.diagnosis_result || null,
-          weeks: s.weeks || [],
-          adjustments: s.adjustments || { keep: [], strengthen: [], drop: [] },
+          weeks: normalized.weeks,
+          adjustments: normalized.adjustments || s.adjustments || { keep: [], strengthen: [], drop: [] },
           raw_plan: res.content || ''
         })
 
@@ -321,3 +324,43 @@ export const usePlanStore = defineStore('plan', {
     }
   }
 })
+
+// ============================================================
+// P0 修复：plan prompt 输出 stages 结构，PlanCard 需要 weeks——normalize
+// stages[].weekly_plans[] → weeks[]，映射 PlanCard 所需字段
+// ============================================================
+function normalizePlanStructured(s) {
+  // 已有 weeks 直接用（兼容旧版 prompt 或未来改动）
+  if (Array.isArray(s.weeks) && s.weeks.length > 0) return s
+  // 无 stages 也无法 normalize
+  if (!Array.isArray(s.stages) || s.stages.length === 0) return s
+
+  const weeks = []
+  for (const stage of s.stages) {
+    const plans = Array.isArray(stage.weekly_plans) ? stage.weekly_plans : []
+    for (const wp of plans) {
+      weeks.push({
+        week: wp.week || weeks.length + 1,
+        theme: stage.stage_name || stage.name || wp.goal || '',
+        tasks: Array.isArray(wp.knowledge_points)
+          ? wp.knowledge_points.map((k) =>
+              typeof k === 'string' ? k : (k?.name || k?.topic || String(k))
+            )
+          : [],
+        focus: stage.focus || '',
+        goal: wp.goal || '',
+        estimated_hours: wp.estimated_hours || null,
+        exercise_count: wp.exercise_count || null,
+        stage: stage.stage_name || stage.stage_id || ''
+      })
+    }
+  }
+
+  return {
+    ...s,
+    weeks,
+    goal: s.goal || weeks[0]?.goal || '',
+    total_weeks: s.total_weeks || weeks.length,
+    adjustments: s.adjustments || { keep: [], strengthen: [], drop: [] }
+  }
+}
