@@ -112,8 +112,8 @@ export const usePlanStore = defineStore('plan', {
           try {
             return await this._runPlanOnce(input, attempt)
           } catch (e) {
-            lastErr = e
-            console.warn(`[plan] 第 ${attempt}/${MAX_ATTEMPTS} 次生成失败:`, e.message)
+            lastErr = translatePlanError(e)
+            console.warn(`[plan] 第 ${attempt}/${MAX_ATTEMPTS} 次生成失败:`, lastErr.message)
             if (attempt < MAX_ATTEMPTS) {
               await new Promise((r) => setTimeout(r, 1500))
             }
@@ -160,7 +160,11 @@ export const usePlanStore = defineStore('plan', {
         // 校验：normalize 后仍无 weeks = LLM 确实没返回有效计划
         if (!Array.isArray(normalized.weeks) || normalized.weeks.length === 0) {
           console.error('[plan] weeks 为空，LLM 返回无法解析。content 全文:', res.content)
-          throw new Error('AI 未能生成有效计划（返回内容为空），请重试')
+          // P0 修复：区分 LLM 拒答（prompt 引导去诊断）vs 格式异常——不再用万能文案
+          const refused = /请先完成知识诊断|无法生成个性化计划/.test(res.content || '')
+          throw new Error(refused
+            ? 'AI 建议先完成知识诊断再生成个性化计划（也可重试生成通用计划）'
+            : 'AI 返回格式异常，请重试')
         }
 
         this.lastPlan = {
@@ -365,6 +369,31 @@ export const usePlanStore = defineStore('plan', {
     }
   }
 })
+
+// ============================================================
+// P0 修复：错误透传——把 axios/上游错误翻译成人话，不再有「返回内容为空」万能文案
+// ============================================================
+function translatePlanError(e) {
+  const code = e?.response?.data?.error_code
+  const status = e?.response?.status
+  const MAP = {
+    insufficient_balance: 'AI 服务余额不足，请联系管理员充值后重试',
+    auth_failed: 'AI 服务密钥失效或无权访问，请联系管理员检查配置',
+    rate_limit: '请求太频繁，请 1 分钟后重试',
+    upstream_5xx: 'AI 服务暂时不可用（上游 5xx），请稍后重试',
+    upstream_error: 'AI 服务暂时不可用，请稍后重试',
+    bad_request: '请求参数异常，请重试',
+  }
+  if (code && MAP[code]) return new Error(MAP[code])
+  if (status === 502) return new Error('AI 服务暂时不可用，请稍后重试')
+  if (status === 403) return new Error('请求被拒绝（403），请硬刷新页面后重试')
+  if (status === 429) return new Error('请求太频繁，请 1 分钟后重试')
+  if (!e?.response && e?.message && /Network Error|timeout/i.test(e.message)) {
+    return new Error('网络连接失败，请检查网络后重试')
+  }
+  // 业务错误（message 已是人话）直接透传
+  return e
+}
 
 // ============================================================
 // P0 兜底：前端版 extractStructured（后端 parse 失败时用）

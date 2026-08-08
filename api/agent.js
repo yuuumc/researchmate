@@ -146,10 +146,14 @@ export default async function handler(req, res) {
     if (!response.ok) {
       const errText = await response.text()
       console.error(`[api/agent] ${action} upstream ${response.status}:`, errText.slice(0, 200))
-      // 不返回上游错误原文，防止泄露 API 端点信息
+      // P0 修复：错误透传——上游状态码分类为 error_code，前端按码显示人话错误
+      const ERROR_CODE_MAP = { 400: 'bad_request', 401: 'auth_failed', 402: 'insufficient_balance', 403: 'auth_failed', 429: 'rate_limit' }
+      const errorCode = ERROR_CODE_MAP[response.status] || (response.status >= 500 ? 'upstream_5xx' : 'upstream_error')
       return res.status(502).json({
         error: 'upstream_error',
-        status: response.status,
+        error_code: errorCode,
+        upstream_status: response.status,
+        upstream_message: errText.slice(0, 300),
       })
     }
 
@@ -163,7 +167,9 @@ export default async function handler(req, res) {
       console.warn(`[api/agent] ${action} truncated by max_tokens=${maxTokens}, completion=${data.usage?.completion_tokens}`)
     }
     const structured = extractStructured(content)
+    let structureWarning = null
     if (!structured && content) {
+      structureWarning = 'structured_parse_failed'
       console.warn(`[api/agent] ${action} structured parse failed, content_len=${content.length}, tail=${content.slice(-80)}`)
     }
 
@@ -173,6 +179,7 @@ export default async function handler(req, res) {
       agentInfo: { name: agentInfo.name, description: agentInfo.desc },
       content,
       structured,
+      structure_warning: structureWarning,
       finish_reason: finishReason,
       provider: { name: config.provider, model: config.model },
       usage: data.usage || null,
