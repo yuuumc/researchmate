@@ -327,16 +327,12 @@ export const usePlanStore = defineStore('plan', {
 
 // ============================================================
 // P0 修复：plan prompt 输出 stages 结构，PlanCard 需要 weeks——normalize
+// LLM 输出结构有两种：① 顶层 stages ② 嵌套在 s.plan.stages
 // stages[].weekly_plans[] → weeks[]，映射 PlanCard 所需字段
 // ============================================================
-function normalizePlanStructured(s) {
-  // 已有 weeks 直接用（兼容旧版 prompt 或未来改动）
-  if (Array.isArray(s.weeks) && s.weeks.length > 0) return s
-  // 无 stages 也无法 normalize
-  if (!Array.isArray(s.stages) || s.stages.length === 0) return s
-
+function expandStagesToWeeks(stages) {
   const weeks = []
-  for (const stage of s.stages) {
+  for (const stage of stages) {
     const plans = Array.isArray(stage.weekly_plans) ? stage.weekly_plans : []
     for (const wp of plans) {
       weeks.push({
@@ -355,12 +351,43 @@ function normalizePlanStructured(s) {
       })
     }
   }
+  return weeks
+}
 
-  return {
-    ...s,
-    weeks,
-    goal: s.goal || weeks[0]?.goal || '',
-    total_weeks: s.total_weeks || weeks.length,
-    adjustments: s.adjustments || { keep: [], strengthen: [], drop: [] }
+function normalizePlanStructured(s) {
+  // ① 已有顶层 weeks 直接用
+  if (Array.isArray(s.weeks) && s.weeks.length > 0) return s
+
+  // ② 嵌套在 s.plan 里（LLM 常见输出：{student_name, target_major, plan:{stages,...}, plan_reason}）
+  const pf = s.plan
+  if (pf && typeof pf === 'object') {
+    if (Array.isArray(pf.weeks) && pf.weeks.length > 0) {
+      return { ...s, ...pf, weeks: pf.weeks }
+    }
+    if (Array.isArray(pf.stages) && pf.stages.length > 0) {
+      const weeks = expandStagesToWeeks(pf.stages)
+      return {
+        ...s,
+        ...pf,
+        weeks,
+        goal: pf.goal || s.goal || '',
+        total_weeks: pf.total_weeks || weeks.length,
+        adjustments: pf.adjustments || s.adjustments || { keep: [], strengthen: [], drop: [] }
+      }
+    }
   }
+
+  // ③ 顶层 stages
+  if (Array.isArray(s.stages) && s.stages.length > 0) {
+    const weeks = expandStagesToWeeks(s.stages)
+    return {
+      ...s,
+      weeks,
+      goal: s.goal || '',
+      total_weeks: s.total_weeks || weeks.length,
+      adjustments: s.adjustments || { keep: [], strengthen: [], drop: [] }
+    }
+  }
+
+  return s
 }
