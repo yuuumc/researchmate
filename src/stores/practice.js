@@ -10,6 +10,7 @@ import { defineStore } from 'pinia'
 import { callAgent } from '@/api/agent'
 import { supabase, isSupabaseConfigured } from '@/services/supabase'
 import { useWrongBookStore } from '@/stores/wrongBook'
+import { useProfileStore } from '@/stores/profile'
 
 export const usePracticeStore = defineStore('practice', {
   state: () => ({
@@ -255,6 +256,28 @@ export const usePracticeStore = defineStore('practice', {
 
         // 同步到 localStorage wrongBookStore
         wbStore.addIfWeak(q.knowledge_point, 1, 'weak_point')
+      }
+
+      // P1-4: 练习结果回写 profileStore.ability_stars
+      try {
+        const profileStore = useProfileStore()
+        for (const d of details) {
+          if (!d.knowledge_point) continue
+          const currentStars = profileStore.profile?.ability_stars?.[d.knowledge_point] ?? 0
+          if (d.is_correct) {
+            // 做对 → 星级 +1（上限 5）
+            if (currentStars < 5) {
+              profileStore.setAbilityStar(d.knowledge_point, currentStars + 1)
+            }
+          } else {
+            // 做错 → 标记为薄弱（星级 ≤2，setAbilityStar 自动联动 weak_topics）
+            if (currentStars > 2) {
+              profileStore.setAbilityStar(d.knowledge_point, 2)
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[practice] profile writeback failed:', e)
       }
 
       this.dbResults = {

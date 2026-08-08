@@ -133,6 +133,24 @@ export const useProfileStore = defineStore('profile', {
         updated_at: new Date().toISOString()
       }
       this.persist()
+      // P2-6: fire-and-forget Supabase push（登录用户非游客）
+      this._pushToCloud(updates)
+    },
+
+    /**
+     * P2-6: 异步推 profile 到 Supabase（不阻塞 UI）
+     * 仅登录用户非游客；失败静默（localStorage 是离线 fallback）
+     */
+    async _pushToCloud(updates) {
+      try {
+        const { useAuthStore } = await import('@/stores/auth')
+        const auth = useAuthStore()
+        if (!auth.isAuthenticated || auth.isGuest) return
+        const { saveProfile } = await import('@/services/profileService')
+        await saveProfile(updates)
+      } catch (e) {
+        console.warn('[profile] cloud push failed:', e.message)
+      }
     },
 
     // === 认知模型 actions（v1 正式版新增） ===

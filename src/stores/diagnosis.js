@@ -130,6 +130,27 @@ export const useDiagnosisStore = defineStore('diagnosis', {
           ability_stars_snapshot: s.ability_stars || {}
         })
 
+        // P0-1: 回写 profileStore（对齐 journey.js，三条诊断路径一致）
+        try {
+          const { useProfileStore } = await import('@/stores/profile')
+          const profileStore = useProfileStore()
+          if (typeof s.score === 'number') {
+            profileStore.setLastDiagnosis(s.score)
+          }
+          if (s.ability_stars && typeof s.ability_stars === 'object') {
+            Object.entries(s.ability_stars).forEach(([topic, star]) => {
+              const n = parseInt(star, 10)
+              if (n >= 1 && n <= 5) profileStore.setAbilityStar(topic, n)
+            })
+          }
+          const weakTopics = (Array.isArray(s.weak_points) ? s.weak_points : [])
+            .map((w) => (typeof w === 'string' ? w : w?.knowledge_point))
+            .filter(Boolean)
+          weakTopics.forEach((t) => profileStore.addWeakTopic(t))
+        } catch (e) {
+          console.warn('[diagnosis] profile writeback failed:', e)
+        }
+
         return this.lastReport
       } catch (e) {
         this.error = e.message

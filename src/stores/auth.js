@@ -20,6 +20,7 @@ import { realListClasses } from '@/services/teacher'
 import { storage } from '@/utils/storage'
 import { useProfileStore } from '@/stores/profile'
 import { useDiagnosisStore } from '@/stores/diagnosis'
+import { loadProfile } from '@/services/profileService'
 
 const GUEST_STORAGE_KEY = 'yanxintong.guest'
 
@@ -141,6 +142,7 @@ export const useAuthStore = defineStore('auth', {
       // 状态同步由 onAuthStateChange → bindAuthUser 触发；这里额外主动拉一次班级
       if (data && data.user) {
         await this.loadTeacherClasses()
+        await this.pullProfile()
       }
       return data
     },
@@ -163,6 +165,7 @@ export const useAuthStore = defineStore('auth', {
       // 状态同步由 onAuthStateChange → bindAuthUser 触发；这里额外主动拉一次班级
       if (data && data.user) {
         await this.loadTeacherClasses()
+        await this.pullProfile()
       }
       return data
     },
@@ -203,6 +206,30 @@ export const useAuthStore = defineStore('auth', {
       try {
         localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(guestUser))
       } catch (_) {}
+    },
+
+    /**
+     * P2-6: 登录后从 Supabase 拉取 profile 合并到本地
+     * 远端有记录 → 覆盖本地（跨设备同步）；无记录 → 保持默认（新用户）
+     */
+    async pullProfile() {
+      if (!this.isAuthenticated || this.isGuest) return
+      try {
+        const remote = await loadProfile()
+        if (remote) {
+          const profileStore = useProfileStore()
+          const merged = { ...profileStore.profile }
+          for (const [k, v] of Object.entries(remote)) {
+            if (v != null && !['id', 'user_id', 'created_at'].includes(k)) {
+              merged[k] = v
+            }
+          }
+          profileStore.updateProfile(merged)
+          console.info('[auth] profile pulled from cloud')
+        }
+      } catch (e) {
+        console.warn('[auth] pullProfile failed:', e)
+      }
     },
 
     /** 退出登录，清除全部本地用户数据 */
