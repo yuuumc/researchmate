@@ -124,10 +124,32 @@ export function shouldUseCompact() {
  */
 export function extractStructured(content) {
   if (!content) return null
+  // 1. ```json 围栏（优先，最可靠）
   const match = content.match(/```json\s*\n([\s\S]*?)\n```/)
-  if (!match) return null
+  if (match) {
+    try {
+      return JSON.parse(match[1].trim())
+    } catch {
+      /* fallthrough to裸 JSON 提取 */
+    }
+  }
+  // 2. 裸 JSON 对象提取：LLM 有时不输出围栏，直接在文本末尾输出 JSON。
+  //    用平衡括号从最后一个 } 往前找匹配的 {，避免 O(n²) 逐字符缩减。
+  const lastClose = content.lastIndexOf('}')
+  if (lastClose === -1) return null
+  let depth = 0
+  let start = -1
+  for (let i = lastClose; i >= 0; i--) {
+    const ch = content[i]
+    if (ch === '}') depth++
+    else if (ch === '{') {
+      depth--
+      if (depth === 0) { start = i; break }
+    }
+  }
+  if (start === -1) return null
   try {
-    return JSON.parse(match[1].trim())
+    return JSON.parse(content.slice(start, lastClose + 1))
   } catch {
     return null
   }
