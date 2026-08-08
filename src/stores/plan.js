@@ -105,14 +105,36 @@ export const usePlanStore = defineStore('plan', {
       this.error = null
       try {
         const res = await callAgent('plan', input)
-        const s = res.structured || {}
+        let s = res.structured || {}
+
+        // P0-diag: 打印 LLM 原始返回到 Console，方便 F12 排查
+        console.info('[plan] LLM raw response:', {
+          content_len: (res.content || '').length,
+          content_head: (res.content || '').slice(0, 200),
+          content_tail: (res.content || '').slice(-200),
+          structured_keys: s && typeof s === 'object' ? Object.keys(s) : null,
+          has_plan_field: !!s?.plan,
+          plan_keys: s?.plan ? Object.keys(s.plan) : null,
+        })
+
+        // P0 兜底：后端 extractStructured 返回 null 时，前端从 content 再 parse
+        if (!s && res.content) {
+          s = parseStructuredFromContent(res.content)
+          if (s) console.info('[plan] 前端 fallback extract 成功, keys:', Object.keys(s))
+        }
 
         // P0 修复：plan prompt 输出的是 stages（含 weekly_plans）结构，
         // 前端 PlanCard 需要 weeks 数组——normalize 展开后再校验
         const normalized = normalizePlanStructured(s)
 
+        console.info('[plan] normalize result:', {
+          weeks_count: Array.isArray(normalized.weeks) ? normalized.weeks.length : 0,
+          source: s?.plan?.stages ? 'plan.stages' : (s?.stages ? 'top.stages' : (s?.weeks ? 'top.weeks' : 'none')),
+        })
+
         // 校验：normalize 后仍无 weeks = LLM 确实没返回有效计划
         if (!Array.isArray(normalized.weeks) || normalized.weeks.length === 0) {
+          console.error('[plan] weeks 为空，LLM 返回无法解析。content 全文:', res.content)
           throw new Error('AI 未能生成有效计划（返回内容为空），请重试')
         }
 
@@ -324,6 +346,28 @@ export const usePlanStore = defineStore('plan', {
     }
   }
 })
+
+// ============================================================
+// P0 兜底：前端版 extractStructured（后端 parse 失败时用）
+// 1. ```json 围栏 2. 裸 JSON 平衡括号提取
+// ============================================================
+function parseStructuredFromContent(content) {
+  if (!content) return null
+  const match = content.match(/```json\s*\n([\s\S]*?)\n```/)
+  if (match) {
+    try { return JSON.parse(match[1].trim()) } catch { /* fallthrough */ }
+  }
+  const lastClose = content.lastIndexOf('}')
+  if (lastClose === -1) return null
+  let depth = 0, start = -1
+  for (let i = lastClose; i >= 0; i--) {
+    const ch = content[i]
+    if (ch === '}') depth++
+    else if (ch === '{') { depth--; if (depth === 0) { start = i; break } }
+  }
+  if (start === -1) return null
+  try { return JSON.parse(content.slice(start, lastClose + 1)) } catch { return null }
+}
 
 // ============================================================
 // P0 修复：plan prompt 输出 stages 结构，PlanCard 需要 weeks——normalize
