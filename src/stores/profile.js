@@ -149,8 +149,53 @@ export const useProfileStore = defineStore('profile', {
         const { saveProfile } = await import('@/services/profileService')
         await saveProfile(updates)
       } catch (e) {
-        console.warn('[profile] cloud push failed:', e.message)
+        // P0: 不再静默吞错——打印完整错误体（code/hint/details），便于定位 upsert 失败根因
+        const body = e && typeof e === 'object'
+          ? { message: e.message, code: e.code, hint: e.hint, details: e.details }
+          : String(e)
+        console.warn('[profile] cloud push failed:', body)
       }
+    },
+
+    /**
+     * P0 兼容层：把云端拉回的 profile 合并到本地（不回推云端，避免 pull->push 循环）
+     * 供 auth.pullProfile 使用
+     */
+    applyRemoteProfile(remote) {
+      if (!remote || typeof remote !== 'object') return
+      const merged = { ...this.profile }
+      for (const [k, v] of Object.entries(remote)) {
+        if (v != null && !['id', 'user_id', 'created_at'].includes(k)) {
+          merged[k] = v
+        }
+      }
+      this.profile = { ...merged, updated_at: new Date().toISOString() }
+      this.persist()
+    },
+
+    /**
+     * P0 兼容兜底（方案 B）：profiles 认知列为空时，从 diagnoses.structured 水合
+     * 星级 / 诊断分 / 薄弱点到本地 store（不回推云端，避免缺列 400）
+     * 供 auth.pullProfile 在新列缺失或为空时调用
+     */
+    hydrateCognitive({ ability_stars, last_diagnosis_score, last_diagnosis_date, weak_topics } = {}) {
+      const updates = {}
+      if (ability_stars && typeof ability_stars === 'object' && Object.keys(ability_stars).length > 0) {
+        updates.ability_stars = { ...this.profile.ability_stars, ...ability_stars }
+      }
+      if (typeof last_diagnosis_score === 'number' && this.profile.last_diagnosis_score == null) {
+        updates.last_diagnosis_score = last_diagnosis_score
+      }
+      if (last_diagnosis_date && this.profile.last_diagnosis_date == null) {
+        updates.last_diagnosis_date = last_diagnosis_date
+      }
+      if (Array.isArray(weak_topics) && weak_topics.length > 0) {
+        const merged = [...new Set([...this.profile.weak_topics, ...weak_topics])]
+        updates.weak_topics = merged
+      }
+      if (Object.keys(updates).length === 0) return
+      this.profile = { ...this.profile, ...updates, updated_at: new Date().toISOString() }
+      this.persist()
     },
 
     // === 认知模型 actions（v1 正式版新增） ===

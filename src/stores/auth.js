@@ -214,18 +214,48 @@ export const useAuthStore = defineStore('auth', {
      */
     async pullProfile() {
       if (!this.isAuthenticated || this.isGuest) return
+      const profileStore = useProfileStore()
       try {
+        // 1) 拉云端 profile 合并到本地（不回推，避免 pull->push 循环）
         const remote = await loadProfile()
         if (remote) {
-          const profileStore = useProfileStore()
-          const merged = { ...profileStore.profile }
-          for (const [k, v] of Object.entries(remote)) {
-            if (v != null && !['id', 'user_id', 'created_at'].includes(k)) {
-              merged[k] = v
-            }
-          }
-          profileStore.updateProfile(merged)
+          profileStore.applyRemoteProfile(remote)
           console.info('[auth] profile pulled from cloud')
+        }
+
+        // 2) P0 兼容兜底：认知字段（星级 / 诊断分）为空 -> 从最近一次诊断记录水合
+        //    覆盖 profiles 缺列期间（saveProfile upsert 400 被吞）的历史数据
+        const stars = profileStore.profile.ability_stars || {}
+        const needHydrate = Object.keys(stars).length === 0
+          || profileStore.profile.last_diagnosis_score == null
+        if (needHydrate) {
+          const { data: diag, error: diagErr } = await supabase
+            .from('diagnoses')
+            .select('structured, score, created_at')
+            .eq('user_id', this.user.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+          if (diagErr) {
+            console.warn('[auth] diagnoses hydrate query failed:', diagErr)
+          } else if (diag && diag.structured) {
+            const st = diag.structured || {}
+            const abilityStars = (st.ability_stars && typeof st.ability_stars === 'object')
+              ? st.ability_stars : {}
+            const weakTopics = (st.weak_points || []).map(wp =>
+              typeof wp === 'string' ? wp
+                : (wp.knowledge_point || wp.topic || wp.name || JSON.stringify(wp))
+            )
+            const score = typeof st.score === 'number' ? st.score
+              : (typeof diag.score === 'number' ? diag.score : null)
+            profileStore.hydrateCognitive({
+              ability_stars: abilityStars,
+              last_diagnosis_score: score,
+              last_diagnosis_date: diag.created_at,
+              weak_topics: weakTopics,
+            })
+            console.info('[auth] profile hydrated from latest diagnosis')
+          }
         }
       } catch (e) {
         console.warn('[auth] pullProfile failed:', e)
