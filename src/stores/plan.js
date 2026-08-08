@@ -105,12 +105,19 @@ export const usePlanStore = defineStore('plan', {
       this.error = null
       try {
         const res = await callAgent('plan', input)
+        const s = res.structured || {}
+
+        // P0 修复：规划结果为空（structured 缺失或无 weeks）时直接抛错，
+        // 不落库、不生成空版本——否则 CURRENT PLAN 会渲染一张空白卡片
+        if (!Array.isArray(s.weeks) || s.weeks.length === 0) {
+          throw new Error('AI 未能生成有效计划（返回内容为空），请重试')
+        }
+
         this.lastPlan = {
           content: res.content || '',
           structured: res.structured || null
         }
 
-        const s = res.structured || {}
         const planItem = this.addPlan({
           based_on_diagnosis: input.diagnosis_result || null,
           weeks: s.weeks || [],
@@ -293,6 +300,19 @@ export const usePlanStore = defineStore('plan', {
         console.warn('[plan] 进度加载异常:', e.message)
       } finally {
         this.progressLoading = false
+      }
+    },
+
+    // P0 修复：清理历史遗留的空计划版本（weeks 为空），
+    // 避免旧版本 bug 产生的空壳数据导致 CURRENT PLAN 渲染空白
+    pruneEmptyVersions() {
+      const valid = this.versions.filter((v) => Array.isArray(v.weeks) && v.weeks.length > 0)
+      if (valid.length !== this.versions.length) {
+        this.versions = valid
+        if (!valid.find((v) => v.version === this.currentVersion)) {
+          this.currentVersion = valid.length ? valid[valid.length - 1].version : 0
+        }
+        this.persist()
       }
     },
 

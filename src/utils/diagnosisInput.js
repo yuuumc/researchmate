@@ -73,16 +73,34 @@ export function buildDiagnosisInput(overrides = {}) {
 }
 
 /**
+ * 判断一条诊断记录是否包含有效数据
+ * 区分「无诊断」（null）和「有记录但内容为空」（如 API 部分失败/DB 空壳记录）
+ * 有效 = score 为数字，或有薄弱点/根因/报告文本任一
+ * @param {Object|null} record
+ * @returns {boolean}
+ */
+export function isValidDiagnosisRecord(record) {
+  if (!record) return false
+  if (typeof record.score === 'number' && !Number.isNaN(record.score)) return true
+  if (Array.isArray(record.weak_points) && record.weak_points.length > 0) return true
+  if (Array.isArray(record.root_causes) && record.root_causes.length > 0) return true
+  if (typeof record.raw_report === 'string' && record.raw_report.trim()) return true
+  return false
+}
+
+/**
  * 从最近一次诊断结果提取规划输入
  * 诊断 → 规划的数据流：诊断输出的 weak_points/root_causes/remediation_path/score
  * 作为规划 Agent 的 diagnosis_result 传入
+ * P0 修复：空壳诊断记录（score null + 全空字段）返回 null，与「无诊断」同等处理，
+ * 避免规划 Agent 拿到 { score: null, weak_points: [] } 垃圾输入
  * @returns {Object|null} { score, weak_points, root_causes, remediation_path, overall_level }
  */
 export function getDiagnosisResultForPlan() {
   const diagnosisStore = useDiagnosisStore()
   const latest = diagnosisStore.latest
 
-  if (!latest) return null
+  if (!isValidDiagnosisRecord(latest)) return null
 
   return {
     score: latest.score,

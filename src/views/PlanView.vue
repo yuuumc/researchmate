@@ -3,7 +3,7 @@ import { computed, onMounted } from 'vue'
 import { usePlanStore } from '@/stores/plan'
 import { useProfileStore } from '@/stores/profile'
 import { useDiagnosisStore } from '@/stores/diagnosis'
-import { getDiagnosisResultForPlan, getKnowledgeStructure } from '@/utils/diagnosisInput'
+import { getDiagnosisResultForPlan, getKnowledgeStructure, isValidDiagnosisRecord } from '@/utils/diagnosisInput'
 import KnowledgeGraph from '@/components/KnowledgeGraph.vue'
 import PlanCard from '@/components/PlanCard.vue'
 import AiGeneratedBadge from '@/components/AiGeneratedBadge.vue'
@@ -26,8 +26,18 @@ const completionRate = computed(() => planStore.completionRate)
 const seedPlan = SEED_PLAN
 const hasApiPlan = computed(() => planStore.lastPlan !== null)
 
+// P0 修复：区分「无诊断」和「空壳诊断记录」（score null/字段全空）
+// 空壳记录不应显示「基于最近诊断（0分）生成」误导文案
+const hasValidDiagnosis = computed(() => isValidDiagnosisRecord(diagnosisStore.latest))
+const diagnosisScore = computed(() => {
+  const s = diagnosisStore.latest?.score
+  return typeof s === 'number' && !Number.isNaN(s) ? s : '—'
+})
+
 // W3-2: 页面加载时尝试从数据库恢复计划
 onMounted(async () => {
+  // P0 修复：先清理历史遗留的空计划版本，避免空白卡片残留
+  planStore.pruneEmptyVersions()
   await planStore.fetchActivePlan()
 })
 
@@ -36,13 +46,18 @@ async function generatePlan() {
   const profile = profileStore.profile || {}
   const diagnosisResult = getDiagnosisResultForPlan()
 
-  await planStore.runPlan({
-    student_name: profile.name || '',
-    target_major: profile.target_major || profile.major || '',
-    diagnosis_result: diagnosisResult,
-    exam_date: profile.exam_date || '',
-    weekly_hours: 15
-  })
+  try {
+    await planStore.runPlan({
+      student_name: profile.name || '',
+      target_major: profile.target_major || profile.major || '',
+      diagnosis_result: diagnosisResult,
+      exam_date: profile.exam_date || '',
+      weekly_hours: 15
+    })
+  } catch (e) {
+    // 错误已写入 planStore.error，由模板展示错误提示 + 重试按钮
+    console.warn('[plan] 生成失败:', e.message)
+  }
 }
 
 // W3-2: 切换任务完成状态
@@ -120,14 +135,17 @@ function adjustmentCount(v) {
         >
           {{ loading ? 'AI 规划中…' : '生成个性化计划' }}
         </button>
-        <span v-if="diagnosisStore.latest" class="generate-hint">
-          基于最近诊断（{{ diagnosisStore.latest.score }}分）生成
+        <span v-if="hasValidDiagnosis" class="generate-hint">
+          基于最近诊断（{{ diagnosisScore }}分）生成
         </span>
         <span v-else class="generate-hint">
-          基于当前画像生成（无诊断记录时 Agent 将自行分析）
+          基于学生画像生成（无诊断记录时 Agent 将自行分析）
         </span>
         <div v-if="error" class="generate-error">
-          API 调用失败：{{ error }}（下方仍展示种子计划供参考）
+          <span class="error-text">计划生成失败：{{ error }}</span>
+          <button class="retry-btn" :disabled="loading" @click="generatePlan">
+            {{ loading ? 'AI 规划中…' : '重试' }}
+          </button>
         </div>
       </section>
 
@@ -145,8 +163,8 @@ function adjustmentCount(v) {
         </div>
       </section>
 
-      <!-- 当前计划（API 生成或种子 fallback） -->
-      <section v-if="plan" class="plan-section">
+      <!-- 当前计划（API 生成或种子 fallback）；weeks 为空视为无效计划，走空态 -->
+      <section v-if="plan && plan.weeks?.length" class="plan-section">
         <div class="section-header">
           <h2 class="section-title">当前计划</h2>
           <span class="section-en">Current Plan</span>
@@ -381,6 +399,33 @@ function adjustmentCount(v) {
   border-radius: var(--radius-sm);
   font-size: 12px;
   color: #d9483f;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.error-text { flex: 1; }
+
+.retry-btn {
+  padding: 4px 14px;
+  background: transparent;
+  border: 1px solid #d9483f;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  color: #d9483f;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.retry-btn:hover:not(:disabled) {
+  background: #d9483f;
+  color: #fff;
+}
+
+.retry-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .section-title {
