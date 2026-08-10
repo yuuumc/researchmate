@@ -13,7 +13,7 @@ import { realPushProfile, realPullProfile } from '@/services/sync'
 import { isSupabaseConfigured } from '@/services/supabase'
 import { diffFields, mergeProfiles } from '@/utils/conflictMerge'
 
-const LS_LAST_SYNC = 'yanxintong_last_sync_at'
+const LS_LAST_SYNC = 'researchmate_last_sync_at'
 
 function readLastSync() {
   try {

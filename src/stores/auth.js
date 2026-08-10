@@ -22,7 +22,7 @@ import { useProfileStore } from '@/stores/profile'
 import { useDiagnosisStore } from '@/stores/diagnosis'
 import { loadProfile } from '@/services/profileService'
 
-const GUEST_STORAGE_KEY = 'yanxintong.guest'
+const GUEST_STORAGE_KEY = 'researchmate.guest'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -84,7 +84,7 @@ export const useAuthStore = defineStore('auth', {
     /**
      * 清除游客/用户遗留的本地业务数据
      * 清除：profile / diagnosis / plan / wrong_book / journey / subject / chat history / feedback / guest
-     * 保留：主题设置（yanxintong-theme 用连字符前缀，不在清除范围）
+     * 保留：主题设置（researchmate-theme 用连字符前缀，不在清除范围）
      */
     clearLocalUserData() {
       storage.clearUserData()

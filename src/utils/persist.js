@@ -2,9 +2,9 @@
 // 对话历史持久化（v1.5 新增）
 // ============================================================
 // 双层存储：
-//   1. localStorage 7 天热数据：key = yanxintong_chat_history_7d_<userId>
+//   1. localStorage 7 天热数据：key = researchmate_chat_history_7d_<userId>
 //      - 写入即带 TTL（expireAt）
-//   2. IndexedDB 长期归档：yanxintong_chat_db → 'history' object store
+//   2. IndexedDB 长期归档：researchmate_chat_db → 'history' object store
 //      - 按月分桶（YYYY-MM），便于查询
 //
 // 公开 API：
@@ -16,9 +16,9 @@
 //   loadByMonth(userId, 'YYYY-MM')      按月读取
 // ============================================================
 
-const LS_PREFIX = 'yanxintong_chat_history_7d_'
-const LS_INDEX_KEY = 'yanxintong_chat_history_index'  // 记录哪些 userId 有数据（用于清理）
-const DB_NAME = 'yanxintong_chat_db'
+const LS_PREFIX = 'researchmate_chat_history_7d_'
+const LS_INDEX_KEY = 'researchmate_chat_history_index'  // 记录哪些 userId 有数据（用于清理）
+const DB_NAME = 'researchmate_chat_db'
 const DB_VERSION = 1
 const STORE = 'history'
 

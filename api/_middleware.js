@@ -8,7 +8,7 @@
 export const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX || 20)
 export const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 5 * 60 * 1000)
 
-const rateLimitBuckets = globalThis.__yanxintongRateLimitBuckets || (globalThis.__yanxintongRateLimitBuckets = new Map())
+const rateLimitBuckets = globalThis.__researchmateRateLimitBuckets || (globalThis.__researchmateRateLimitBuckets = new Map())
 
 export function getClientIp(req) {
   const fwd = req.headers['x-forwarded-for']

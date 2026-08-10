@@ -20,6 +20,7 @@ import { supabase, isSupabaseConfigured } from './services/supabase'
 import { setAuthReady } from './utils/authReady'
 import { injectSeedData } from './data/seedDemo'
 import { initTheme } from './composables/useTheme'
+import { migrateStorageKeys, migrateIndexedDB } from './utils/migrateStorage'
 
 // ============================================================
 // Auth bootstrap（v2.5 + v2.0 向导拦截）
@@ -57,6 +58,9 @@ async function bootstrapAuth() {
   })
 }
 
+// Phase 2 rename: 同步迁移 localStorage 旧 yanxintong_ key → researchmate_（幂等，仅执行一次）
+try { migrateStorageKeys() } catch (e) { console.error('[main] Storage key migration failed:', e) }
+
 const app = createApp(App)
 app.use(createPinia())
 app.use(router)
@@ -66,6 +70,8 @@ app.component('ElConfigProvider', ElConfigProvider)
 app.mount('#app')
 
 async function bootstrap() {
+  // Phase 2 rename: 异步迁移 IndexedDB 聊天历史（非阻塞，聊天记录读取时已完成）
+  migrateIndexedDB().catch((e) => console.error('[main] IndexedDB migration failed:', e))
   initTheme()
   await bootstrapAuth()
   try { injectSeedData() } catch (e) { console.warn('[main] 种子数据注入失败：', e) }

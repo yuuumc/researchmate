@@ -7,7 +7,7 @@
 // 主题选择持久化到 localStorage，默认暗色
 // ============================================================
 
-const STORAGE_KEY = 'yanxintong-theme'
+const STORAGE_KEY = 'researchmate-theme'
 
 /** 初始化主题：读 localStorage，无值默认 dark */
 export function initTheme() {

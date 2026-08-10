@@ -1,12 +1,12 @@
-// ============================================================
+﻿// ============================================================
 // localStorage 通用封装
 // ============================================================
 // 命名规范（规范.txt 数据契约）：
-//   所有 key 必须以 yanxintong_ 为前缀
+//   所有 key 必须以 researchmate_ 为前缀
 //   严禁 JSON.stringify(Set/Map)，存读都是数组
 // ============================================================
 
-const PREFIX = 'yanxintong_'
+const PREFIX = 'researchmate_'
 
 function buildKey(scope) {
   return PREFIX + scope
@@ -62,7 +62,7 @@ export const storage = {
   },
 
   /**
-   * 清空所有 yanxintong_ 前缀的 key
+   * 清空所有 researchmate_ 前缀的 key
    */
   clearAll() {
     Object.keys(localStorage)
@@ -74,15 +74,15 @@ export const storage = {
    * 清空用户业务数据（保留主题设置）
    * 用于登录/注册/退出时清除游客或旧用户的数据，实现数据隔离
    * 清除：profile / diagnosis / plan / wrong_book / journey / subject / chat history / seed flag
-   * 保留：yanxintong-theme（主题用连字符前缀，不在 yanxintong_ 范围内）
+   * 保留：researchmate-theme（主题用连字符前缀，不在 researchmate_ 范围内）
    */
   clearUserData() {
-    // 清除所有 yanxintong_ 前缀的业务数据（含聊天记录 localStorage）
+    // 清除所有 researchmate_ 前缀的业务数据（含聊天记录 localStorage）
     Object.keys(localStorage)
       .filter((k) => k.startsWith(PREFIX))
       .forEach((k) => localStorage.removeItem(k))
     // 清除非前缀格式的游客/反馈数据
-    try { localStorage.removeItem('yanxintong.guest') } catch {}
+    try { localStorage.removeItem('researchmate.guest') } catch {}
     try { localStorage.removeItem('yxt_feedback') } catch {}
   }
 }

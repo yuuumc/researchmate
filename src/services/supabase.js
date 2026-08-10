@@ -28,7 +28,7 @@ export const supabase = createClient(
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
-      storageKey: 'yanxintong.auth.token',
+      storageKey: 'researchmate.auth.token',
       // 翻转 token 刷新阈值（默认 60s 改为 30s，移动端网络抖动更稳）
       autoRefreshThresholdSeconds: 30
     },
