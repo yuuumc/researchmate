@@ -260,6 +260,27 @@ const [_intent, _tutor] = await Promise.all([countedIntent(), countedTutor()])
 // 命中 concept，应直接用 _tutor，不应再调一次
 assert(tutorCallCount === 1, `tutor 预热只调用了 ${tutorCallCount} 次（应为 1）`)
 
+// === Test 11: P0-2 D3 INTENT_PROMPT 兜底 + tool_call trace ===
+section('Test 11: P0-2 D3 工具调用兜底 + trace（源码检查）')
+
+assert(routerSrc.includes('buildIntentPrompt'), 'D3: buildIntentPrompt 动态 prompt 存在')
+assert(routerSrc.includes('getToolSchemas'), 'D3: 工具 schema 注入存在')
+assert(routerSrc.includes('parseIntentResult'), 'D3: parseIntentResult 兜底函数已接入')
+assert(routerSrc.includes('recognizeIntentWithTool'), 'D3: recognizeIntentWithTool 函数存在')
+assert(routerSrc.includes("'tool_call'"), 'D3: tool_call trace 步骤存在')
+assert(routerSrc.includes('summarizeToolResult'), 'D3: 工具结果摘要函数存在')
+assert(routerSrc.includes('callTool'), 'D3: callTool 已接入 router')
+
+// intentParser.js 存在且导出 parseIntentResult
+import { existsSync as _existsSync } from 'node:fs'
+assert(_existsSync(new URL('../src/core/tools/intentParser.js', import.meta.url)), 'D3: intentParser.js 文件存在')
+const intentParserSrc = readFileSync(new URL('../src/core/tools/intentParser.js', import.meta.url), 'utf-8')
+assert(intentParserSrc.includes('export function parseIntentResult'), 'D3: parseIntentResult 导出')
+assert(intentParserSrc.includes('json_parse_failed'), 'D3: 兜底1 json_parse_failed')
+assert(intentParserSrc.includes('tool_missing'), 'D3: 兜底2 tool_missing')
+assert(intentParserSrc.includes('tool_args_incomplete'), 'D3: 兜底3 tool_args_incomplete')
+
+
 // === 汇总 ===
 section('汇总')
 console.log(`通过: ${pass} / ${pass + fail}`)

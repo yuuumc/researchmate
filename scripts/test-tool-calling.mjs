@@ -18,6 +18,7 @@
 // ============================================================
 
 import { registerTool, callTool, getToolSchemas } from '../src/core/tools/index.js'
+import { parseIntentResult } from '../src/core/tools/intentParser.js'
 
 let passed = 0
 let failed = 0
@@ -336,6 +337,147 @@ console.log('\n[9] callTool 返回结构一致性')
   assert(res.elapsedMs < 1000, `elapsedMs < 1000（stub应该很快，实际 ${res.elapsedMs}ms）`)
   console.log(`  返回结构 {ok, data, tool, elapsedMs} 一致`)
 }
+
+// ============================================================
+// [10] D3: INTENT_PROMPT 解析兜底（三种异常降级）
+// ============================================================
+console.log('\n[10] D3: INTENT_PROMPT 解析兜底（三种异常降级）')
+
+{
+  const VALID_INTENTS = ['concept', 'diagnose', 'plan', 'admission', 'research', 'cascade']
+  const VALID_TOOLS = getToolSchemas()
+
+  // 正常返回（intent + tool + tool_args 齐全）
+  const ok1 = parseIntentResult('{"intent":"admission","tool":"query_university","tool_args":{"region":"上海"}}', {
+    validIntents: VALID_INTENTS, validTools: VALID_TOOLS, fallbackIntent: 'concept'
+  })
+  assert(ok1.intent === 'admission', '正常：intent=admission')
+  assert(ok1.tool === 'query_university', '正常：tool=query_university')
+  assert(ok1.tool_args.region === '上海', '正常：tool_args.region=上海')
+  assert(ok1.degraded === null, '正常：degraded=null')
+
+  // 兜底 1: JSON parse 失败
+  const f1 = parseIntentResult('这不是JSON', {
+    validIntents: VALID_INTENTS, validTools: VALID_TOOLS, fallbackIntent: 'concept'
+  })
+  assert(f1.intent === 'concept', 'JSON失败：intent 退化为 concept')
+  assert(f1.tool === null, 'JSON失败：tool=null')
+  assert(f1.tool_args === null, 'JSON失败：tool_args=null')
+  assert(f1.degraded === 'json_parse_failed', 'JSON失败：degraded=json_parse_failed')
+
+  // 兜底 1b: 部分损坏 JSON
+  const f1b = parseIntentResult('{intent: admission, broken', {
+    validIntents: VALID_INTENTS, validTools: VALID_TOOLS, fallbackIntent: 'concept'
+  })
+  assert(f1b.tool === null && f1b.degraded === 'json_parse_failed', '损坏JSON：降级 json_parse_failed')
+
+  // 兜底 2: tool 字段缺失
+  const f2 = parseIntentResult('{"intent":"concept"}', {
+    validIntents: VALID_INTENTS, validTools: VALID_TOOLS, fallbackIntent: 'concept'
+  })
+  assert(f2.intent === 'concept', 'tool缺失：intent 保留 concept')
+  assert(f2.tool === null, 'tool缺失：tool=null')
+  assert(f2.degraded === 'tool_missing', 'tool缺失：degraded=tool_missing')
+
+  // 兜底 2b: tool 非字符串
+  const f2b = parseIntentResult('{"intent":"plan","tool":123,"tool_args":{}}', {
+    validIntents: VALID_INTENTS, validTools: VALID_TOOLS, fallbackIntent: 'concept'
+  })
+  assert(f2b.tool === null && f2b.degraded === 'tool_missing', 'tool非字符串：降级 tool_missing')
+
+  // 兜底 2c: tool 未注册
+  const f2c = parseIntentResult('{"intent":"research","tool":"nonexistent_tool","tool_args":{}}', {
+    validIntents: VALID_INTENTS, validTools: VALID_TOOLS, fallbackIntent: 'concept'
+  })
+  assert(f2c.intent === 'research', 'tool未注册：intent 保留 research')
+  assert(f2c.tool === null, 'tool未注册：tool=null')
+  assert(f2c.degraded === 'tool_not_registered', 'tool未注册：degraded=tool_not_registered')
+
+  // 兜底 3: tool_args 不完整（缺失）
+  const f3 = parseIntentResult('{"intent":"admission","tool":"query_university"}', {
+    validIntents: VALID_INTENTS, validTools: VALID_TOOLS, fallbackIntent: 'concept'
+  })
+  assert(f3.intent === 'admission', 'tool_args缺失：intent 保留 admission')
+  assert(f3.tool === null, 'tool_args缺失：tool=null')
+  assert(f3.degraded === 'tool_args_incomplete', 'tool_args缺失：degraded=tool_args_incomplete')
+
+  // 兜底 3b: tool_args 非对象（字符串）
+  const f3b = parseIntentResult('{"intent":"plan","tool":"generate_plan","tool_args":"weeks=4"}', {
+    validIntents: VALID_INTENTS, validTools: VALID_TOOLS, fallbackIntent: 'concept'
+  })
+  assert(f3b.tool === null && f3b.degraded === 'tool_args_incomplete', 'tool_args非对象：降级 tool_args_incomplete')
+
+  // 兜底 3c: tool_args 是数组
+  const f3c = parseIntentResult('{"intent":"research","tool":"recommend_papers","tool_args":[1,2]}', {
+    validIntents: VALID_INTENTS, validTools: VALID_TOOLS, fallbackIntent: 'concept'
+  })
+  assert(f3c.tool === null && f3c.degraded === 'tool_args_incomplete', 'tool_args数组：降级 tool_args_incomplete')
+
+  // 空 tool_args {} 视为完整（无必填参数的工具）
+  const ok2 = parseIntentResult('{"intent":"admission","tool":"query_university","tool_args":{}}', {
+    validIntents: VALID_INTENTS, validTools: VALID_TOOLS, fallbackIntent: 'concept'
+  })
+  assert(ok2.tool === 'query_university', '空tool_args{}：tool 保留（无必填参数）')
+  assert(ok2.degraded === null, '空tool_args{}：degraded=null')
+
+  // intent 非法 → fallback 但不阻断 tool
+  const ok3 = parseIntentResult('{"intent":"unknown","tool":"query_university","tool_args":{"region":"南京"}}', {
+    validIntents: VALID_INTENTS, validTools: VALID_TOOLS, fallbackIntent: 'concept'
+  })
+  assert(ok3.intent === 'concept', 'intent非法：退化为 concept')
+  assert(ok3.tool === 'query_university', 'intent非法但tool合法：tool 保留')
+  assert(ok3.degraded === null, 'intent非法但tool合法：degraded=null')
+
+  console.log('  三种兜底 + 边界 共 22 项全通过')
+}
+
+// ============================================================
+// [11] D3: tool_call 完整链路（调用 → 结果摘要 → 超时/失败）
+// ============================================================
+console.log('\n[11] D3: tool_call 调用链路 + 结果摘要')
+
+{
+  // query_university 正常调用
+  const res = await callTool('query_university', { region: '南京', level: '985' })
+  assert(res.ok === true, 'tool_call query_university ok')
+  assert(res.data.count === 2, 'tool_call 返回 2 所南京985')
+  assert(res.tool === 'query_university', 'tool_call 返回 tool 名')
+  assert(typeof res.elapsedMs === 'number', 'tool_call 返回 elapsedMs')
+
+  // search_knowledge mock 注入 → 完整链路
+  const mockFn = (query, kb, graph, opts) => ({
+    slices: [
+      { id: 's1', content: 'MOSFET阈值电压推导', score: 0.9 },
+      { id: 's2', content: '氧化层厚度影响', score: 0.7 }
+    ],
+    ragContext: 'MOSFET相关'
+  })
+  const skRes = await callTool('search_knowledge', { query: 'MOSFET', topK: 2 }, {
+    knowledgeBase: [{ id: '1', content: 'test' }],
+    graphRagRetrieve: mockFn
+  })
+  assert(skRes.ok === true, 'tool_call search_knowledge ok')
+  assert(skRes.data.count === 2, 'tool_call search_knowledge 返回 2 条')
+  assert(skRes.data.slices[0].id === 's1', 'tool_call 第一条 s1')
+
+  // 工具超时 → 失败
+  registerTool('d3_slow', async () => {
+    await new Promise(r => setTimeout(r, 2000))
+    return { late: true }
+  }, { timeout: 100, description: 'D3超时测试' })
+  const slowRes = await callTool('d3_slow', {})
+  assert(slowRes.ok === false, 'tool_call 超时 ok=false')
+  assert(slowRes.error.includes('timeout'), 'tool_call 超时错误含 timeout')
+
+  // 工具异常 → 失败
+  registerTool('d3_err', async () => { throw new Error('D3 intentional') }, { timeout: 1000, description: 'D3异常测试' })
+  const errRes = await callTool('d3_err', {})
+  assert(errRes.ok === false, 'tool_call 异常 ok=false')
+  assert(errRes.error === 'D3 intentional', 'tool_call 异常信息透传')
+
+  console.log('  query_university / search_knowledge / 超时 / 异常 全通过')
+}
+
 
 // ============================================================
 // 结果汇总

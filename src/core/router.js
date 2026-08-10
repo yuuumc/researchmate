@@ -35,9 +35,25 @@ import { cascadeDiagnoseToPlan } from './cascade'
 import { AI_PROVIDER } from '@/api/custom'
 import { safeParseJSON } from '@/utils/validator'
 import { useTraceStore } from '@/stores/trace'
+import { callTool, getToolSchemas } from './tools'
+import { parseIntentResult } from './tools/intentParser'
 
-// 意图识别 Prompt（v1 正式版：5 Agent）
-const INTENT_PROMPT = `你是研芯通的主控编排器，负责识别学生输入的意图。
+// 意图识别 Prompt（P0-2 D3：可选工具调用 + 解析兜底）
+// 动态注入工具 schema，LLM 可选返回 {intent, tool, tool_args}
+function buildIntentPrompt() {
+  let toolSection = ''
+  try {
+    const schemas = getToolSchemas()
+    const entries = Object.entries(schemas)
+    if (entries.length > 0) {
+      const lines = entries.map(([name, sc]) =>
+        `- ${name}：${sc.description}（参数：${JSON.stringify(sc.args_schema)}；适用意图：${sc.mounted_on}）`
+      ).join('\n')
+      toolSection = `\n可选工具（仅当学生输入明确匹配某工具用途时才返回 tool 字段，否则 tool 留空""）：\n${lines}\n`
+    }
+  } catch (_) { /* tools 模块未加载时降级为纯意图识别 */ }
+
+  return `你是研芯通的主控编排器，负责识别学生输入的意图。
 可选意图：
 - concept：概念问题（如"MOSFET 阈值电压怎么推导"）
 - diagnose：诊断请求（如"我半导体物理考了 55 分"）
@@ -45,9 +61,9 @@ const INTENT_PROMPT = `你是研芯通的主控编排器，负责识别学生输
 - admission：择校请求（如"我双非前 30%，想去长三角"）
 - research：科研成长请求（如"我以后想做 AI 芯片需要准备什么" / "给我一个科研路线图" / "推荐一些论文和项目"）
 - cascade：级联请求（如"先诊断再规划"）
-
-请仅返回 JSON 格式：{"intent": "concept|diagnose|plan|admission|research|cascade", "raw_query": "<学生原始输入>"}
+${toolSection}请仅返回 JSON 格式：{"intent": "concept|diagnose|plan|admission|research|cascade", "tool": "工具名或空字符串", "tool_args": {…工具参数…}}
 不要输出任何其他内容。`
+}
 
 // 意图中文标签（用于 Trace 展示）
 const INTENT_LABELS = {
@@ -70,18 +86,22 @@ const STAGE_LABELS = {
 const VALID_INTENTS = ['concept', 'diagnose', 'plan', 'admission', 'research', 'cascade']
 
 /**
- * 调用意图识别 LLM（独立函数，便于在 Promise.all 中复用 + 单独重试）
+ * 调用意图识别 LLM（P0-2 D3：返回 {intent, tool, tool_args}，内置三种兜底）
+ * 兜底逻辑见 tools/intentParser.js：JSON parse 失败 / tool 缺失 / tool_args 不完整
+ *   → 统一退化为纯意图识别（只取 intent，不调工具），Agent 正常走流式回答
  */
-async function recognizeIntent(userInput) {
-  const intentRaw = await AI_PROVIDER.call(INTENT_PROMPT, userInput, {
+async function recognizeIntentWithTool(userInput) {
+  const intentRaw = await AI_PROVIDER.call(buildIntentPrompt(), userInput, {
     temperature: 0.1,
-    max_tokens: 200
+    max_tokens: 300
   })
-  const parsed = safeParseJSON(intentRaw, { intent: 'concept' })
-  if (parsed && VALID_INTENTS.includes(parsed.intent)) {
-    return parsed.intent
-  }
-  return 'concept' // 兜底
+  let schemas = {}
+  try { schemas = getToolSchemas() } catch (_) { /* tools 未加载 */ }
+  return parseIntentResult(intentRaw, {
+    validIntents: VALID_INTENTS,
+    validTools: schemas,
+    fallbackIntent: 'concept'
+  })
 }
 
 
@@ -163,9 +183,9 @@ export async function route(userInput, options = {}) {
       }
     : null
 
-  const intentPromise = recognizeIntent(userInput).catch((e) => {
+  const intentPromise = recognizeIntentWithTool(userInput).catch((e) => {
     console.warn('[router] intent recognition failed:', e.message)
-    return { __error: e, __value: 'concept' }
+    return { __error: e, intent: 'concept', tool: null, tool_args: null, degraded: 'intent_call_failed' }
   })
 
   const tutorPromise = tutorAgent(userInput, profile, { onToken: tutorPreCallback, signal, history }).catch((e) => {
@@ -177,7 +197,10 @@ export async function route(userInput, options = {}) {
 
   const intentError = intentSettled && intentSettled.__error ? intentSettled.__error : null
   const tutorError = tutorSettled && tutorSettled.__error ? tutorSettled.__error : null
-  const intent = (intentSettled && intentSettled.__value) || (intentSettled && !intentSettled.__error ? intentSettled : 'concept')
+  const intentResult = intentError
+    ? { intent: 'concept', tool: null, tool_args: null, degraded: 'intent_call_failed' }
+    : intentSettled
+  const intent = intentResult.intent
   const tutorPrewarmResult = tutorSettled && tutorSettled.__value !== undefined ? tutorSettled.__value : tutorSettled
 
   // 双失败兜底：串行再调一次 tutor
@@ -217,6 +240,32 @@ export async function route(userInput, options = {}) {
   traceStore.updateStep(routerStepIdx, 'done', {
     detail: INTENT_LABELS[intentForNext] || intentForNext
   })
+
+  // P0-2 D3: 工具调用（INTENT_PROMPT 返回 tool 时执行，带 trace）
+  //   三种兜底已在 recognizeIntentWithTool 内完成（parseIntentResult），
+  //   到这里的 tool 一定合法且 tool_args 完整；失败/超时由 callTool 内置降级
+  if (intentResult.tool) {
+    const toolStepIdx = traceStore.addStep('tool_call', `调用工具：${intentResult.tool}…`)
+    try {
+      const toolArgs = intentResult.tool_args || {}
+      const argsSummary = JSON.stringify(toolArgs)
+      const toolRes = await callTool(intentResult.tool, toolArgs, {})
+      if (toolRes.ok) {
+        traceStore.updateStep(toolStepIdx, 'done', {
+          detail: `工具：${intentResult.tool} | 参数：${argsSummary} | ${summarizeToolResult(intentResult.tool, toolRes.data)}（${toolRes.elapsedMs}ms）`
+        })
+        // 工具结果挂到 profile，供下游 Agent 可选消费（向前兼容，不强制）
+        profile.tool_result = { tool: intentResult.tool, data: toolRes.data }
+      } else {
+        traceStore.updateStep(toolStepIdx, 'error', {
+          error: `工具：${intentResult.tool} | 参数：${argsSummary} | 失败：${toolRes.error}`
+        })
+      }
+    } catch (e) {
+      console.warn('[router] tool_call failed:', e.message)
+      traceStore.updateStep(toolStepIdx, 'error', { error: e.message })
+    }
+  }
 
   // 3. 路由到对应 Agent（带 trace）
   //    关键优化：如果 intent=concept 且 tutor 预热成功 → 直接用预热结果
@@ -308,6 +357,28 @@ export function guessIntentByRoute(agentRoute) {
 
 
 // === Trace 详情生成辅助函数 ===
+
+/**
+ * 工具调用结果摘要（P0-2 D3：tool_call trace detail 用）
+ */
+function summarizeToolResult(toolName, data) {
+  if (!data) return '无返回'
+  switch (toolName) {
+    case 'query_university':
+      return `返回 ${data.count ?? 0} 所院校`
+    case 'recommend_papers':
+      return `返回 ${data.count ?? 0} 篇论文`
+    case 'generate_plan':
+      return `生成 ${data.total_weeks ?? 0} 周计划`
+    case 'store_progress':
+      return data.stored ? `已存储（共 ${data.total ?? 0} 条）` : '存储失败'
+    case 'search_knowledge':
+      return `命中 ${data.count ?? 0} 条切片`
+    default:
+      return `返回 ${JSON.stringify(data).slice(0, 80)}`
+  }
+}
+
 
 function getAgentStartDetail(intent) {
   const map = {
