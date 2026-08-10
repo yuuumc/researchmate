@@ -48,13 +48,13 @@ function emitTrace(event) {
 // ============================================================
 // 1. 统一 LLM 调用（非流式，沿用 v1.5）
 // ============================================================
-export async function runLLM(agentName, prompt, userInput, options = {}, useReasoner = false) {
+export async function runLLM(agentName, prompt, userInput, options = {}, useReasoner = false, history = []) {
   const t0 = performance.now()
   let content
   try {
     content = useReasoner
-      ? await AI_PROVIDER.callReasoner(prompt, userInput, options)
-      : await AI_PROVIDER.call(prompt, userInput, options)
+      ? await AI_PROVIDER.callReasoner(prompt, userInput, options, history)
+      : await AI_PROVIDER.call(prompt, userInput, options, history)
   } catch (e) {
     const latencyMs = Math.round(performance.now() - t0)
     emitTrace({ agentName, event: 'error', latencyMs, error: e.message, ts: Date.now() })
@@ -73,7 +73,7 @@ export async function runLLM(agentName, prompt, userInput, options = {}, useReas
 // ============================================================
 // 2. 统一 LLM 流式调用（v2.0 新增）
 // ============================================================
-export async function runLLMStream(agentName, prompt, userInput, options = {}, onToken = null, useReasoner = false, signal = null) {
+export async function runLLMStream(agentName, prompt, userInput, options = {}, onToken = null, useReasoner = false, signal = null, history = []) {
   const t0 = performance.now()
   let firstTokenLatencyMs = null
   let content = ''
@@ -92,8 +92,8 @@ export async function runLLMStream(agentName, prompt, userInput, options = {}, o
 
   try {
     const fullContent = useReasoner
-      ? await AI_PROVIDER.callReasonerStream(prompt, userInput, options, wrappedOnToken, signal)
-      : await AI_PROVIDER.callStream(prompt, userInput, options, wrappedOnToken, signal)
+      ? await AI_PROVIDER.callReasonerStream(prompt, userInput, options, wrappedOnToken, signal, history)
+      : await AI_PROVIDER.callStream(prompt, userInput, options, wrappedOnToken, signal, history)
     const latencyMs = Math.round(performance.now() - t0)
     emitTrace({ agentName, event: 'llm_stream_done', latencyMs, contentLen: fullContent.length, firstTokenLatencyMs, ts: Date.now() })
     return { content: fullContent, latencyMs, firstTokenLatencyMs }
@@ -123,11 +123,11 @@ export async function runLLMStream(agentName, prompt, userInput, options = {}, o
  * @param {AbortSignal|null} signal
  * @returns {Promise<{content, latencyMs, firstTokenLatencyMs?}>}
  */
-export async function callLLM(agentName, prompt, userInput, options = {}, useReasoner = false, onToken = null, signal = null) {
+export async function callLLM(agentName, prompt, userInput, options = {}, useReasoner = false, onToken = null, signal = null, history = []) {
   if (onToken) {
-    return await runLLMStream(agentName, prompt, userInput, options, onToken, useReasoner, signal)
+    return await runLLMStream(agentName, prompt, userInput, options, onToken, useReasoner, signal, history)
   }
-  return await runLLM(agentName, prompt, userInput, options, useReasoner)
+  return await runLLM(agentName, prompt, userInput, options, useReasoner, history)
 }
 
 // ============================================================

@@ -41,7 +41,7 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: 'rate_limited' })
   }
 
-  const { prompt, userInput, options = {}, mode, profile = {} } = req.body || {}
+  const { prompt, userInput, options = {}, mode, profile = {}, history = [] } = req.body || {}
 
   if (!userInput) {
     return res.status(400).json({ error: 'missing_userInput' })
@@ -62,6 +62,14 @@ export default async function handler(req, res) {
   if (!systemPrompt) {
     return res.status(400).json({ error: 'missing_prompt', message: '请提供 prompt 或 mode 参数' })
   }
+
+  // P0-2 D2: 对话历史安全过滤（仅 user/assistant，限 12 条，每条截断 2000 字）
+  const safeHistory = Array.isArray(history)
+    ? history
+        .filter(m => m && (m.role === 'user' || m.role === 'assistant'))
+        .slice(-12)
+        .map(m => ({ role: m.role, content: String(m.content || '').slice(0, 2000) }))
+    : []
 
   // v3.0: 多 LLM provider 配置
   const providerConfig = getProviderConfig()
@@ -86,6 +94,7 @@ export default async function handler(req, res) {
     maxTokens,
     prompt: systemPrompt,
     userInput,
+    history: safeHistory,
   }
 
   if (stream) {
@@ -97,7 +106,7 @@ export default async function handler(req, res) {
 // ============================================================
 // JSON 模式（v1.5 兼容路径）
 // ============================================================
-async function handleJson(req, res, { chatUrl, apiKey, provider, model, temperature, maxTokens, prompt, userInput }) {
+async function handleJson(req, res, { chatUrl, apiKey, provider, model, temperature, maxTokens, prompt, userInput, history = [] }) {
   const attempt = async (mt) => {
     const r = await fetch(chatUrl, {
       method: 'POST',
@@ -109,6 +118,7 @@ async function handleJson(req, res, { chatUrl, apiKey, provider, model, temperat
         model,
         messages: [
           { role: 'system', content: prompt },
+          ...history,
           { role: 'user', content: userInput },
         ],
         temperature,
@@ -156,7 +166,7 @@ async function handleJson(req, res, { chatUrl, apiKey, provider, model, temperat
 // ============================================================
 // SSE 流式模式（v2.0）
 // ============================================================
-async function handleStream(req, res, { chatUrl, apiKey, provider, model, temperature, maxTokens, prompt, userInput }) {
+async function handleStream(req, res, { chatUrl, apiKey, provider, model, temperature, maxTokens, prompt, userInput, history = [] }) {
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8')
   res.setHeader('Cache-Control', 'no-cache, no-transform')
   res.setHeader('Connection', 'keep-alive')
@@ -206,6 +216,7 @@ async function handleStream(req, res, { chatUrl, apiKey, provider, model, temper
           model,
           messages: [
             { role: 'system', content: prompt },
+            ...history,
             { role: 'user', content: userInput },
           ],
           temperature,

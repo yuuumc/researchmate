@@ -36,12 +36,15 @@ export async function callAgent(action, input = {}) {
  * @returns {Promise<string>} 完整回复
  */
 export async function callChatWithMode(userInput, opts = {}) {
-  const { mode, profile = {}, onToken = null, signal = null } = opts
+  const { mode, profile = {}, onToken = null, signal = null, history = [] } = opts
 
   const body = { userInput, options: { stream: true } }
   if (mode) {
     body.mode = mode
     body.profile = profile
+  }
+  if (Array.isArray(history) && history.length > 0) {
+    body.history = history
   }
 
   // 默认 60s 超时，外部 signal 可覆盖

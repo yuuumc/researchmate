@@ -36,7 +36,7 @@ const client = axios.create({
  * JSON 模式（v1.5 兼容路径）
  * @returns {Promise<string>} 模型回复内容
  */
-export async function callDeepSeek(prompt, userInput, options = {}) {
+export async function callDeepSeek(prompt, userInput, options = {}, history = []) {
   const {
     model = 'deepseek-chat',
     temperature = 0.7,
@@ -47,7 +47,8 @@ export async function callDeepSeek(prompt, userInput, options = {}) {
     const { data } = await client.post('/api/chat', {
       prompt,
       userInput,
-      options: { model, temperature, max_tokens }
+      options: { model, temperature, max_tokens },
+      history
     })
     return data.content
   } catch (e) {
@@ -60,8 +61,8 @@ export async function callDeepSeek(prompt, userInput, options = {}) {
 /**
  * Reasoner 模型（JSON 模式）
  */
-export async function callDeepSeekReasoner(prompt, userInput, options = {}) {
-  return callDeepSeek(prompt, userInput, { ...options, model: 'deepseek-reasoner' })
+export async function callDeepSeekReasoner(prompt, userInput, options = {}, history = []) {
+  return callDeepSeek(prompt, userInput, { ...options, model: 'deepseek-reasoner' }, history)
 }
 
 // ============================================================
@@ -77,7 +78,7 @@ export async function callDeepSeekReasoner(prompt, userInput, options = {}) {
  * @param {object} signal - AbortController.signal（用于取消）
  * @returns {Promise<string>} 完整内容
  */
-export async function callDeepSeekStream(prompt, userInput, options = {}, onToken = null, signal = null) {
+export async function callDeepSeekStream(prompt, userInput, options = {}, onToken = null, signal = null, history = []) {
   const {
     model = 'deepseek-chat',
     temperature = 0.7,
@@ -97,7 +98,8 @@ export async function callDeepSeekStream(prompt, userInput, options = {}, onToke
       body: JSON.stringify({
         prompt,
         userInput,
-        options: { model, temperature, max_tokens, stream: true }
+        options: { model, temperature, max_tokens, stream: true },
+        history
       }),
       signal
     })
@@ -108,7 +110,7 @@ export async function callDeepSeekStream(prompt, userInput, options = {}, onToke
     console.error('[deepseek] stream fetch failed:', e.message)
     // 降级：非流式
     console.warn('[deepseek] stream 降级为非流式')
-    return await callDeepSeek(prompt, userInput, options)
+    return await callDeepSeek(prompt, userInput, options, history)
   }
 
   if (!response.ok) {
@@ -123,7 +125,7 @@ export async function callDeepSeekStream(prompt, userInput, options = {}, onToke
 
   if (!response.body) {
     console.warn('[deepseek] 无 response.body，降级为非流式')
-    return await callDeepSeek(prompt, userInput, options)
+    return await callDeepSeek(prompt, userInput, options, history)
   }
 
   // 解析 SSE 流
@@ -193,6 +195,6 @@ export async function callDeepSeekStream(prompt, userInput, options = {}, onToke
 /**
  * Reasoner 模型（流式）
  */
-export async function callDeepSeekReasonerStream(prompt, userInput, options = {}, onToken = null, signal = null) {
-  return callDeepSeekStream(prompt, userInput, { ...options, model: 'deepseek-reasoner' }, onToken, signal)
+export async function callDeepSeekReasonerStream(prompt, userInput, options = {}, onToken = null, signal = null, history = []) {
+  return callDeepSeekStream(prompt, userInput, { ...options, model: 'deepseek-reasoner' }, onToken, signal, history)
 }

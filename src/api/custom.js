@@ -29,31 +29,31 @@ export const AI_PROVIDER = {
   current: 'deepseek', // 'deepseek' | 'custom'
 
   // 非流式调用
-  async call(prompt, userInput, options) {
+  async call(prompt, userInput, options, history) {
     if (this.current === 'deepseek') {
-      return await callDeepSeek(prompt, userInput, options)
+      return await callDeepSeek(prompt, userInput, options, history)
     }
     return await callCustomAPI(prompt, userInput, options)
   },
 
-  async callReasoner(prompt, userInput, options) {
+  async callReasoner(prompt, userInput, options, history) {
     if (this.current === 'deepseek') {
-      return await callDeepSeekReasoner(prompt, userInput, options)
+      return await callDeepSeekReasoner(prompt, userInput, options, history)
     }
     return await callCustomAPI(prompt, userInput, options)
   },
 
   // v2.0 新增：流式调用
-  async callStream(prompt, userInput, options, onToken, signal) {
+  async callStream(prompt, userInput, options, onToken, signal, history) {
     if (this.current === 'deepseek') {
-      return await callDeepSeekStream(prompt, userInput, options, onToken, signal)
+      return await callDeepSeekStream(prompt, userInput, options, onToken, signal, history)
     }
     return await callCustomAPI(prompt, userInput, options)
   },
 
-  async callReasonerStream(prompt, userInput, options, onToken, signal) {
+  async callReasonerStream(prompt, userInput, options, onToken, signal, history) {
     if (this.current === 'deepseek') {
-      return await callDeepSeekReasonerStream(prompt, userInput, options, onToken, signal)
+      return await callDeepSeekReasonerStream(prompt, userInput, options, onToken, signal, history)
     }
     return await callCustomAPI(prompt, userInput, options)
   }

@@ -46,6 +46,7 @@ export function setKnowledgeGraph(subject, graphData) {
 export const tutorAgent = traceAgent('tutor', async function tutorCore(userInput, profile, ctx = {}) {
   const onToken = ctx?.onToken || null
   const signal = ctx?.signal || null
+  const history = Array.isArray(ctx?.history) ? ctx.history : []
 
   // 1. GraphRAG 双路融合检索（三路并行召回 + min-max 归一 + 加权 + 去重）
   //    无图谱时自动退化为纯 TF-IDF
@@ -92,7 +93,7 @@ ${pathContext ? `# 知识图谱路径分析（GraphRAG 双路融合）\n${pathCo
     const result = await callLLM('tutor', prompt, userInput, {
       temperature: 0.5,
       max_tokens: 2000
-    }, false, onToken, signal)
+    }, false, onToken, signal, history)
     content = result.content
   } catch (e) {
     apiError = e.message

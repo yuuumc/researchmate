@@ -29,6 +29,7 @@ import { plannerAgent } from './agents/planner'
 import { admissionAgent } from './agents/admission'
 import { researchAgent } from './agents/research'
 import { loadProfile, loadMemories } from './profileLoader'
+import { queryMemory, getMemoryStats } from '@/utils/vectorMemory'
 import { updateProfileAfterResponse } from './profileUpdater'
 import { cascadeDiagnoseToPlan } from './cascade'
 import { AI_PROVIDER } from '@/api/custom'
@@ -93,7 +94,7 @@ async function recognizeIntent(userInput) {
  * @returns {Promise<object>} { intent, content, raw, agent }
  */
 export async function route(userInput, options = {}) {
-  const { onToken = null, signal = null } = options || {}
+  const { onToken = null, signal = null, history = [] } = options || {}
 
   if (!userInput || !userInput.trim()) {
     return { error: 'empty_input', agent: 'router' }
@@ -128,11 +129,20 @@ export async function route(userInput, options = {}) {
     const hits = loadMemories(userInput, { topK: 3, minScore: 0.18 })
     // 合并进 profile，下游 profileToContext 会渲染「相似历史记忆」段落
     profile.recent_memories = hits
-    traceStore.updateStep(memoryStepIdx, 'done', {
-      detail: hits.length > 0
-        ? `命中 ${hits.length} 条历史记忆（${hits.map(h => h.type).join('、')}）`
-        : '无相似记忆'
-    })
+    let _detail
+    if (hits.length > 0) {
+      _detail = `命中 ${hits.length} 条历史记忆（${hits.map(h => h.type).join('、')}）`
+    } else {
+      // P0-3 诊断探针：0 命中时暴露根因（库空 / 旧向量残留 / userId 不匹配）
+      try {
+        const _stats = getMemoryStats()
+        const _best = queryMemory(userInput, { topK: 1, minScore: 0 })
+        _detail = `无相似记忆（库内${_stats.count}条，最高相似度${_best[0] ? _best[0].score : 0}，阈值0.18）`
+      } catch (_) {
+        _detail = '无相似记忆'
+      }
+    }
+    traceStore.updateStep(memoryStepIdx, 'done', { detail: _detail })
   } catch (e) {
     console.warn('[router] memory recall failed:', e.message)
     profile.recent_memories = []
@@ -158,7 +168,7 @@ export async function route(userInput, options = {}) {
     return { __error: e, __value: 'concept' }
   })
 
-  const tutorPromise = tutorAgent(userInput, profile, { onToken: tutorPreCallback, signal }).catch((e) => {
+  const tutorPromise = tutorAgent(userInput, profile, { onToken: tutorPreCallback, signal, history }).catch((e) => {
     console.warn('[router] tutor prewarm failed:', e.message)
     return { __error: e, __value: null }
   })
@@ -175,7 +185,7 @@ export async function route(userInput, options = {}) {
   if (intentError && tutorError) {
     console.warn('[router] both intent and tutor failed, falling back to serial tutor call')
     try {
-      const fallbackResult = await tutorAgent(userInput, profile, { onToken, signal })
+      const fallbackResult = await tutorAgent(userInput, profile, { onToken, signal, history })
       const updateStepIdx = traceStore.addStep('profile_update', '更新学生画像…')
       try {
         updateProfileAfterResponse('concept', fallbackResult, profile)
@@ -222,7 +232,7 @@ export async function route(userInput, options = {}) {
     try {
       switch (intentForNext) {
         case 'concept':
-          result = await tutorAgent(userInput, profile, { onToken, signal })
+          result = await tutorAgent(userInput, profile, { onToken, signal, history })
           break
         case 'diagnose':
           result = await diagnoseAgent(userInput, profile, { onToken, signal })
@@ -240,7 +250,7 @@ export async function route(userInput, options = {}) {
           result = await cascadeDiagnoseToPlan(userInput, profile, { onToken, signal })
           break
         default:
-          result = await tutorAgent(userInput, profile, { onToken, signal })
+          result = await tutorAgent(userInput, profile, { onToken, signal, history })
       }
       traceStore.updateStep(agentStepIdx, 'done', {
         detail: getAgentDoneDetail(intentForNext, result)

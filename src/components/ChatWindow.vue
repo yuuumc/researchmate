@@ -265,6 +265,16 @@ async function runAssistantReply(content, assistantIdx) {
     }
   }
 
+  // P0-2 D2: 构建对话历史（最近 6 轮 = 12 条消息，每条截断 2000 字）
+  const history = messages.value
+    .slice(-12)
+    .filter(m => m.role === 'user' || m.role === 'assistant')
+    .filter(m => !m.error && !m.streaming && !m.cancelled)
+    .map(m => ({
+      role: m.role,
+      content: String(m.content || '').slice(0, 2000)
+    }))
+
   try {
     let result
 
@@ -274,7 +284,8 @@ async function runAssistantReply(content, assistantIdx) {
         mode: chatMode.value,
         profile: modeProfile.value,
         onToken,
-        signal: currentAbort.signal
+        signal: currentAbort.signal,
+        history
       })
       result = {
         content: replyContent,
@@ -283,7 +294,7 @@ async function runAssistantReply(content, assistantIdx) {
       }
     } else {
       // 默认：走 intent 路由 + Agent 编排
-      result = await route(content, { onToken, signal: currentAbort.signal })
+      result = await route(content, { onToken, signal: currentAbort.signal, history })
     }
 
     const finalMsg = messages.value[assistantIdx] || {}
