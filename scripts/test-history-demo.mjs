@@ -12,7 +12,7 @@
 // 默认调用 http://localhost:5174/api/chat（vite dev）
 // ============================================================
 
-const API_URL = process.env.AGENT_API_URL || 'http://localhost:5174/api/chat'
+const API_URL = process.env.AGENT_API_URL || (process.env.AGENT_API_MOCK === '1' ? 'http://localhost:5175/api/chat' : 'http://localhost:5174/api/chat')
 const TIMEOUT_MS = 60_000
 
 // ============================================================

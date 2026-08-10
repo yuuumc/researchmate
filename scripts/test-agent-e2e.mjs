@@ -9,7 +9,7 @@
 //   4. 错误处理
 // ============================================================
 
-const API_URL = 'http://localhost:5173/api/chat'
+const API_URL = process.env.AGENT_API_URL || (process.env.AGENT_API_MOCK === '1' ? 'http://localhost:5175/api/chat' : 'http://localhost:5173/api/chat')
 
 async function callChat({ prompt, userInput, options = {} }) {
   const body = JSON.stringify({ prompt, userInput, options })

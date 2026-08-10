@@ -8,7 +8,7 @@
 // 可通过环境变量 AGENT_API_URL 切换到 https://yanxintong.vercel.app/api/chat
 // ============================================================
 
-const API_URL = process.env.AGENT_API_URL || 'http://localhost:5173/api/chat'
+const API_URL = process.env.AGENT_API_URL || (process.env.AGENT_API_MOCK === '1' ? 'http://localhost:5175/api/chat' : 'http://localhost:5173/api/chat')
 const TIMEOUT_MS = 60_000
 
 // ============================================================
