@@ -1,10 +1,10 @@
 @echo off
 chcp 65001 >nul
 cd /d %~dp0
-title yanxintong dev
+title researchmate dev
 
 echo ==========================================
-echo   yanxintong (研芯通) - 本地开发一键启动
+echo   researchmate (研芯通) - 本地开发一键启动
 echo ==========================================
 echo.
 

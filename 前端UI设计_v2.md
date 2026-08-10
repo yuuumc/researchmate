@@ -249,7 +249,7 @@ function mergeMasteredTopics(oldMastered, newMastered) {
 
 // 快照累加（5 轮诊断对比）
 export function appendDiagnosisSnapshot(profile, newSnapshot) {
-  const history = storage.get('yanxintong_diagnosis_history') || []
+  const history = storage.get('researchmate_diagnosis_history') || []
   history.push({
     snapshot_id: crypto.randomUUID(),
     created_at: new Date().toISOString(),
@@ -257,7 +257,7 @@ export function appendDiagnosisSnapshot(profile, newSnapshot) {
     weak_topics: newSnapshot.weak_topics,
     mastered_topics: newSnapshot.mastered_topics
   })
-  storage.set('yanxintong_diagnosis_history', history)
+  storage.set('researchmate_diagnosis_history', history)
   return history
 }
 ```
@@ -271,7 +271,7 @@ export function appendDiagnosisSnapshot(profile, newSnapshot) {
 import { defineStore } from 'pinia'
 import { storage } from '@/utils/storage'
 
-const STORAGE_KEY = 'yanxintong_diagnosis_history'
+const STORAGE_KEY = 'researchmate_diagnosis_history'
 
 export const useDiagnosisStore = defineStore('diagnosis', {
   state: () => ({
@@ -308,7 +308,7 @@ export const useDiagnosisStore = defineStore('diagnosis', {
 import { defineStore } from 'pinia'
 import { storage } from '@/utils/storage'
 
-const STORAGE_KEY = 'yanxintong_plan_version'
+const STORAGE_KEY = 'researchmate_plan_version'
 
 export const usePlanStore = defineStore('plan', {
   state: () => ({

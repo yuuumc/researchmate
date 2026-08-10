@@ -1,4 +1,4 @@
-# 项目：研芯通（Yanxintong）
+# 项目：研芯通（ResearchMate）
 
 ## 技术栈
 - 前端：Vue 3 + Vite + TypeScript + Pinia + Element Plus
@@ -12,7 +12,7 @@
 - 数字字段严禁 LLM 生成，只从 src/data/university/*.json 渲染
 
 ## 数据契约
-- localStorage key 命名：yanxintong_<scope>（profile / diagnosis_history / plan_version / chat_*）
+- localStorage key 命名：researchmate_<scope>（profile / diagnosis_history / plan_version / chat_*）
 - 严禁 JSON.stringify(Set/Map)，存读都是数组（已踩坑）
 
 ## 测试门槛

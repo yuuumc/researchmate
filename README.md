@@ -1,4 +1,4 @@
-# Yanxintong (研芯通)
+# ResearchMate (研芯通)
 
 > AI mentor for engineering student growth — from course learning to research practice.
 > 5-Agent collaboration + Knowledge Graph RAG + Student Cognitive Model + subject decoupling + longitudinal diagnosis comparison.

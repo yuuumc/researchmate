@@ -139,8 +139,8 @@ yanxintong/
 
 ```bash
 # 1. 创建项目
-npm create vite@latest yanxintong -- --template vue
-cd yanxintong
+npm create vite@latest researchmate -- --template vue
+cd researchmate
 
 # 2. 安装依赖
 npm install element-plus pinia vue-router
@@ -349,7 +349,7 @@ export function retrieve(query, knowledgeBase, topK = 5) {
 import { defineStore } from 'pinia'
 import { storage } from '@/utils/storage'
 
-const STORAGE_KEY = 'yanxintong_profile'
+const STORAGE_KEY = 'researchmate_profile'
 
 export const useProfileStore = defineStore('profile', {
   state: () => ({

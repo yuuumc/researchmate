@@ -2,7 +2,7 @@
 
 **Owner**: Agent 编排工程师
 **交付日期**: 2026-07-28
-**基线**: v1.0 (yanxintong-v1.0.tar.gz, 184KB)
+**基线**: v1.0 (researchmate-v1.0.tar.gz, 184KB)
 **协作文件夹**: https://larkcommunity.feishu.cn/drive/folder/C2yZfB6EblC85UdOHVccMnrTnje
 
 ---
@@ -121,7 +121,7 @@ export const tutorAgent = traceAgent('tutor', async function tutorCore(userInput
 ### 运行方式
 
 ```bash
-cd yanxintong-main
+cd researchmate-main
 node scripts/test-base-agent-router.mjs
 ```
 
@@ -131,7 +131,7 @@ node scripts/test-base-agent-router.mjs
 
 ## 集成步骤（队长）
 
-1. 解压 `agent-v1.5.zip` 到 `yanxintong-main/`，覆盖以下文件：
+1. 解压 `agent-v1.5.zip` 到 `researchmate-main/`，覆盖以下文件：
    ```
    src/core/router.js                          (modify)
    src/core/agents/BaseAgent.js                (new)

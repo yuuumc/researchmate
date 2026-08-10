@@ -14,7 +14,7 @@
 -- 0. 演示用户（需先在 Supabase Auth 创建对应账号，此处仅 seed profiles 及关联数据）
 -- ============================================================
 -- 演示账号凭证（W4 在 Supabase Auth 创建后填入）：
---   email: demo@yanxintong.example  password: <W4 设定>
+--   email: demo@researchmate.example  password: <W4 设定>
 -- 占位 user_id：用 auth.users 创建后回填的 UUID 替换 'DEMO_USER_UUID'
 
 -- ============================================================
