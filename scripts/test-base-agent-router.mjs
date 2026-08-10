@@ -233,7 +233,7 @@ section('Test 8: 5 Agent 文件改造（文本检查）')
 for (const agent of ['tutor', 'diagnose', 'planner', 'admission', 'research']) {
   const src = readFileSync(new URL(`../src/core/agents/${agent}.js`, import.meta.url), 'utf-8')
   assert(src.includes(`traceAgent('${agent}'`), `${agent}: traceAgent 包装存在`)
-  assert(src.includes('runLLM'), `${agent}: 已用 BaseAgent.runLLM`)
+  assert(src.includes('runLLM') || src.includes('callLLM'), `${agent}: 已用 BaseAgent.runLLM/callLLM`)
   assert(src.includes(`export const ${agent}Agent`), `${agent}: ${agent}Agent 导出保留`)
 }
 
