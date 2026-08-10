@@ -47,6 +47,15 @@ export function textToVector(text) {
     vec[idx] += 1
   }
 
+  // P0-3 fix: char bigrams for synonym recall (weight 0.5)
+  for (const tk of tokens) {
+    if (tk.length >= 3) {
+      for (let i = 0; i < tk.length - 1; i++) {
+        vec[fnv1a(tk.slice(i, i + 2)) % VECTOR_DIM] += 0.5
+      }
+    }
+  }
+
   // L2 归一化
   let norm = 0
   for (let i = 0; i < vec.length; i++) norm += vec[i] * vec[i]
