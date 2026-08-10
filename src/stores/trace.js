@@ -15,6 +15,7 @@ const STEP_META = {
   profile: { label: 'Profile 读取', en: 'Profile', color: '#7a8ba3', icon: 'P' },
   // P0-3: 记忆召回（紫色，与其他步骤区分）
   memory_recall: { label: '记忆召回', en: 'Memory', color: '#e056fd', icon: 'M' },
+  tool_call: { label: '工具调用', en: 'Tool', color: '#e17055', icon: 'W' },
   tutor: { label: 'Tutor 导师', en: 'Tutor', color: '#00d4aa', icon: 'T' },
   diagnose: { label: 'Diagnose 诊断', en: 'Diagnose', color: '#4d9de0', icon: 'D' },
   planner: { label: 'Planner 规划', en: 'Planner', color: '#ffd166', icon: 'L' },

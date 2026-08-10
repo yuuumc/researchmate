@@ -15,6 +15,9 @@
 import { AI_PROVIDER } from '@/api/custom'
 import { safeParseJSON } from '@/utils/validator'
 
+// P0-2: Tool calling support (re-export from tools framework)
+export { registerTool, callTool, getToolSchemas, setKnowledgeBaseForTools, setKnowledgeGraphForTools } from '../tools/index'
+
 // ============================================================
 // Trace 事件订阅（v2.0 新增）
 // ============================================================
