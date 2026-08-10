@@ -1,11 +1,14 @@
 // ============================================================
-// 专业导师 Agent（v2.0 SSE 版）
+// 专业导师 Agent（v2.0 SSE 版 + P0-1 GraphRAG 双路融合）
 // ============================================================
 // v1 正式版：RAG 检索 → 知识节点识别 → 前置知识链 → 个性化回答
 // v1.5：继承 BaseAgent，trace 自动埋点
 // v2.0：支持流式（ctx.onToken）+ 取消（ctx.signal），首 token 延迟 < 2s
+// P0-1：GraphRAG 双路融合（三路并行召回 + min-max 归一 + 加权 + 去重）
+//       无图谱时自动退化为纯 TF-IDF（向后兼容）
 // ============================================================
 
+import { graphRagRetrieve } from '@/utils/graphRag'
 import { retrieve, buildContext } from '@/utils/rag'
 import { profileToContext } from '../profileLoader'
 import { TUTOR_PROMPT } from '@/prompts/index'
@@ -38,59 +41,39 @@ export function setKnowledgeGraph(subject, graphData) {
 }
 
 /**
- * 专业导师（v2.0 接 ctx.onToken + ctx.signal）
+ * 专业导师（v2.0 接 ctx.onToken + ctx.signal + P0-1 GraphRAG 双路融合）
  */
 export const tutorAgent = traceAgent('tutor', async function tutorCore(userInput, profile, ctx = {}) {
   const onToken = ctx?.onToken || null
   const signal = ctx?.signal || null
 
-  // 1. RAG 检索 Top-5
-  const slices = retrieve(userInput, knowledgeBase, 5)
-  const ragContext = buildContext(slices)
+  // 1. GraphRAG 双路融合检索（三路并行召回 + min-max 归一 + 加权 + 去重）
+  //    无图谱时自动退化为纯 TF-IDF
+  const ragResult = graphRagRetrieve(userInput, knowledgeBase, knowledgeGraph, {
+    topK: 5,
+    profile
+  })
 
-  // 2. 知识图谱路径分析（v1 正式版 §四）
-  let knowledgePath = null
-  let pathContext = ''
+  const slices = ragResult.slices
+  const ragContext = ragResult.ragContext
+  const knowledgePath = ragResult.knowledgePath
+  const pathContext = knowledgePath
+    ? buildPathContextText(knowledgePath)
+    : ''
+  const retrievalTrace = ragResult.trace
 
-  if (knowledgeGraph && slices.length > 0) {
-    const topSlice = slices[0]
-    let targetNode = findNodeBySourceId(knowledgeGraph, topSlice.id)
+  console.log('[tutor] GraphRAG retrieval:', {
+    graphLoaded: !!knowledgeGraph,
+    degraded: retrievalTrace.degraded,
+    sliceCount: slices.length,
+    topSliceId: slices[0]?.id,
+    topSliceScore: slices[0]?.score,
+    topSliceSources: slices[0]?._retrieval_sources,
+    knowledgePathTarget: knowledgePath?.target?.name,
+    retrievalHits: knowledgePath?.retrievalHits?.length || 0
+  })
 
-    if (!targetNode && topSlice._matched_keywords) {
-      targetNode = findNodeByKeywords(knowledgeGraph, topSlice._matched_keywords)
-    }
-
-    console.log('[tutor] knowledge graph lookup:', {
-      graphLoaded: !!knowledgeGraph,
-      topSliceId: topSlice.id,
-      targetNodeFound: !!targetNode,
-      targetNodeName: targetNode?.name
-    })
-
-    if (targetNode) {
-      const pathResult = buildLearningPathContext(knowledgeGraph, targetNode, profile)
-      pathContext = pathResult.context
-      knowledgePath = {
-        target: {
-          id: targetNode.id,
-          name: targetNode.name,
-          chapter: targetNode.chapter,
-          description: targetNode.description
-        },
-        path: pathResult.path.map((p) => ({
-          id: p.node.id,
-          name: p.node.name,
-          chapter: p.node.chapter,
-          reason: p.reason,
-          mastery: p.mastery,
-          isTarget: p.isTarget
-        })),
-        focusHint: pathResult.focusHint
-      }
-    }
-  }
-
-  // 3. 拼 Prompt（含知识图谱路径上下文）
+  // 2. 拼 Prompt（含知识图谱路径上下文）
   const prompt = `${TUTOR_PROMPT}
 
 # 学生画像
@@ -99,10 +82,10 @@ ${profileToContext(profile)}
 # 知识库检索结果（Top-${slices.length}）
 ${ragContext || '（无相关切片，按通用知识回答）'}
 
-${pathContext ? `# 知识图谱路径分析（v1 正式版）\n${pathContext}\n` : ''}
+${pathContext ? `# 知识图谱路径分析（GraphRAG 双路融合）\n${pathContext}\n` : ''}
 `
 
-  // 4. 调用 LLM（v2.0：接 ctx.onToken → 流式；否则非流式）
+  // 3. 调用 LLM（v2.0：接 ctx.onToken → 流式；否则非流式）
   let content
   let apiError = null
   try {
@@ -122,6 +105,42 @@ ${pathContext ? `# 知识图谱路径分析（v1 正式版）\n${pathContext}\n`
     content,
     rag_slices: slices,
     knowledge_path: knowledgePath,
+    // P0-1: GraphRAG 检索 trace（供 AgentTrace 展示）
+    retrieval_trace: retrievalTrace,
     error: apiError ? true : undefined
   }
 })
+
+/**
+ * 从 knowledgePath 对象构建路径上下文文本
+ * （替代旧版 buildLearningPathContext 返回的 context 字段，
+ *  因为 graphRagRetrieve 已构建了 knowledgePath 结构化对象）
+ */
+function buildPathContextText(kp) {
+  if (!kp || !kp.target) return ''
+  const pathLines = (kp.path || []).map((p, i) => {
+    const statusLabel = {
+      mastered: '✓已掌握',
+      weak: '✗薄弱',
+      unknown: '○未学',
+      learning: '◐学习中'
+    }[p.mastery?.status] || '○未学'
+    const prefix = p.isTarget ? '【目标】' : `【前置${i + 1}】`
+    return `${prefix}${p.name} ${statusLabel}${p.reason ? `（${p.reason}）` : ''}`
+  }).join('\n')
+
+  // GraphRAG 检索命中信息
+  const hitsInfo = (kp.retrievalHits || []).map(h => {
+    const sources = h.sources.join('+')
+    return `  - ${h.nodeName} (${sources}, score=${h.fusedScore})`
+  }).join('\n')
+
+  return `目标知识点：${kp.target.name}（${kp.target.chapter}）
+${kp.target.description || ''}
+
+前置知识链：
+${pathLines}
+
+教学建议：${kp.focusHint || ''}
+${hitsInfo ? `\nGraphRAG 检索命中：\n${hitsInfo}` : ''}`
+}

@@ -21,6 +21,10 @@ const target = computed(() => props.path?.target || null)
 // 焦点提示
 const focusHint = computed(() => props.path?.focusHint || '')
 
+// GraphRAG 检索命中（P0-1 新增）
+const retrievalHits = computed(() => props.path?.retrievalHits || [])
+const hasRetrievalHits = computed(() => retrievalHits.value.length > 0)
+
 // 掌握状态颜色映射
 const masteryColor = {
   mastered: '#00d4aa',
@@ -43,6 +47,32 @@ const masteryLabel = {
   weak: '薄弱',
   unknown: '未学',
   learning: '学习中'
+}
+
+// 检索路径标签颜色
+const sourceColor = {
+  tfidf: '#3b82f6',
+  graphVec: '#8b5cf6',
+  keyword: '#f59e0b'
+}
+
+const sourceLabel = {
+  tfidf: 'TF-IDF',
+  graphVec: '图谱向量',
+  keyword: '关键词'
+}
+
+function getSourceColor(src) {
+  return sourceColor[src] || '#9ca3af'
+}
+
+function getSourceLabel(src) {
+  return sourceLabel[src] || src
+}
+
+// 融合分数百分比
+function scorePercent(score) {
+  return (score * 100).toFixed(0) + '%'
 }
 </script>
 
@@ -90,6 +120,49 @@ const masteryLabel = {
             </span>
           </div>
           <div v-if="node.reason" class="node-reason">{{ node.reason }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GraphRAG 检索命中展示（P0-1 新增） -->
+    <div v-if="hasRetrievalHits" class="retrieval-hits">
+      <div class="hits-header">
+        <span class="hits-icon">⟨⟩</span>
+        <span class="hits-title">GraphRAG 三路融合命中</span>
+      </div>
+      <div class="hits-list">
+        <div
+          v-for="(hit, i) in retrievalHits"
+          :key="hit.nodeId || i"
+          class="hit-item"
+        >
+          <div class="hit-main">
+            <span class="hit-rank">#{{ i + 1 }}</span>
+            <span class="hit-name">{{ hit.nodeName }}</span>
+            <span class="hit-score">{{ scorePercent(hit.fusedScore) }}</span>
+          </div>
+          <div class="hit-sources">
+            <span
+              v-for="src in hit.sources"
+              :key="src"
+              class="source-tag"
+              :style="{ '--src-color': getSourceColor(src) }"
+            >
+              {{ getSourceLabel(src) }}
+            </span>
+          </div>
+          <!-- 各路分数明细 -->
+          <div v-if="hit.scores" class="hit-score-detail">
+            <span class="score-bar" v-if="hit.scores.tfidf > 0" :style="{ '--bar-color': sourceColor.tfidf }">
+              TF-IDF {{ hit.scores.tfidf.toFixed(2) }}
+            </span>
+            <span class="score-bar" v-if="hit.scores.graphVec > 0" :style="{ '--bar-color': sourceColor.graphVec }">
+              向量 {{ hit.scores.graphVec.toFixed(2) }}
+            </span>
+            <span class="score-bar" v-if="hit.scores.keyword > 0" :style="{ '--bar-color': sourceColor.keyword }">
+              关键词 {{ hit.scores.keyword.toFixed(2) }}
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -352,6 +425,113 @@ const masteryLabel = {
   font-family: var(--font-mono, monospace);
 }
 
+/* === GraphRAG 检索命中（P0-1 新增） === */
+.retrieval-hits {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--color-border-subtle, #e5e7eb);
+}
+
+.hits-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.hits-icon {
+  color: #8b5cf6;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.hits-title {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-ink-700, #374151);
+  letter-spacing: 0.3px;
+}
+
+.hits-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hit-item {
+  background: var(--color-bg-elevated, #fff);
+  border-radius: var(--radius-md, 8px);
+  padding: 8px 10px;
+  border: 1px solid var(--color-border-subtle, #e5e7eb);
+}
+
+.hit-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hit-rank {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  color: var(--color-fg-muted, #9ca3af);
+  min-width: 20px;
+}
+
+.hit-name {
+  font-family: var(--font-serif, Georgia, serif);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ink-900, #111827);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hit-score {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  color: #8b5cf6;
+}
+
+.hit-sources {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.source-tag {
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: var(--radius-full, 999px);
+  background: color-mix(in srgb, var(--src-color, #9ca3af) 10%, transparent);
+  color: var(--src-color, #9ca3af);
+  border: 1px solid color-mix(in srgb, var(--src-color, #9ca3af) 25%, transparent);
+}
+
+.hit-score-detail {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.score-bar {
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  color: var(--bar-color, #9ca3af);
+  padding: 1px 5px;
+  background: color-mix(in srgb, var(--bar-color, #9ca3af) 6%, transparent);
+  border-radius: var(--radius-sm, 4px);
+}
+
 /* === 焦点提示 === */
 .focus-hint {
   margin-top: 14px;
@@ -399,6 +579,9 @@ const masteryLabel = {
   }
   .node-status {
     margin-left: 0;
+  }
+  .hit-score-detail {
+    gap: 4px;
   }
 }
 </style>

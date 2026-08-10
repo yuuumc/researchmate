@@ -3,9 +3,10 @@
 // ============================================================
 // 职责：
 //   1. 加载学生画像
-//   2. 意图识别（调 LLM） —— 与「默认 tutor 预热」并行
-//   3. 路由到对应 Agent
-//   4. 兜底：意图识别失败 → 默认走 concept（专业导师）
+//   2. P0-3: 向量记忆召回（同步，<1ms，tutor 预热前完成）
+//   3. 意图识别（调 LLM） —— 与「默认 tutor 预热」并行
+//   4. 路由到对应 Agent
+//   5. 兜底：意图识别失败 → 默认走 concept（专业导师）
 //
 // v1.5 升级（H2 评审保命）：
 //   「2x 串行 LLM → 并行」：intent 识别 + tutor 预热 Promise.all 并发执行
@@ -15,14 +16,19 @@
 // v2.0 升级：
 //   透传 onToken 到 Agent — 配合 /api/chat SSE，首 token 延迟 < 2s
 //   不修改 5 Agent 业务逻辑（仅让 Agent 可选地走 runLLMStream）
+//
+// P0-3 升级：
+//   loadProfile() 之后、Promise.all 之前，插入 loadMemories(userInput) 同步执行
+//   tutor 预热即享受记忆上下文（合并进 profile.recent_memories）
 // ============================================================
+
 
 import { tutorAgent } from './agents/tutor'
 import { diagnoseAgent } from './agents/diagnose'
 import { plannerAgent } from './agents/planner'
 import { admissionAgent } from './agents/admission'
 import { researchAgent } from './agents/research'
-import { loadProfile } from './profileLoader'
+import { loadProfile, loadMemories } from './profileLoader'
 import { updateProfileAfterResponse } from './profileUpdater'
 import { cascadeDiagnoseToPlan } from './cascade'
 import { AI_PROVIDER } from '@/api/custom'
@@ -52,6 +58,7 @@ const INTENT_LABELS = {
   cascade: '级联（诊断→规划）'
 }
 
+
 const STAGE_LABELS = {
   initial: '起步',
   basic: '基础',
@@ -76,8 +83,9 @@ async function recognizeIntent(userInput) {
   return 'concept' // 兜底
 }
 
+
 /**
- * 主控路由（v2.0 流式版）
+ * 主控路由（v2.0 流式版 + P0-3 记忆召回）
  * @param {string} userInput - 学生原始输入
  * @param {object} [options] - v2.0 新增
  * @param {(chunk: {delta: string, latencyMs: number}) => void} [options.onToken] - 流式 token 回调
@@ -112,9 +120,29 @@ export async function route(userInput, options = {}) {
     throw e
   }
 
+  // 1.5 P0-3: 向量记忆召回（同步，<1ms，在 Promise.all 之前）
+  //    让 tutor 预热即享受记忆上下文，无需等待
+  //    详见 plan: loadMemories → queryMemory (topK=3, minScore=0.18)
+  const memoryStepIdx = traceStore.addStep('memory_recall', '召回历史记忆…')
+  try {
+    const hits = loadMemories(userInput, { topK: 3, minScore: 0.18 })
+    // 合并进 profile，下游 profileToContext 会渲染「相似历史记忆」段落
+    profile.recent_memories = hits
+    traceStore.updateStep(memoryStepIdx, 'done', {
+      detail: hits.length > 0
+        ? `命中 ${hits.length} 条历史记忆（${hits.map(h => h.type).join('、')}）`
+        : '无相似记忆'
+    })
+  } catch (e) {
+    console.warn('[router] memory recall failed:', e.message)
+    profile.recent_memories = []
+    traceStore.updateStep(memoryStepIdx, 'error', { error: e.message })
+  }
+
   // 2. v1.5 升级：意图识别 + tutor 预热 并行
   //    tutor 是最常见的 intent（concept），预先开 LLM 调用
   //    v2.0 升级：tutor 预热走流式 → 首 token 延迟 < 2s
+  //    P0-3: profile 已含 recent_memories，tutor 预热 prompt 自动注入记忆上下文
   const routerStepIdx = traceStore.addStep('router', '识别意图（+ tutor 预热）…')
 
   // 包装 onToken 到 tutor 预热（不影响 intent 识别，intent 是 JSON 一次性返回更稳）
@@ -246,13 +274,14 @@ export async function route(userInput, options = {}) {
       detail: getUpdateDetail(intentForNext, result, profile)
     })
   } catch (e) {
-    console.warn('[router] profile update failed:', e)
+    console.warn('[router] profile update failed:', e.message)
     traceStore.updateStep(updateStepIdx, 'error', { error: e.message })
   }
 
   traceStore.endSession()
   return { intent: intentForNext, ...result }
 }
+
 
 /**
  * 同步获取当前意图（用于 UI 高亮，不调用 LLM）
@@ -267,6 +296,7 @@ export function guessIntentByRoute(agentRoute) {
   return map[agentRoute] || 'concept'
 }
 
+
 // === Trace 详情生成辅助函数 ===
 
 function getAgentStartDetail(intent) {
@@ -280,6 +310,7 @@ function getAgentStartDetail(intent) {
   }
   return map[intent] || '执行中…'
 }
+
 
 function getAgentDoneDetail(intent, result) {
   if (!result) return '完成'
@@ -331,6 +362,7 @@ function getAgentDoneDetail(intent, result) {
       return '完成'
   }
 }
+
 
 function getUpdateDetail(intent, result, profile) {
   const parts = []

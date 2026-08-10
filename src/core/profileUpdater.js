@@ -4,12 +4,17 @@
 // 职责：根据 Agent 返回结果，更新学生画像
 // 策略：mastered > weak（铁律，互斥）
 // v1.5 新增：diagnose 后自动入错题本（仅当 ability_stars ≤ 2）
+// P0-3 新增：diagnose/plan/admission 后写入向量记忆（addMemory）
 // ============================================================
+
 
 import { useProfileStore } from '@/stores/profile'
 import { useDiagnosisStore } from '@/stores/diagnosis'
 import { usePlanStore } from '@/stores/plan'
 import { useWrongBookStore } from '@/stores/wrongBook'
+// P0-3: 向量记忆写入
+import { addMemory } from '@/utils/vectorMemory'
+
 
 /**
  * 根据 Agent 返回结果更新画像
@@ -39,6 +44,7 @@ export function updateProfileAfterResponse(intent, result, profile) {
       break
   }
 }
+
 
 function updateAfterDiagnose(result, profileStore) {
   const data = result.structured || {}
@@ -86,7 +92,28 @@ function updateAfterDiagnose(result, profileStore) {
   }
   collect(data.weak_points, 'weak_point')
   collect(data.root_causes, 'root_cause')
+
+  // P0-3: 写入向量记忆（用于后续「我记得你上次…」的个性化召回）
+  //   路径: router → updateProfileAfterResponse('diagnose', ...) → 本函数
+  //   注意: Agent API 路径(diagnosis.js runDiagnosis) 走自己的 addMemory，详见 diagnosis.js
+  try {
+    const subject = data.subject || profileStore.profile.major || '未指定学科'
+    const scorePart = typeof data.score === 'number' ? `考了${data.score}分` : '诊断'
+    const weakPart = (data.weak_points && data.weak_points.length > 0)
+      ? `薄弱点:${data.weak_points.join('、')}`
+      : '无明显薄弱'
+    const memoryText = `${subject}${scorePart}，${weakPart}`
+    addMemory('diagnosis', memoryText, {
+      score: data.score ?? null,
+      subject,
+      weak_points: data.weak_points || [],
+      root_causes: data.root_causes || []
+    })
+  } catch (e) {
+    console.warn('[profileUpdater] addMemory(diagnosis) failed:', e.message)
+  }
 }
+
 
 function updateAfterPlan(result, profileStore) {
   const data = result.structured || {}
@@ -100,14 +127,43 @@ function updateAfterPlan(result, profileStore) {
   if (data.target_stage) {
     profileStore.setPreparationStage(data.target_stage)
   }
+
+  // P0-3: 写入向量记忆
+  try {
+    const weeksCount = (data.weeks && data.weeks.length) || 0
+    const stagePart = data.target_stage || profileStore.profile.preparation_stage || '未指定阶段'
+    const memoryText = `生成${weeksCount}周复习计划，目标阶段:${stagePart}`
+    addMemory('plan', memoryText, {
+      weeks_count: weeksCount,
+      target_stage: data.target_stage || '',
+      adjustments: data.adjustments || null
+    })
+  } catch (e) {
+    console.warn('[profileUpdater] addMemory(plan) failed:', e.message)
+  }
 }
+
 
 function updateAfterAdmission(result, profileStore) {
   const data = result.structured || {}
   if (data.target_school) {
     profileStore.setTarget(data.target_school, data.target_major || profileStore.profile.target_major)
   }
+
+  // P0-3: 写入向量记忆
+  try {
+    const school = data.target_school || profileStore.profile.target_school || '未指定院校'
+    const major = data.target_major || profileStore.profile.target_major || ''
+    const memoryText = `目标院校:${school}，专业:${major}`
+    addMemory('admission', memoryText, {
+      target_school: school,
+      target_major: major
+    })
+  } catch (e) {
+    console.warn('[profileUpdater] addMemory(admission) failed:', e.message)
+  }
 }
+
 
 /**
  * 手动标记掌握（用户在 UI 上点击）
@@ -116,6 +172,7 @@ export function markMastered(topic) {
   const profileStore = useProfileStore()
   profileStore.addMasteredTopic(topic)
 }
+
 
 /**
  * 手动标记薄弱（用户在 UI 上点击）

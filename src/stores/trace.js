@@ -3,6 +3,7 @@
 // ============================================================
 // 用途：记录 Router → Profile → Agent → Profile Update 全过程
 // 对应 v1正式版.txt §六「智能体工作过程展示」
+// P0-3 新增：memory_recall 步骤（向量记忆召回）
 // ============================================================
 
 import { defineStore } from 'pinia'
@@ -12,6 +13,8 @@ import { ref, computed } from 'vue'
 const STEP_META = {
   router: { label: 'Router 识别', en: 'Intent', color: '#1e3a5f', icon: 'R' },
   profile: { label: 'Profile 读取', en: 'Profile', color: '#7a8ba3', icon: 'P' },
+  // P0-3: 记忆召回（紫色，与其他步骤区分）
+  memory_recall: { label: '记忆召回', en: 'Memory', color: '#e056fd', icon: 'M' },
   tutor: { label: 'Tutor 导师', en: 'Tutor', color: '#00d4aa', icon: 'T' },
   diagnose: { label: 'Diagnose 诊断', en: 'Diagnose', color: '#4d9de0', icon: 'D' },
   planner: { label: 'Planner 规划', en: 'Planner', color: '#ffd166', icon: 'L' },
@@ -55,7 +58,7 @@ export const useTraceStore = defineStore('trace', () => {
 
   /**
    * 添加一个 trace 步骤
-   * @param {string} step - 步骤类型（router/profile/tutor/diagnose/planner/admission/cascade/rag/profile_update）
+   * @param {string} step - 步骤类型（router/profile/memory_recall/tutor/diagnose/planner/admission/cascade/research/rag/profile_update）
    * @param {string} detail - 详细信息（如「科研规划」「微电子/大二」）
    * @param {string} [status=running] - 初始状态
    * @returns {number} trace 索引，用于后续更新

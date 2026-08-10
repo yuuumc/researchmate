@@ -4,14 +4,20 @@
 // 数据契约：数组（严禁 Set/Map）
 //   每条记录：{ id, timestamp, score, weak_points, root_causes, raw_report }
 // v3.1 新增：runDiagnosis() → POST /api/agent { action: 'diagnose' }
+// P0-3 新增：add() 时同步写入向量记忆（addMemory）
+//   - 原因: Agent API 路径不走 profileUpdater，独立覆盖此路径防记忆缺口
 // ============================================================
+
 
 import { defineStore } from 'pinia'
 import { storage } from '@/utils/storage'
 import { callAgent } from '@/api/agent'
 import { supabase, isSupabaseConfigured } from '@/services/supabase'
+// P0-3: 向量记忆写入
+import { addMemory } from '@/utils/vectorMemory'
 
 const STORAGE_KEY = 'diagnosis_history'
+
 
 export const useDiagnosisStore = defineStore('diagnosis', {
   state: () => ({
@@ -50,6 +56,31 @@ export const useDiagnosisStore = defineStore('diagnosis', {
       }
       this.history.push(item)
       this.persist()
+
+      // P0-3: 写入向量记忆
+      //   原因: 本 add() 被两条诊断路径调用——
+      //     ① router.js → profileUpdater.updateAfterDiagnose → diagnosisStore.add()
+      //     ② diagnosis.js runDiagnosis (Agent API) → this.add()
+      //   profileUpdater 中也写了 addMemory('diagnosis', ...)，但②不走 profileUpdater
+      //   为了统一覆盖、在 add() 收口最安全（去重靠 text 相似度 + type 标签）
+      //   写入失败不影响主流程（try/catch 兜底）
+      try {
+        const subject = item.subject || '未指定学科'
+        const scorePart = typeof item.score === 'number' ? `考了${item.score}分` : '诊断'
+        const weakPart = item.weak_points.length > 0
+          ? `薄弱点:${item.weak_points.join('、')}`
+          : '无明显薄弱'
+        const memoryText = `${subject}${scorePart}，${weakPart}`
+        addMemory('diagnosis', memoryText, {
+          score: item.score,
+          subject: item.subject,
+          weak_points: item.weak_points,
+          root_causes: item.root_causes
+        })
+      } catch (e) {
+        console.warn('[diagnosis] addMemory failed:', e.message)
+      }
+
       return item
     },
 
@@ -118,7 +149,7 @@ export const useDiagnosisStore = defineStore('diagnosis', {
           structured: res.structured || null
         }
 
-        // 同步存入 history
+        // 同步存入 history（add() 内部已含 addMemory 写入，P0-3）
         const s = res.structured || {}
         this.add({
           score: s.score ?? null,
