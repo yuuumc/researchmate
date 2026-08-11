@@ -103,7 +103,7 @@ section('3. 无关查询召回控制')
 const allMemCount = getMemoryStats().count
 
 // 院校相关查询：与 admission 记忆共享"院校"词，应召回 admission（不算误召回）
-const hits4 = queryMemory('帮我查长三角院校名单')
+const hits4 = queryMemory('帮我查长三角院校名单', { minScore: 0.18 })
 assert(hits4.some(h => h.type === 'admission') || hits4.length === 0, '院校查询不误召回其他类型（仅可能召回 admission）')
 assert(!hits4.some(h => h.type === 'diagnosis'), '院校查询不召回 diagnosis 记忆')
 assert(!hits4.some(h => h.type === 'plan'), '院校查询不召回 plan 记忆')

@@ -53,6 +53,17 @@ const error = computed(() => careerStore.error)
 // 空态红线：无 Agent 结果时展示种子推荐方向
 const showSeed = computed(() => !careerStore.hasResult)
 const seedPaths = SEED_CAREER_PATHS
+
+// 序列化技能缺口（可能包含对象）
+function cleanGap(g) {
+  if (g == null) return ''
+  if (typeof g === 'string') return g
+  if (typeof g === 'object') {
+    if (Array.isArray(g)) return g.map(cleanGap).join('、')
+    return g.skill || g.name || g.gap || g.description || g.label || g.value || JSON.stringify(g)
+  }
+  return String(g)
+}
 </script>
 
 <template>
@@ -172,7 +183,7 @@ const seedPaths = SEED_CAREER_PATHS
                 </div>
                 <div v-if="role.skill_gaps?.length" class="role-gaps">
                   <span class="gap-label">技能缺口：</span>
-                  <span v-for="g in role.skill_gaps" :key="g" class="gap-chip">{{ g }}</span>
+                  <span v-for="g in role.skill_gaps" :key="cleanGap(g)" class="gap-chip">{{ cleanGap(g) }}</span>
                 </div>
               </div>
             </div>

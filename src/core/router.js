@@ -146,7 +146,7 @@ export async function route(userInput, options = {}) {
   //    详见 plan: loadMemories → queryMemory (topK=3, minScore=0.18)
   const memoryStepIdx = traceStore.addStep('memory_recall', '召回历史记忆…')
   try {
-    const hits = loadMemories(userInput, { topK: 3, minScore: 0.18 })
+    const hits = loadMemories(userInput, { topK: 3, minScore: 0.12 })
     // 合并进 profile，下游 profileToContext 会渲染「相似历史记忆」段落
     profile.recent_memories = hits
     let _detail
@@ -157,7 +157,7 @@ export async function route(userInput, options = {}) {
       try {
         const _stats = getMemoryStats()
         const _best = queryMemory(userInput, { topK: 1, minScore: 0 })
-        _detail = `无相似记忆（库内${_stats.count}条，最高相似度${_best[0] ? _best[0].score : 0}，阈值0.18）`
+        _detail = `无相似记忆（库内${_stats.count}条，最高相似度${_best[0] ? _best[0].score : 0}，阈值0.12）`
       } catch (_) {
         _detail = '无相似记忆'
       }

@@ -9,6 +9,12 @@ defineProps({
 // 清洗 LLM 输出中的 markdown / HTML 标签
 function cleanText(text) {
   if (text == null) return ''
+  if (typeof text === 'object') {
+    if (Array.isArray(text)) return text.map(t => cleanText(t)).join('、')
+    return cleanText(text.point || text.name || text.description || text.knowledge_point ||
+      text.topic || text.label || text.value || text.text ||
+      text.title || text.content || JSON.stringify(text))
+  }
   let t = String(text)
   // Strip HTML tags
   t = t.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '')
@@ -19,6 +25,18 @@ function cleanText(text) {
   // Collapse whitespace
   t = t.replace(/\s+/g, ' ').trim()
   return t
+}
+
+// 序列化补强方案（可能是 string/array/object）
+function cleanRemediation(remediation) {
+  if (remediation == null) return ''
+  if (typeof remediation === 'string') return cleanText(remediation)
+  if (Array.isArray(remediation)) return remediation.map(r => cleanText(r)).join('；')
+  if (typeof remediation === 'object') {
+    return cleanText(remediation.summary || remediation.description || remediation.text ||
+      remediation.content || remediation.plan || remediation.steps || JSON.stringify(remediation))
+  }
+  return cleanText(remediation)
 }
 
 // 4 层根因链配置
@@ -97,13 +115,13 @@ const layers = [
     </div>
 
     <!-- 补强方案 -->
-    <div v-if="report.remediation" class="remediation">
+    <div v-if="report.remediation || report.remediation_path" class="remediation">
       <div class="remediation-header">
         <span class="r-icon">◈</span>
         <span class="r-label">补强方案</span>
         <span class="r-en">Remediation</span>
       </div>
-      <div class="remediation-text">{{ report.remediation }}</div>
+      <div class="remediation-text">{{ cleanRemediation(report.remediation || report.remediation_path) }}</div>
     </div>
   </div>
 </template>

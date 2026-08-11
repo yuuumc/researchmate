@@ -19,7 +19,7 @@ import { textToVector, cosineSimilarity, isZeroVector } from './vector.js'
 // ============================================================
 const STORAGE_KEY = 'vector_memory'
 const MAX_CAPACITY = 200
-const DEFAULT_MIN_SCORE = 0.18
+const DEFAULT_MIN_SCORE = 0.12
 
 // ============================================================
 // SSR / 环境检测
