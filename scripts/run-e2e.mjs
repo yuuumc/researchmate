@@ -22,7 +22,7 @@ const SCRIPTS = [
   'scripts/test-history-demo.mjs'
 ]
 const MOCK_PORT = Number(process.env.MOCK_PORT || 5175)
-const REAL_URL = process.env.AGENT_API_URL || 'https://yanxintong.vercel.app/api/chat'
+const REAL_URL = process.env.AGENT_API_URL || 'https://researchmate.vercel.app/api/chat'
 
 // 每个脚本的通过标记（stdout 含此字符串 = 测试逻辑通过）
 const PASS_MARKERS = {
