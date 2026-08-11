@@ -3,7 +3,7 @@
 > AI mentor for engineering student growth — from course learning to research practice.
 > 5-Agent collaboration + Knowledge Graph RAG + Student Cognitive Model + subject decoupling + longitudinal diagnosis comparison.
 
-**Live Demo**: <https://researchmate.vercel.app>
+**Live Demo**: <https://researchmate.researchkit.online>
 
 ## What's New in v1
 

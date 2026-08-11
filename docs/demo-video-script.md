@@ -42,7 +42,7 @@
 
 ### 画面
 
-打开 https://researchmate.vercel.app，展示仪表盘首页（能力进度条 + 考研倒计时 + 快捷提问入口）。
+打开 https://researchmate.researchkit.online，展示仪表盘首页（能力进度条 + 考研倒计时 + 快捷提问入口）。
 
 ### 操作 + 配音
 

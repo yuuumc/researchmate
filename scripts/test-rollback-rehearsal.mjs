@@ -53,7 +53,7 @@ const RISKS = [
     category: '自建全栈特有',
     probability: '高',
     scenario: '评审现场可能没有 Node.js 环境',
-    talk: '我们准备了线上部署版本，直接访问 https://researchmate.vercel.app，不需要本地环境。',
+    talk: '我们准备了线上部署版本，直接访问 https://researchmate.researchkit.online，不需要本地环境。',
     backup: ['Vercel 主链接', 'Netlify 备用链接', '本地录屏视频'],
     prevention: ['评审前 1 天在 Vercel 部署并测试访问', '准备 2 个备用链接'],
     autoCheck: 'vercel-url'

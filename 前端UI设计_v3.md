@@ -958,7 +958,7 @@ v3 §v3.3 10 大翻车点。UI 做成 1 个独立路由页 + 1 个评审现场�
 本地服务无法访问时评审用，v3 §M10 决定主用。TopBar 演示状态条升级为可点击链接。
 
 - 状态条样式：`bg --color-success-bg / border-left 3px --color-node-active / padding --space-2 --space-3` · 左侧节点圆点 ●
-- 文字：`✅ 已部署 Vercel · ` 链接文字"researchmate.vercel.app" 墨蓝（`--color-ink-700`）下划线 + 🔗 图标 · hover 显示 "点击跳备份链接"
+- 文字：`✅ 已部署 Vercel · ` 链接文字"researchmate.researchkit.online" 墨蓝（`--color-ink-700`）下划线 + 🔗 图标 · hover 显示 "点击跳备份链接"
 - 本地服务断开时自动变 `bg --color-warning-bg / border-left --color-node-warn` · 文字"⚠️ 本地服务断开，请使用 Vercel 链接"
 
 ## 9. Trae 备份 IDE 提示
