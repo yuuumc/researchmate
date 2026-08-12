@@ -27,16 +27,20 @@ function cleanText(text) {
   return t
 }
 
-// 序列化补强方案（可能是 string/array/object）
-function cleanRemediation(remediation) {
-  if (remediation == null) return ''
-  if (typeof remediation === 'string') return cleanText(remediation)
-  if (Array.isArray(remediation)) return remediation.map(r => cleanText(r)).join('；')
-  if (typeof remediation === 'object') {
-    return cleanText(remediation.summary || remediation.description || remediation.text ||
-      remediation.content || remediation.plan || remediation.steps || JSON.stringify(remediation))
+// 补强方案：归一化为对象数组，供模板 v-for 结构化渲染
+// 兼容 JSON 字符串、对象数组、单个对象、纯文本等情况
+function parseRemediation(r) {
+  if (!r) return []
+  if (Array.isArray(r)) return r
+  if (typeof r === 'string') {
+    const s = r.trim()
+    if (s.startsWith('[')) {
+      try { return JSON.parse(s) } catch (e) { return [] }
+    }
+    return [{ step: 1, action: s }]
   }
-  return cleanText(remediation)
+  if (typeof r === 'object') return [r]
+  return []
 }
 
 // 4 层根因链配置
@@ -121,7 +125,23 @@ const layers = [
         <span class="r-label">补强方案</span>
         <span class="r-en">Remediation</span>
       </div>
-      <div class="remediation-text">{{ cleanRemediation(report.remediation || report.remediation_path) }}</div>
+      <div class="remediation-list">
+        <div
+          v-for="(item, i) in parseRemediation(report.remediation || report.remediation_path)"
+          :key="i"
+          class="remediation-step"
+        >
+          <div class="step-head">
+            <span class="step-num">{{ item.step || i + 1 }}</span>
+            <span v-if="item.estimated_focus" class="step-focus">{{ item.estimated_focus }}</span>
+          </div>
+          <div class="step-action">{{ cleanText(item.action) }}</div>
+          <div v-if="item.prerequisite" class="step-prereq">
+            <span class="prereq-label">前置知识</span>
+            <span class="prereq-text">{{ cleanText(item.prerequisite) }}</span>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -367,9 +387,71 @@ const layers = [
   letter-spacing: 1px;
 }
 
-.remediation-text {
+.remediation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.remediation-step {
+  padding: 10px 12px;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.step-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-success);
+  color: var(--color-fg-inverse);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.step-focus {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--color-success) 18%, transparent);
+  color: var(--color-success);
+}
+
+.step-action {
   font-size: 13px;
+  color: var(--color-ink-900);
+  line-height: 1.6;
+}
+
+.step-prereq {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.prereq-label {
+  color: var(--color-fg-tertiary);
+  flex-shrink: 0;
+}
+
+.prereq-text {
   color: var(--color-ink-700);
-  line-height: 1.7;
 }
 </style>
