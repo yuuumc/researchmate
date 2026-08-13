@@ -8,7 +8,7 @@
 // 完成后 wizard_completed = true → 跳转首页
 // 对齐 PRD 第六章 + UI 设计师 yx- 组件类
 // ============================================================
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
@@ -61,6 +61,28 @@ const knowledgePoints = [
   '数字逻辑设计', 'Verilog HDL', '运算放大器', '半导体工艺',
   '量子力学基础', '固体物理', '信号与系统', '电路分析',
 ]
+
+// ---- 考试日期选项（按考研年份给出初试日期档） ----
+// 2026 考研初试为已公布日期；2027/2028 按「12 月第三个周末」规律预估
+const examDatesByYear = {
+  2026: [
+    { value: '2025-12-20', label: '2025-12-20（周六）～ 12-21（周日）· 2026 考研初试' },
+  ],
+  2027: [
+    { value: '2026-12-19', label: '2026-12-19（周六）～ 12-20（周日）· 2027 考研初试（预估）' },
+  ],
+  2028: [
+    { value: '2027-12-18', label: '2027-12-18（周六）～ 12-19（周日）· 2028 考研初试（预估）' },
+  ],
+}
+
+const examDateOptions = computed(() => examDatesByYear[Number(form.value.exam_year)] || [])
+
+// 考研年份变化时，若已选考试日期不在新年份档位内则清空重选
+watch(() => form.value.exam_year, () => {
+  const stillValid = examDateOptions.value.some(o => o.value === form.value.exam_date)
+  if (!stillValid) form.value.exam_date = ''
+})
 
 function toggleSkill(point, type) {
   const arr = form.value[type]
@@ -224,8 +246,10 @@ onMounted(async () => {
         <div class="wizard-field">
           <label class="field-label">目标院校 <span class="required">*</span></label>
           <input
+            id="target-school"
             v-model="form.target_school"
             class="yx-input"
+            name="target_school"
             placeholder="如：东南大学"
             list="school-list"
           />
@@ -240,6 +264,7 @@ onMounted(async () => {
             <option value="浙江大学" />
             <option value="华中科技大学" />
             <option value="北京航空航天大学" />
+            <option value="其他（自定义）" />
           </datalist>
         </div>
 
@@ -252,8 +277,8 @@ onMounted(async () => {
         </div>
 
         <div class="wizard-field">
-          <label class="field-label">考研年份</label>
-          <select v-model="form.exam_year" class="yx-input yx-input--narrow">
+          <label class="field-label" for="exam-year">考研年份</label>
+          <select id="exam-year" v-model="form.exam_year" class="yx-input yx-input--narrow" name="exam_year">
             <option :value="2026">2026</option>
             <option :value="2027">2027</option>
             <option :value="2028">2028</option>
@@ -311,12 +336,17 @@ onMounted(async () => {
         <p class="wizard-subtitle">最后一步，设定你的备考节奏</p>
 
         <div class="wizard-field">
-          <label class="field-label">考试日期 <span class="required">*</span></label>
-          <input
+          <label class="field-label" for="exam-date">考试日期 <span class="required">*</span></label>
+          <select
+            id="exam-date"
             v-model="form.exam_date"
             class="yx-input"
-            type="date"
-          />
+            name="exam_date"
+          >
+            <option value="" disabled>请选择初试日期档</option>
+            <option v-for="opt in examDateOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+          </select>
+          <div class="field-hint">按考研年份列出初试时间档</div>
         </div>
 
         <div class="wizard-field">
