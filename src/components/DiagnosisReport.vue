@@ -1,10 +1,15 @@
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   report: {
     type: Object,
     default: () => ({})
   }
 })
+
+// null 防御：父组件显式传 null 时 Vue 不会应用 default，这里归一化为 {}
+const safeReport = computed(() => props.report || {})
 
 // 清洗 LLM 输出中的 markdown / HTML 标签
 function cleanText(text) {
@@ -59,24 +64,24 @@ const layers = [
       <div class="score-block">
         <div class="score-label">SCORE</div>
         <div class="score-value">
-          <span class="score-num">{{ report.score ?? '—' }}</span>
+          <span class="score-num">{{ safeReport.score ?? '—' }}</span>
           <span class="score-unit">分</span>
         </div>
         <div class="score-bar">
           <div
             class="score-fill"
-            :style="{ width: `${Math.min(100, Math.max(0, (report.score || 0) / 1.5))}%` }"
+            :style="{ width: `${Math.min(100, Math.max(0, (safeReport.score || 0) / 1.5))}%` }"
           ></div>
         </div>
       </div>
-      <div v-if="report.subject" class="subject-block">
+      <div v-if="safeReport.subject" class="subject-block">
         <div class="subject-label">SUBJECT</div>
-        <div class="subject-value">{{ report.subject }}</div>
+        <div class="subject-value">{{ safeReport.subject }}</div>
       </div>
     </div>
 
     <!-- 4 层根因链：纵向时间轴 -->
-    <div v-if="layers.some(l => report[l.key]?.length)" class="root-chain">
+    <div v-if="layers.some(l => safeReport[l.key]?.length)" class="root-chain">
       <div class="chain-title">
         <span class="title-text">4 层根因链</span>
         <span class="title-en">Root Cause Chain</span>
@@ -87,7 +92,7 @@ const layers = [
           v-for="(layer, idx) in layers"
           :key="layer.key"
           class="chain-layer"
-          :class="{ empty: !report[layer.key]?.length }"
+          :class="{ empty: !safeReport[layer.key]?.length }"
         >
           <!-- 节点 -->
           <div class="layer-node" :style="{ '--layer-color': layer.color }">
@@ -102,9 +107,9 @@ const layers = [
               <span class="layer-en">{{ layer.en }}</span>
               <span class="layer-desc">{{ layer.desc }}</span>
             </div>
-            <div v-if="report[layer.key]?.length" class="layer-points">
+            <div v-if="safeReport[layer.key]?.length" class="layer-points">
               <span
-                v-for="(p, i) in report[layer.key]"
+                v-for="(p, i) in safeReport[layer.key]"
                 :key="i"
                 class="point-chip"
                 :style="{ '--chip-color': layer.color }"
@@ -119,7 +124,7 @@ const layers = [
     </div>
 
     <!-- 补强方案 -->
-    <div v-if="report.remediation || report.remediation_path" class="remediation">
+    <div v-if="safeReport.remediation || safeReport.remediation_path" class="remediation">
       <div class="remediation-header">
         <span class="r-icon">◈</span>
         <span class="r-label">补强方案</span>
@@ -127,7 +132,7 @@ const layers = [
       </div>
       <div class="remediation-list">
         <div
-          v-for="(item, i) in parseRemediation(report.remediation || report.remediation_path)"
+          v-for="(item, i) in parseRemediation(safeReport.remediation || safeReport.remediation_path)"
           :key="i"
           class="remediation-step"
         >
