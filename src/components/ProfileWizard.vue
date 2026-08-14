@@ -156,6 +156,19 @@ async function handleComplete() {
     profileStore.setTarget(form.value.target_school, form.value.target_major)
     profileStore.setExamDate(form.value.exam_date)
 
+    // 🔴 阻断修复：学情自评写入认知模型字段，否则诊断输入全空 → 0 分
+    // self_assessment 格式为 { 科目: 1-5星 }，与 ability_stars 一致
+    const abilityStars = { ...form.value.self_assessment }
+    if (Object.keys(abilityStars).length > 0) {
+      profileStore.updateProfile({ ability_stars: abilityStars })
+    }
+    if (form.value.mastered_skills.length > 0) {
+      profileStore.updateProfile({ mastered_topics: [...form.value.mastered_skills] })
+    }
+    if (form.value.weak_points.length > 0) {
+      profileStore.updateProfile({ weak_topics: [...form.value.weak_points] })
+    }
+
     ElMessage.success(isEditMode ? '画像已更新' : '画像录入完成！开始你的备考之旅')
 
     // 编辑模式跳回画像页，新建模式跳首页

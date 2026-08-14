@@ -26,10 +26,21 @@ export function getKnowledgeStructure() {
   const mastered = new Set(profileStore.profile?.mastered_topics || [])
   const weak = new Set(profileStore.profile?.weak_topics || [])
 
-  // ability_stars 优先；无 ability_stars 时从 mastered/weak 列表兜底
+  // ability_stars 优先；无 ability_stars 时从 self_assessment（向导字段名）兜底
   const topics = Object.keys(stars)
   if (topics.length === 0) {
-    // 兜底：无星级数据时，mastered → 4 星、weak → 1 星
+    // 兜底层 1：self_assessment（注册向导保存的字段名）
+    const selfAssess = profileStore.profile?.self_assessment
+    if (selfAssess && typeof selfAssess === 'object' && Object.keys(selfAssess).length > 0) {
+      return Object.entries(selfAssess).map(([topic, star]) => {
+        let status
+        if (mastered.has(topic) || star >= 4) status = 'mastered'
+        else if (weak.has(topic) || star <= 2) status = 'weak'
+        else status = 'learning'
+        return { topic, star, status }
+      })
+    }
+    // 兜底层 2：mastered/weak 列表
     return [
       ...[...mastered].map((t) => ({ topic: t, star: 4, status: 'mastered' })),
       ...[...weak].map((t) => ({ topic: t, star: 1, status: 'weak' }))
@@ -61,13 +72,35 @@ export function buildDiagnosisInput(overrides = {}) {
 
   const knowledgePoints = getKnowledgeStructure()
 
+  // 🔴 阻断修复：wizard 字段名 fallback（mastered_skills/weak_points vs mastered_topics/weak_topics）
+  const mastered = profile.mastered_topics?.length
+    ? profile.mastered_topics
+    : (profile.mastered_skills || [])
+  const weak = profile.weak_topics?.length
+    ? profile.weak_topics
+    : (profile.weak_points || [])
+
+  // suggested_score：基于 ability_stars 均值 → 0-100，给诊断 Agent 一个分数参考信号
+  // 修复"分数恒为 50"问题：Agent 有了自评参考就不会输出固定分
+  let suggestedScore = null
+  const starsForScore = profile.ability_stars && Object.keys(profile.ability_stars).length > 0
+    ? profile.ability_stars
+    : (profile.self_assessment || {})
+  const starVals = Object.values(starsForScore).filter(v => typeof v === 'number' && v > 0)
+  if (starVals.length > 0) {
+    const avgStar = starVals.reduce((s, v) => s + v, 0) / starVals.length
+    suggestedScore = Math.round((avgStar / 5) * 100)
+  }
+
   return {
     student_name: profile.name || overrides.student_name || '',
     target_major: profile.target_major || profile.major || overrides.target_major || '',
-    mastered_skills: profile.mastered_topics || [],
-    weak_points: profile.weak_topics || [],
+    mastered_skills: mastered,
+    weak_points: weak,
     // #9 核心：知识图谱知识点注入，让 Agent 感知学生当前知识结构
     knowledge_points: knowledgePoints,
+    // 自评参考分（Agent 可在此基础上浮动，不应大幅偏离）
+    ...(suggestedScore != null ? { suggested_score: suggestedScore } : {}),
     ...overrides
   }
 }

@@ -221,6 +221,28 @@ export const useAuthStore = defineStore('auth', {
         if (remote) {
           profileStore.applyRemoteProfile(remote)
           console.info('[auth] profile pulled from cloud')
+
+          // 🔴 阻断修复：ability_stars 为空时，从向导字段（self_assessment/mastered_skills/weak_points）映射
+          // 修复前注册的用户重新登录后，认知字段也能正确水合
+          const p = profileStore.profile
+          const needWizardMap = (!p.ability_stars || Object.keys(p.ability_stars).length === 0)
+          if (needWizardMap) {
+            const wizardUpdates = {}
+            if (remote.self_assessment && typeof remote.self_assessment === 'object'
+                && Object.keys(remote.self_assessment).length > 0) {
+              wizardUpdates.ability_stars = { ...remote.self_assessment }
+            }
+            if (remote.mastered_skills?.length && (!p.mastered_topics || p.mastered_topics.length === 0)) {
+              wizardUpdates.mastered_topics = [...remote.mastered_skills]
+            }
+            if (remote.weak_points?.length && (!p.weak_topics || p.weak_topics.length === 0)) {
+              wizardUpdates.weak_topics = [...remote.weak_points]
+            }
+            if (Object.keys(wizardUpdates).length > 0) {
+              profileStore.updateProfile(wizardUpdates)
+              console.info('[auth] wizard fields mapped to cognitive model')
+            }
+          }
         }
 
         // 2) P0 兼容兜底：认知字段（星级 / 诊断分）为空 -> 从最近一次诊断记录水合
