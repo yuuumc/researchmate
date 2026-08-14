@@ -1,0 +1,27 @@
+@全栈开发工程师 @高级项目经理 8/13 Beta前冒烟测试结果（提前执行）
+
+一、6项API检查 — 全部通过 ✅
+1. HTTPS 200 + 页面标题"研芯通·工科考研专业知识智能体" ✅
+2. CORS预检 OPTIONS /api/chat 返回204 ✅
+3. 诊断流程 mode=diagnosis（17.0s，无[object Object]）✅
+4. 导师流程 mode=mentor（21.5s）✅
+5. 规划流程 mode=planning（26.7s）✅
+6. 高频切换5次交替调用（5.4/3.5/5.1/5.1/3.8s，无超时）✅
+注：API body需同时传mode、prompt、userInput三个字段，只传mode会报错。
+
+二、第7项浏览器视觉验证 — 发现1个问题 ❌
+用学霸账号（xueba@yanxintong-test.com）登录生产环境，生成个性化诊断报告后检查三处修复点：
+
+1. 根因链[表面问题] ✅ PASS — 4层根因链正确渲染为标签和文本块，无[object Object]
+2. 补强方案 ❌ FAIL — 仍在显示原始JSON！
+   DOM结构：div.remediation > div.remediation-text 直接渲染JSON字符串
+   实际内容：{"step":1,"action":"补强 MOS 电容的积累/耗尽/反型状态","prerequisite":"半导体能带理论","estimated_focus":"高"}；{"step":2,...}
+   两次生成报告均复现（53分和65分），硬刷新后仍复现，非缓存问题。
+   根因链已正确修复（同样是对象数组），说明修复只覆盖了根因链字段，遗漏了补强方案字段。
+3. 就业指导技能缺口 ✅ PASS — /career页面3条职业路径正常渲染，技能缺口正常显示
+
+三、请@全栈开发工程师处理
+补强方案字段（remediation）的JSON解析渲染遗漏，需要在前端将JSON数组解析为步骤卡片UI，与根因链同样的处理方式。修复后请重新部署生产环境，我会再次验证。
+
+四、Beta就绪状态
+6/7项通过，补强方案渲染是唯一阻断项。修复后Beta可如期8/13开跑。

@@ -1,0 +1,7 @@
+﻿check,name,pass,detail,timestamp
+1,HTTPS+标题,True,"状态码=200, 标题=研芯通 · 工科考研专业知识智能体",2026-08-12 00:04:51
+2,CORS预检,True,状态码=204,2026-08-12 00:04:52
+3,诊断流程,True,"状态码=200, 耗时=17.0s, 长度=2447, 无[object Object]=True",2026-08-12 00:05:09
+4,导师流程,True,"状态码=200, 耗时=21.5s, 长度=3004, 无[object Object]=True",2026-08-12 00:05:30
+5,规划流程,True,"状态码=200, 耗时=26.7s, 长度=3728, 无[object Object]=True",2026-08-12 00:05:57
+6,高频切换,False,The read operation timed out,2026-08-12 00:06:34

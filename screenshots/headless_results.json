@@ -1,0 +1,21 @@
+{
+  "login": true,
+  "diagnosis_generated": true,
+  "root_cause_chain_ok": true,
+  "remediation_ok": true,
+  "employment_gap_ok": true,
+  "screenshots": [
+    "C:\\Users\\Administrator\\Desktop\\yanxintong\\screenshots\\headless_01_landing.png",
+    "C:\\Users\\Administrator\\Desktop\\yanxintong\\screenshots\\headless_02_login_filled.png",
+    "C:\\Users\\Administrator\\Desktop\\yanxintong\\screenshots\\headless_02_login_page.png",
+    "C:\\Users\\Administrator\\Desktop\\yanxintong\\screenshots\\headless_03_after_login.png",
+    "C:\\Users\\Administrator\\Desktop\\yanxintong\\screenshots\\headless_04_diagnosis_page.png",
+    "C:\\Users\\Administrator\\Desktop\\yanxintong\\screenshots\\headless_05_diagnosis_result.png",
+    "C:\\Users\\Administrator\\Desktop\\yanxintong\\screenshots\\headless_06_employment.png",
+    "C:\\Users\\Administrator\\Desktop\\yanxintong\\screenshots\\headless_employment_detail.png",
+    "C:\\Users\\Administrator\\Desktop\\yanxintong\\screenshots\\headless_remediation_detail.png"
+  ],
+  "errors": [],
+  "page_title": "研芯通 · 工科考研专业知识智能体",
+  "remediation_text_preview": "\n    \n    \n    \n    成长诊断 · 研芯通\n    \n    \n    \n  \n  \n    研芯通工科 AI 导师核心学习AI 导师成长诊断学习规划练习题科研探索拓展工具就业指导同伴学习择校分析待同步 · 从未同步xxueba@yanxintong-test.com已登录成长诊断Diagnosis Agent成长诊断4 层根因链 · 能力星图 · 精准定位薄弱环节开始混合诊断（做题模式）重新生成诊断报告 已接入真实 AI 诊断链路 · 8 字段结构化输出  LAST DIAGNOSIS AI53分ABILITY LEVEL中等偏上，核心薄弱点 4 个%3 优势 · 2 薄弱SUBJECT微电子科学与工程★能力星图Ability Radar振荡器80分★★★★★优势MOSFET I-V80分★★★★★优势光学性质60分★★★★★优势单级放大器60分★★★★★优势晶格振动与声子60分★★★★★优势MOS 结构与 C-V 特性80分★★★★★优势电流镜与有源负载80分★★★★★优势超导基础：BCS 理论20分★★★★★薄弱CMOS 反相器静态特性40分★★★★★薄弱时钟树"
+}

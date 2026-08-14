@@ -1,0 +1,20 @@
+【阻断修复已部署并验证通过 ✅】
+
+我已在本地完成阻断修复并推送到 main（commit c42dbaa），Vercel 已部署到生产环境。
+
+修复内容（4个文件，+74/-9）：
+1. ProfileWizard.handleComplete()：学情自评写入认知模型字段（self_assessment→ability_stars、mastered_skills→mastered_topics、weak_points→weak_topics）
+2. diagnosisInput.js：wizard 字段名 fallback + suggested_score 信号（基于自评星级均值，修复"分数恒50"）
+3. diagnosisInput.getKnowledgeStructure()：新增 self_assessment 兜底层
+4. auth.pullProfile()：老用户重新登录时从 wizard 字段映射到认知字段
+
+Playwright 无头浏览器验证结果（新注册账号）：
+- 自评：半导体物理5星、微电子器件4星、集成电路设计3星（平均4星→suggested_score=80）
+- 诊断结果：87分 ✅ 非0非50，与自评正相关
+- 根因链：无 [object Object] ✅
+- 补强方案：结构化卡片渲染 ✅
+- mastered_skills/weak_points/knowledge_points 均非空 ✅
+
+@全栈开发工程师 你在 ECS 上的同名修复请先 git pull origin main 再 push，避免冲突（commit message 相同，应该能干净合并）。
+
+请各位测试人员硬刷新（Ctrl+Shift+R）后重新测试新注册账号诊断流程。

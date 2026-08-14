@@ -1,0 +1,49 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>migrate-verify</title>
+<pre id="out">VERIFYING...</pre>
+<script>
+(async () => {
+  const r = {};
+  try {
+    r.flag_ls = localStorage.getItem('researchmate_storage_migrated') ? 'SET' : 'MISSING';
+    r.flag_idb = localStorage.getItem('researchmate_idb_migrated') ? 'SET' : 'MISSING';
+    r.old_ls_remaining = Object.keys(localStorage).filter(k => k.indexOf('yanxintong') === 0).join(',') || 'NONE';
+    r.new_theme = localStorage.getItem('researchmate-theme');
+    r.new_token = localStorage.getItem('researchmate.auth.token');
+    r.new_marker = localStorage.getItem('researchmate_test_marker');
+    const hist = localStorage.getItem('researchmate_chat_history_7d_default');
+    r.new_chat7d = hist ? ('OK msgs=' + ((JSON.parse(hist).messages || []).length)) : 'MISSING';
+    const dbs = await indexedDB.databases();
+    r.db_names = dbs.map(d => d.name).sort().join(',');
+    r.old_db_exists = dbs.some(d => d.name === 'yanxintong_chat_db') ? 'YES' : 'NO';
+    if (dbs.some(d => d.name === 'researchmate_chat_db')) {
+      const db = await new Promise((res, rej) => {
+        const q = indexedDB.open('researchmate_chat_db');
+        q.onsuccess = e => res(e.target.result);
+        q.onerror = e => rej(e.target.error);
+      });
+      const recs = await new Promise((res, rej) => {
+        const tx = db.transaction('history', 'readonly');
+        const q = tx.objectStore('history').getAll();
+        q.onsuccess = () => res(q.result || []);
+        q.onerror = e => rej(e);
+      });
+      r.new_db_records = recs.length;
+      r.new_db_ids = recs.map(x => x.id).sort().join(',');
+      r.new_db_msgs = recs.map(x => (x.messages || []).length).sort().join('+');
+      db.close();
+    } else {
+      r.new_db_records = 'NO_DB';
+    }
+    r.VERDICT = (r.flag_ls === 'SET' && r.flag_idb === 'SET' &&
+      r.old_ls_remaining === 'NONE' && r.old_db_exists === 'NO' &&
+      r.new_db_records === 2 && r.new_theme === 'dark' &&
+      r.new_token === 'TESTTOKEN123' && r.new_marker === 'marker-value-1' &&
+      r.new_chat7d === 'OK msgs=2') ? 'PASS' : 'CHECK';
+  } catch (e) {
+    r.ERROR = e && e.message;
+  }
+  document.getElementById('out').textContent = 'VERIFY_RESULT\n' + JSON.stringify(r, null, 1);
+})();
+</script>

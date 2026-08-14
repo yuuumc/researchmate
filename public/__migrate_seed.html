@@ -1,0 +1,65 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>migrate-seed</title>
+<pre id="out">SEEDING...</pre>
+<script>
+(async () => {
+  const out = [];
+  try {
+    // 清掉迁移 flag，强制应用启动时重跑迁移
+    localStorage.removeItem('researchmate_storage_migrated');
+    localStorage.removeItem('researchmate_idb_migrated');
+    // 造旧格式 localStorage 数据
+    localStorage.setItem('yanxintong-theme', 'dark');
+    localStorage.setItem('yanxintong.auth.token', 'TESTTOKEN123');
+    localStorage.setItem('yanxintong_test_marker', 'marker-value-1');
+    localStorage.setItem('yanxintong_chat_history_7d_default', JSON.stringify({
+      userId: 'default',
+      messages: [{role:'user',content:'旧消息A'},{role:'assistant',content:'旧回复A'}],
+      savedAt: new Date().toISOString(),
+      expireAt: new Date(Date.now() + 7*864e5).toISOString(),
+      version: 1
+    }));
+    // 干净起点：删掉可能存在的同名新库
+    await new Promise(r => {
+      const q = indexedDB.deleteDatabase('researchmate_chat_db');
+      q.onsuccess = q.onerror = q.onblocked = () => r();
+    });
+    // 造旧 IndexedDB：yanxintong_chat_db / history / 2 条月桶记录
+    const db = await new Promise((res, rej) => {
+      const req = indexedDB.open('yanxintong_chat_db', 1);
+      req.onupgradeneeded = e => {
+        const d = e.target.result;
+        if (!d.objectStoreNames.contains('history')) {
+          const os = d.createObjectStore('history', { keyPath: 'id' });
+          os.createIndex('userId', 'userId', { unique: false });
+          os.createIndex('month', 'month', { unique: false });
+          os.createIndex('savedAt', 'savedAt', { unique: false });
+        }
+      };
+      req.onsuccess = e => res(e.target.result);
+      req.onerror = e => rej(e.target.error);
+    });
+    await new Promise((res, rej) => {
+      const tx = db.transaction('history', 'readwrite');
+      const os = tx.objectStore('history');
+      os.put({ id:'default__2026-07', userId:'default', month:'2026-07',
+        messages:[{role:'user',content:'七月问题1'},{role:'assistant',content:'七月回答1'}],
+        savedAt:'2026-07-15T10:00:00.000Z', size:2 });
+      os.put({ id:'default__2026-08', userId:'default', month:'2026-08',
+        messages:[{role:'user',content:'八月问题1'},{role:'assistant',content:'八月回答1'},{role:'user',content:'八月问题2'}],
+        savedAt:'2026-08-01T10:00:00.000Z', size:3 });
+      tx.oncomplete = () => res();
+      tx.onerror = e => rej(e);
+    });
+    db.close();
+    const lsKeys = Object.keys(localStorage).filter(k => k.indexOf('yanxintong') === 0);
+    out.push('SEED_OK');
+    out.push('ls_old_keys=' + lsKeys.sort().join(','));
+    out.push('idb_old_db=yanxintong_chat_db records=2');
+  } catch (e) {
+    out.push('SEED_FAIL ' + (e && e.message));
+  }
+  document.getElementById('out').textContent = out.join('\n');
+})();
+</script>

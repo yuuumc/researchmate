@@ -1,0 +1,6 @@
+const fs = require('fs')
+const s = fs.readFileSync('src/core/router.js', 'utf8')
+console.log('vectorMemory@', s.indexOf("from '@/utils/vectorMemory'"))
+console.log('probe@', s.indexOf('诊断探针'))
+console.log('best@', s.indexOf('_best[0]'))
+console.log('detail@', s.indexOf('库内'))

@@ -173,6 +173,28 @@ export default async function handler(req, res) {
       console.warn(`[api/agent] ${action} structured parse failed, content_len=${content.length}, tail=${content.slice(-80)}`)
     }
 
+    // 诊断分数锚定：如果输入含 suggested_score，将 LLM 分数钳制在 ±10 范围内
+    // 解决三档账号分数倒挂/拉不开问题（LLM 不严格遵循 prompt 时的兜底）
+    if (action === 'diagnose' && structured && typeof input.suggested_score === 'number') {
+      const anchor = input.suggested_score
+      const rawScore = structured.score
+      if (typeof rawScore === 'number') {
+        const clamped = Math.max(0, Math.min(100, rawScore))
+        const delta = clamped - anchor
+        if (Math.abs(delta) > 10) {
+          // 超出 ±10 范围，向锚点拉回（保留 30% LLM 偏移，70% 锚点）
+          structured.score = Math.round(anchor + delta * 0.3)
+          console.log(`[api/agent] diagnose score anchored: LLM=${rawScore}, anchor=${anchor}, adjusted=${structured.score}`)
+        } else {
+          structured.score = clamped
+        }
+      } else {
+        // LLM 没返回分数，直接用锚点
+        structured.score = anchor
+        console.log(`[api/agent] diagnose score missing, using anchor=${anchor}`)
+      }
+    }
+
     return res.status(200).json({
       status: 'active',
       agent: action,
