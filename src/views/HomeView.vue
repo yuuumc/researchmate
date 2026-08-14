@@ -38,6 +38,37 @@ const abilityLabel = computed(() => {
   return '优秀'
 })
 
+// 首页导师卡：优势数（4-5星知识点）、薄弱数（1-2星知识点）、建议
+const strongCount = computed(() => {
+  const stars = profileStore.profile.ability_stars || {}
+  return Object.values(stars).filter((s) => s >= 4).length
+})
+
+const weakStarCount = computed(() => {
+  const stars = profileStore.profile.ability_stars || {}
+  return Object.values(stars).filter((s) => s <= 2 && s > 0).length
+})
+
+const mentorSuggestion = computed(() => {
+  const w = profileStore.biggestWeakness
+  if (w && w.topic) return `优先学习 ${w.topic}`
+  if (profileStore.abilityLevel === 0) return '先做一次诊断，了解你的能力画像'
+  return '保持节奏，继续巩固'
+})
+
+// 当前阶段（基于备考阶段 + 能力等级）
+const stageLabel = computed(() => {
+  const stageMap = { initial: '起步准备期', basic: '基础学习期', intensive: '强化提升期', sprint: '冲刺模考期' }
+  const stage = profileStore.profile.preparation_stage
+  if (stage && stageMap[stage]) return stageMap[stage]
+  const lv = profileStore.abilityLevel
+  if (lv === 0) return '尚未开始诊断'
+  if (lv < 40) return '基础巩固期'
+  if (lv < 60) return '稳步提升期'
+  if (lv < 80) return '强化突破期'
+  return '冲刺拔高期'
+})
+
 // 今日任务（从 plan store 读取本周任务，取今日 3 条）
 const todayTasks = computed(() => {
   // 从最新 plan 的本周任务取前 3 条作为今日任务
@@ -118,11 +149,11 @@ const wrongBookExpanded = ref(true)
             <span class="mentor-pulse"></span>
             <span class="mentor-badge-text">AI Mentor · Active</span>
           </div>
-          <p class="mentor-stage">当前阶段：微电子基础学习期</p>
+          <p class="mentor-stage">当前阶段：{{ stageLabel }}</p>
           <p class="mentor-summary">
-            <span class="highlight-good">3 个优势</span> ·
-            <span class="highlight-bad">2 个薄弱点</span> ·
-            今日建议：优先学习 MOSFET 阈值电压
+            <span class="highlight-good">{{ strongCount }} 个优势</span> ·
+            <span class="highlight-bad">{{ weakStarCount }} 个薄弱点</span> ·
+            今日建议：{{ mentorSuggestion }}
           </p>
         </div>
         <span class="mentor-action">查看完整分析 →</span>
