@@ -20,7 +20,10 @@ const SCHEMA_KEYS = new Set([
   'weak_points', 'root_causes', 'direct_causes', 'middle_causes',
   'remediation_path', 'ability_stars', 'score', 'overall_level',
   'recommendations', 'matches', 'complementary_skills',
-  'diagnosis_reason', 'plan_version'
+  'diagnosis_reason', 'plan_version',
+  'career_paths', 'path_id', 'path_name', 'priority', 'match_score',
+  'target_roles', 'skill_gaps', 'market_demand', 'school_profile_ref',
+  'recommendation_reason', 'growth'
 ])
 
 function looksStructured(obj) {

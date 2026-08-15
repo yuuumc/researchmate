@@ -25,8 +25,19 @@ const form = ref({
   target_school: profileStore.profile?.target_school || '',
   target_major: profileStore.profile?.target_major || profileStore.profile?.major || '集成电路工程',
   // P1-3: 从画像注入已掌握 / 薄弱知识点，不再初始化为空
-  mastered_skills: [...(profileStore.profile?.mastered_topics || [])],
-  weak_points: [...(profileStore.profile?.weak_topics || [])]
+  // P1-3-fix: mastered 同时从 ability_stars (>=4星) 推导，避免自评优势未同步
+  mastered_skills: [...new Set([
+    ...(profileStore.profile?.mastered_topics || []),
+    ...Object.entries(profileStore.profile?.ability_stars || {})
+      .filter(([, s]) => s >= 4)
+      .map(([k]) => k)
+  ])],
+  weak_points: [...new Set([
+    ...(profileStore.profile?.weak_topics || []),
+    ...Object.entries(profileStore.profile?.ability_stars || {})
+      .filter(([, s]) => s > 0 && s <= 2)
+      .map(([k]) => k)
+  ])]
 })
 
 const { input: skillInput, add: addSkill, remove: removeSkill } = useTagInput(form, 'mastered_skills')
@@ -39,10 +50,16 @@ async function submit() {
   const paths = careerStore.result?.structured?.career_paths || []
   const gaps = new Set()
   paths.forEach((p) => {
-    ;(p.target_roles || []).forEach((r) => (r.skill_gaps || []).forEach((g) => gaps.add(g)))
-    ;(p.gap_skills || p.gap || []).forEach((g) => gaps.add(g))
+    ;(p.target_roles || []).forEach((r) => (r.skill_gaps || []).forEach((g) => {
+      const skillStr = typeof g === 'object' ? (g.skill || g.name || '') : String(g)
+      if (skillStr && g.status !== '已具备') gaps.add(skillStr)
+    }))
+    ;(p.gap_skills || p.gap || []).forEach((g) => {
+      const skillStr = typeof g === 'object' ? (g.skill || g.name || '') : String(g)
+      if (skillStr) gaps.add(skillStr)
+    })
   })
-  gaps.forEach((g) => profileStore.addWeakTopic(g))
+  gaps.forEach((g) => { if (g) profileStore.addWeakTopic(g) })
 }
 
 const careerPaths = computed(() => careerStore.careerPaths)
@@ -158,7 +175,7 @@ function cleanGap(g) {
             </div>
           </div>
         </div>
-        <p class="seed-hint">以上为基于张同学画像的示例推荐，填写表单生成个性化路径</p>
+        <p class="seed-hint">以上为示例推荐方向，填写表单生成个性化路径</p>
       </section>
       <section v-if="careerPaths.length" class="result-section">
         <div class="section-header">

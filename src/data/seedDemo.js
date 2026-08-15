@@ -215,7 +215,7 @@ export const SEED_ADMISSION = [
     score_line: 355,
     ratio: 6,
     enrollment: 45,
-    reason: 'AI 芯片方向强势（集成电路学院），但竞争激烈，张同学当前 72% 能力需提升至 85%+ 方较稳。'
+    reason: 'AI 芯片方向强势（集成电路学院），但竞争激烈，当前能力水平需提升至 85%+ 方较稳。'
   },
   {
     school: '电子科技大学',
@@ -227,7 +227,7 @@ export const SEED_ADMISSION = [
     score_line: 330,
     ratio: 4,
     enrollment: 80,
-    reason: '微电子 A+ 学科，与张同学专业高度契合，分数线友好，推荐作为主攻。'
+    reason: '微电子 A+ 学科，与微电子专业高度契合，分数线友好，推荐作为主攻。'
   },
   {
     school: '西安电子科技大学',

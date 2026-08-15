@@ -30,7 +30,7 @@ function sanitizeUserInput(str, maxLen = 500) {
     .trim()
 }
 
-const TIMEOUT_MS = 55000
+const TIMEOUT_MS = 50000
 
 export default async function handler(req, res) {
   if (!applyCors(req, res, '[api/diagnosis]')) return
@@ -205,7 +205,7 @@ ability_stars 的星级应反映实际做题表现：全对→4-5星，部分对
         model: config.model,
         messages: buildMessages(systemPrompt, userInput),
         temperature: 0.3,
-        max_tokens: 4000,
+        max_tokens: 3000,
         stream: false,
       }),
       signal: controller.signal,

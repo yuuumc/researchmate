@@ -67,6 +67,9 @@ const abilityStars = computed(() => {
 
 const strengths = computed(() => abilityStars.value.filter((a) => a.type === 'strength').slice(0, 3))
 const weakPoints = computed(() => abilityStars.value.filter((a) => a.type === 'weak').slice(0, 2))
+// 摘要数字用完整计数（不 slice），与星图一致
+const strengthsCount = computed(() => abilityStars.value.filter((a) => a.type === 'strength').length)
+const weakPointsCount = computed(() => abilityStars.value.filter((a) => a.type === 'weak').length)
 
 // 诊断报告数据：API 优先，游客用种子 demo，无数据返回 null
 const reportData = computed(() => {
@@ -186,7 +189,7 @@ function goJourney() {
           <div class="ov-score">
             <span class="ov-num">{{ overallLevel }}</span><span class="ov-unit">%</span>
           </div>
-          <div class="ov-hint">{{ strengths.length }} 优势 · {{ weakPoints.length }} 薄弱</div>
+          <div class="ov-hint">{{ strengthsCount }} 优势 · {{ weakPointsCount }} 薄弱</div>
         </div>
         <div class="overview-card overview-card--subject">
           <div class="ov-label">SUBJECT</div>

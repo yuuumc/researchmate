@@ -142,8 +142,11 @@ export const useDiagnosisStore = defineStore('diagnosis', {
     async runDiagnosis(input) {
       this.loading = true
       this.error = null
-      try {
-        const res = await callAgent('diagnose', input)
+      // 502 重试：诊断链路偶发超时，最多重试 1 次
+      let lastErr = null
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const res = await callAgent('diagnose', input)
         this.lastReport = {
           content: res.content || '',
           structured: res.structured || null
@@ -183,11 +186,21 @@ export const useDiagnosisStore = defineStore('diagnosis', {
         }
 
         return this.lastReport
-      } catch (e) {
-        this.error = e.message
-        throw e
-      } finally {
-        this.loading = false
+          break // success
+        } catch (e) {
+          lastErr = e
+          // 仅对 502/网络错误重试，其他错误直接抛出
+          const is502 = e.message && (e.message.includes('502') || e.message.includes('upstream'))
+          if (!is502 || attempt === 1) {
+            this.error = e.message
+            throw e
+          }
+          console.warn('[diagnosis] attempt ' + (attempt + 1) + ' failed with 502, retrying...')
+        }
+      }
+      if (lastErr) {
+        this.error = lastErr.message
+        throw lastErr
       }
     }
   }

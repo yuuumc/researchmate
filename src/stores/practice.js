@@ -12,6 +12,12 @@ import { supabase, isSupabaseConfigured } from '@/services/supabase'
 import { useWrongBookStore } from '@/stores/wrongBook'
 import { useProfileStore } from '@/stores/profile'
 
+// #5 题库答案订正：已知的 2 道错误题（客户端覆盖，待 DB 修正后移除）
+const ANSWER_CORRECTIONS = [
+  { match: /金刚石.*倒格矢|倒格矢.*金刚石/, correctAnswer: 'C' },
+  { match: /BCS.*Tc|Tc.*BCS|临界温度.*BCS|BCS.*临界温度/, correctAnswer: '24.2' },
+]
+
 export const usePracticeStore = defineStore('practice', {
   state: () => ({
     loading: false,
@@ -309,14 +315,53 @@ export const usePracticeStore = defineStore('practice', {
 
     gradeObjective(question, userAnswer) {
       if (!userAnswer || !question.correct_answer) return false
+      // #5 题库答案订正：检查是否匹配已知错误题
+      const stem = question.stem || ''
+      for (const corr of ANSWER_CORRECTIONS) {
+        if (corr.match.test(stem)) {
+          const correct = corr.correctAnswer.trim()
+          const user = String(userAnswer).trim()
+          if (question.question_type === 'choice') {
+            const norm = (s) => s.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 1)
+            return norm(correct) === norm(user)
+          }
+          const numC = parseFloat(correct)
+          const numU = parseFloat(user)
+          if (!isNaN(numC) && !isNaN(numU)) return Math.abs(numC - numU) <= 1
+          return correct.toLowerCase().replace(/\s+/g, '') === user.toLowerCase().replace(/\s+/g, '')
+        }
+      }
       const correct = String(question.correct_answer).trim()
       const user = String(userAnswer).trim()
       if (question.question_type === 'choice') {
         const norm = (s) => s.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 1)
         return norm(correct) === norm(user)
       }
-      const normText = (s) => s.toLowerCase().replace(/\s+/g, '').replace(/[，。、；：！？,.:;!?]/g, '')
-      return normText(correct) === normText(user)
+      // 填空题：归一化 + 数值容差 + 乘号等价
+      const normText = (s) => {
+        let r = s.toLowerCase().replace(/\s+/g, '')
+        // 中英文标点归一
+        r = r.replace(/[，。、；：！？,.:;!?]/g, '')
+        // 乘号等价：· × · x * → 统一为 *
+        r = r.replace(/[·×∙⋅✕⨯]/g, '*').replace(/x/g, '*')
+        // 全角数字转半角
+        r = r.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+        // 全角字母转半角
+        r = r.replace(/[Ａ-Ｚａ-ｚ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+        return r
+      }
+      const nc = normText(correct)
+      const nu = normText(user)
+      if (nc === nu) return true
+      // 数值容差：提取数字，±1 范围内算对（四舍五入容差）
+      const numC = parseFloat(nc.replace(/[^0-9.\-]/g, ''))
+      const numU = parseFloat(nu.replace(/[^0-9.\-]/g, ''))
+      if (!isNaN(numC) && !isNaN(numU)) {
+        if (Math.abs(numC - numU) <= 1) return true
+        // 四舍五入容差：873.5→874 vs 873
+        if (Math.round(numC) === Math.round(numU)) return true
+      }
+      return false
     },
 
     // ---- 错题重练 ----

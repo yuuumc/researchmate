@@ -232,6 +232,10 @@ function buildCareerQuery(input) {
   if (!input.question) {
     parts.push('请根据我的院校和专业，推荐 3 条就业路径（career_paths 模式），每条附 2-3 个目标岗位和技能缺口分析。')
   }
+  // 如果已掌握技能为空，明确告知 LLM 不要标"已具备"
+  if (!input.mastered_skills || (Array.isArray(input.mastered_skills) && input.mastered_skills.length === 0)) {
+    parts.push('注意：学生尚未标记任何已掌握技能，所有技能缺口 status 均应标为"需补强"，不得标"已具备"。')
+  }
 
   return parts.join('\n') || '请推荐 3 条就业路径。'
 }
