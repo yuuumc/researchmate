@@ -33,6 +33,9 @@ export const useTraceStore = defineStore('trace', () => {
   const running = ref(false)
   // 当前请求的概要（用于头部展示）
   const currentQuery = ref('')
+  // P0-3 可见化：本次召回命中的历史记忆数（供 ChatWindow 渲染徽章）
+  const memoryHits = ref(0)
+  const memoryItems = ref([])
 
   // 当前活跃的 trace（最后一个 running 状态）
   const activeTrace = computed(() => traces.value.find(t => t.status === 'running') || null)
@@ -55,6 +58,8 @@ export const useTraceStore = defineStore('trace', () => {
     traces.value = []
     currentQuery.value = query || ''
     running.value = true
+    memoryHits.value = 0
+    memoryItems.value = []
   }
 
   /**
@@ -128,6 +133,8 @@ export const useTraceStore = defineStore('trace', () => {
     traces,
     running,
     currentQuery,
+    memoryHits,
+    memoryItems,
     activeTrace,
     hasTraces,
     totalDuration,

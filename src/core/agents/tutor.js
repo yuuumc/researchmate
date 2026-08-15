@@ -75,15 +75,51 @@ export const tutorAgent = traceAgent('tutor', async function tutorCore(userInput
   })
 
   // 2. 拼 Prompt（含知识图谱路径上下文）
+  // P0 命中漂移=0 主防线：基于原始 TF-IDF 分数判定知识库是否真实命中。
+  //   - 命中（rawTop.score >= RAW_HIT_THRESHOLD）：注入检索切片 + 引用纪律
+  //   - 未命中：不注入切片（防漂移）+ 强制声明「该专题暂未收录，以下为通用讲解」
+  //   graphRag 融合分做了 min-max 归一化（top 恒 1.0），无法反映绝对置信度，
+  //   故复用 rag.js retrieve 原始混合分数作为命中判定（索引已缓存，开销可忽略）。
+  const RAW_HIT_THRESHOLD = 0.15
+  const rawProbe = retrieve(userInput, knowledgeBase, 1)
+  const rawTopScore = rawProbe.length > 0 ? (rawProbe[0].score || 0) : 0
+  const hasConfidentHit = rawTopScore >= RAW_HIT_THRESHOLD
+
+  let kbSection
+  let guardDirective
+  if (hasConfidentHit) {
+    kbSection = `# 知识库检索结果（Top-${slices.length}，命中分数 ${rawTopScore.toFixed(3)}）
+${ragContext || '（无相关切片）'}`
+    guardDirective = `# 引用纪律（命中漂移=0 铁律）
+以下「知识库检索结果」为可信来源。回答时严格遵守：
+1. 仅可引用下方已列出的条目作为知识库依据，禁止引用未列出的条目。
+2. 禁止编造来源、页码、章节号。
+3. 若问题部分超出检索条目覆盖范围，对该部分明确标注「以下为通用知识，不在知识库内」，再基于通用知识补充。
+4. 不得将不相关条目当作答案来源。`
+  } else {
+    kbSection = `# 知识库检索结果
+（未检索到匹配条目；原始命中分数 ${rawTopScore.toFixed(3)} 低于阈值 ${RAW_HIT_THRESHOLD}，为防止命中漂移不注入任何切片）`
+    guardDirective = `# 未收录声明（命中漂移=0 铁律，必须执行）
+当前问题在研芯通知识库中未检索到匹配条目（命中分数低于阈值）。
+你必须在回答最开头明确声明：
+「该专题暂未收录到研芯通知识库，以下为基于通用知识的讲解。」
+声明之后，基于通用知识作答。
+严禁引用任何知识库条目（因未检索到匹配项），严禁编造来源、页码、章节号。`
+  }
+
+  const pathSection = pathContext ? `# 知识图谱路径分析（GraphRAG 双路融合）
+${pathContext}
+` : ''
   const prompt = `${TUTOR_PROMPT}
 
 # 学生画像
 ${profileToContext(profile)}
 
-# 知识库检索结果（Top-${slices.length}）
-${ragContext || '（无相关切片，按通用知识回答）'}
+${kbSection}
 
-${pathContext ? `# 知识图谱路径分析（GraphRAG 双路融合）\n${pathContext}\n` : ''}
+${guardDirective}
+
+${pathSection}
 `
 
   // 3. 调用 LLM（v2.0：接 ctx.onToken → 流式；否则非流式）

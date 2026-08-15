@@ -149,6 +149,9 @@ export async function route(userInput, options = {}) {
     const hits = loadMemories(userInput, { topK: 3, minScore: 0.12 })
     // 合并进 profile，下游 profileToContext 会渲染「相似历史记忆」段落
     profile.recent_memories = hits
+    // P0-3 可见化：同步命中数到 traceStore，ChatWindow 据此渲染「已关联 N 条历史记忆」徽章
+    traceStore.memoryHits = hits.length
+    traceStore.memoryItems = hits
     let _detail
     if (hits.length > 0) {
       _detail = `命中 ${hits.length} 条历史记忆（${hits.map(h => h.type).join('、')}）`

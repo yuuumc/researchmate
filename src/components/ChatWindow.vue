@@ -307,6 +307,7 @@ async function runAssistantReply(content, assistantIdx) {
       structured: result.structured,
       rag_slices: result.rag_slices,
       knowledge_path: result.knowledge_path,
+      memoryHits: chatMode.value ? 0 : (traceStore.memoryHits || 0),
       timestamp: finalMsg.timestamp || new Date().toLocaleTimeString('zh-CN', { hour12: false }),
       streaming: false,
       error: result.error
@@ -575,6 +576,7 @@ function displayContent(msg) {
                 <span v-else-if="msg.cancelled" class="meta-cancelled">已取消</span>
               </span>
               <span v-else class="meta-user">你</span>
+              <span v-if="msg.role === 'assistant' && msg.memoryHits > 0" class="meta-memory" title="本次回答已参考你的历史记忆">🧠 已关联 {{ msg.memoryHits }} 条历史记忆</span>
               <span class="meta-time">{{ msg.timestamp }}</span>
               <button
                 v-if="msg.streaming && i === messages.length - 1"
@@ -1113,6 +1115,26 @@ function displayContent(msg) {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--color-fg-muted);
+}
+
+.meta-memory {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 8px;
+  background: linear-gradient(90deg, rgba(224, 86, 253, 0.10), rgba(224, 86, 253, 0.04));
+  border: 1px solid rgba(224, 86, 253, 0.25);
+  border-radius: var(--radius-full, 999px);
+  font-size: 10px;
+  color: #c026d3;
+  font-weight: 600;
+  white-space: nowrap;
+  animation: memory-pop 0.4s var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+
+@keyframes memory-pop {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .user-bubble {
