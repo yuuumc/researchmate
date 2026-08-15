@@ -341,7 +341,7 @@ export const usePracticeStore = defineStore('practice', {
       const normText = (s) => {
         let r = s.toLowerCase().replace(/\s+/g, '')
         // 中英文标点归一
-        r = r.replace(/[，。、；：！？,.:;!?]/g, '')
+        r = r.replace(/[，。、；：！？,:;!?]/g, '')
         // 乘号等价：· × · x * → 统一为 *
         r = r.replace(/[·×∙⋅✕⨯]/g, '*').replace(/x/g, '*')
         // 全角数字转半角
