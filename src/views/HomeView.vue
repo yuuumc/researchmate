@@ -332,7 +332,7 @@ const wrongBookExpanded = ref(true)
             </div>
             <div class="meta-row">
               <span class="meta-label">已掌握</span>
-              <span class="meta-value">{{ profileStore.masteredCount }} 个</span>
+              <span class="meta-value">{{ strongCount }} 个</span>
             </div>
           </div>
         </div>

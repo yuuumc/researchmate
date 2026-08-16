@@ -77,15 +77,15 @@ export function useMasteryData() {
     abilityStars.value.filter((a) => a.type === 'strength').map((a) => a.topic)
   )
 
-  // === 根因链（持久化 structured 优先，内存 lastReport 兜底新鲜结果） ===
+  // === 根因链（持久化诊断记录为准，内存 lastReport 仅作新鲜回退） ===
   const rootCauseChain = computed(() => {
-    // 新鲜 API 结果（内存态，刚完成诊断时可用）
-    const liveStructured = diagnosisStore.lastReport?.structured
-    // 持久化诊断记录
+    // 持久化诊断记录（权威源，与 latestScore / weakPoints 同源）
     const d = latestDiagnosis.value
     const persistedStructured = d?.structured || null
+    // 新鲜 API 结果（内存态，仅在持久化无 structured 时回退）
+    const liveStructured = diagnosisStore.lastReport?.structured
 
-    const s = liveStructured || persistedStructured
+    const s = persistedStructured || liveStructured
     if (!s) return null
 
     return {
