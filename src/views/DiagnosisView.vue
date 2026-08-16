@@ -142,23 +142,11 @@ function goJourney() {
       <!-- 生成诊断入口 -->
       <section class="generate-section">
         <button class="generate-btn generate-btn--mixed" @click="router.push('/diagnosis/session')">开始混合诊断（做题模式）</button>
-        <button
-          class="generate-btn"
-          :disabled="loading"
-          @click="generateDiagnosis"
-        >
+        <!-- T0-6: 隐藏「生成个性化诊断报告」模式入口，仅保留做题模式 -->
+        <!-- <button class="generate-btn" :disabled="loading" @click="generateDiagnosis">
           <span v-if="loading" class="generate-spinner"></span>
           <span>{{ loading ? 'AI 诊断中…' : hasApiResult ? '重新生成诊断报告' : '生成个性化诊断报告' }}</span>
-        </button>
-        <span class="generate-hint" v-if="!hasApiResult && !loading">
-          基于你的知识图谱与学习画像，由 AI 生成 8 字段结构化诊断
-        </span>
-        <span class="generate-hint" v-else-if="hasApiResult">
-          已接入真实 AI 诊断链路 · 8 字段结构化输出
-        </span>
-        <div v-if="error" class="generate-error">
-          诊断生成失败：{{ error }}
-        </div>
+        </button> -->
       </section>
 
       <!-- 空状态：无诊断数据 -->
@@ -167,7 +155,8 @@ function goJourney() {
         <div class="empty-title">尚未进行诊断</div>
         <div class="empty-desc">完成一次混合诊断或生成 AI 诊断报告后，这里将展示你的能力星图、优势薄弱点和 4 层根因链</div>
         <button class="empty-btn" @click="router.push('/diagnosis/session')">开始混合诊断</button>
-        <button class="empty-btn empty-btn--ghost" @click="generateDiagnosis" :disabled="loading">生成 AI 诊断报告</button>
+        <!-- T0-6: 隐藏 AI 诊断报告入口 -->
+        <!-- <button class="empty-btn empty-btn--ghost" @click="generateDiagnosis" :disabled="loading">生成 AI 诊断报告</button> -->
       </section>
 
       <!-- 顶部概览：总分 + 能力等级 -->

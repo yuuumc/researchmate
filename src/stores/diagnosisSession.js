@@ -8,6 +8,7 @@
 import { defineStore } from 'pinia'
 import { supabase, isSupabaseConfigured } from '@/services/supabase'
 import { fetchSubjectiveQuestions, gradeDiagnosis } from '@/api/diagnosis'
+import { gradeObjective as _gradeObjective } from '@/utils/grading'
 import { useProfileStore } from '@/stores/profile'
 import { saveProfile } from '@/services/profileService'
 
@@ -193,17 +194,8 @@ export const useDiagnosisSessionStore = defineStore('diagnosisSession', {
     },
 
     gradeObjective(question, userAnswer) {
-      if (!userAnswer || !question.correct_answer) return false
-      const correct = String(question.correct_answer).trim()
-      const user = String(userAnswer).trim()
-      if (question.question_type === 'choice') {
-        // 选择题：取首字母（A/B/C/D 或 0/1/2/3）
-        const norm = (s) => s.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 1)
-        return norm(correct) === norm(user)
-      }
-      // 填空题：去空白+标点后比较
-      const normText = (s) => s.toLowerCase().replace(/\s+/g, '').replace(/[，。、；：！？,.:;!?]/g, '')
-      return normText(correct) === normText(user)
+      // T0-1/T0-2: 委托共享判分模块（确保诊断与练习判分一致）
+      return _gradeObjective(question, userAnswer)
     },
 
     async persistToDB(gradeRes, objectiveResults) {

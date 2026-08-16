@@ -128,7 +128,7 @@ const seedMatches = SEED_PEER_MATCHES
             </div>
           </div>
         </div>
-        <p class="seed-hint">以上为基于张同学画像的示例匹配，填写信息生成个性化同伴推荐</p>
+        <p class="seed-hint">以上为示例匹配，填写信息生成个性化同伴推荐</p>
       </section>
       <section v-if="matches.length" class="result-section">
         <div class="section-header">

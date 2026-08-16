@@ -62,19 +62,9 @@ const routes = [
     component: () => import('@/views/DiagnosisSessionView.vue'),
     meta: { title: '混合诊断', requireAuth: true, agent: 'diagnose' }
   },
-  {
-    path: '/research',
-    name: 'research',
-    component: () => import('@/views/ResearchView.vue'),
-    meta: { title: '科研探索', agent: 'research' }
-  },
-  {
-    path: '/admission',
-    alias: '/school',
-    name: 'admission',
-    component: () => import('@/views/AdmissionView.vue'),
-    meta: { title: '择校推荐', agent: 'admission' }
-  },
+  // T0-3: 隐藏科研探索/择校分析入口（路由重定向，组件保留）
+  { path: '/research', redirect: '/' },
+  { path: '/admission', alias: '/school', redirect: '/' },
   {
     path: '/plan',
     name: 'plan',

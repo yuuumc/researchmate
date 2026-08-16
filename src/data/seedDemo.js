@@ -2,7 +2,7 @@
 // Demo 种子数据（V2 迭代 · 评审展示用）
 // ============================================================
 // 目的：评委进入后任何位置不能看到空状态
-// 种子用户：张同学 / 微电子科学与工程 / 大二 / 目标 AI芯片方向研究生
+// 种子用户：同学 / 微电子科学与工程 / 大二 / 目标 AI芯片方向研究生
 // 专业能力 72%（半导体物理 65%、数字电路 82%、Verilog 45%）
 //
 // 注入策略：当 profile.name 为空时注入（首次访问 / 清空缓存后）
@@ -18,7 +18,7 @@ const SEED_FLAG = 'seed_demo_v2'
 
 // 种子画像数据
 export const SEED_PROFILE = {
-  name: '张同学',
+  name: '同学',
   major: '微电子科学与工程',
   target_direction: 'AI芯片',
   target_school: '浙江大学',
@@ -295,5 +295,5 @@ export function injectSeedData() {
   })
 
   storage.set(SEED_FLAG, true)
-  console.info('[seedDemo] 种子数据已注入：张同学 / 微电子科学与工程')
+  console.info('[seedDemo] 种子数据已注入：同学 / 微电子科学与工程')
 }

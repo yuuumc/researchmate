@@ -350,7 +350,7 @@ export function buildLearningPathContext(graph, targetNode, profile) {
   // 找到第一个未掌握的前置（重点补强对象）
   const firstWeak = fullPath.find((p) => p.mastery.status === 'weak' || p.mastery.status === 'unknown')
   const focusHint = firstWeak
-    ? `你之前${firstWeak.mastery.status === 'weak' ? '薄弱' : '未学'}「${firstWeak.node.name}」，建议先补这个前置知识。`
+    ? `你之前${firstWeak.mastery.status === 'weak' ? '薄弱' : '尚未掌握'}「${firstWeak.node.name}」，建议先补这个前置知识。`
     : `你的前置知识都已掌握，可以直接学习「${targetNode.name}」。`
 
   // 生成上下文文本（供 LLM）
@@ -359,7 +359,7 @@ export function buildLearningPathContext(graph, targetNode, profile) {
       const statusLabel = {
         mastered: '✓已掌握',
         weak: '✗薄弱',
-        unknown: '○未学',
+        unknown: '',
         learning: '◐学习中'
       }[p.mastery.status]
       const prefix = p.isTarget ? '【目标】' : `【前置${i + 1}】`

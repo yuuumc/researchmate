@@ -74,7 +74,10 @@ async function bootstrap() {
   migrateIndexedDB().catch((e) => console.error('[main] IndexedDB migration failed:', e))
   initTheme()
   await bootstrapAuth()
-  try { injectSeedData() } catch (e) { console.warn('[main] 种子数据注入失败：', e) }
+  // T0-4: 仅未登录用户注入种子数据，防止跨账号缓存泄漏
+  if (!auth.isAuthenticated) {
+    try { injectSeedData() } catch (e) { console.warn('[main] 种子数据注入失败：', e) }
+  }
   const urlParams = new URLSearchParams(window.location.search)
   const urlSubject = urlParams.get('subject')
   const subjectStore = useSubjectStore()

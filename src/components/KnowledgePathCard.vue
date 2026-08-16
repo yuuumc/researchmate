@@ -45,7 +45,7 @@ const masteryIcon = {
 const masteryLabel = {
   mastered: '已掌握',
   weak: '薄弱',
-  unknown: '未学',
+  unknown: '',
   learning: '学习中'
 }
 

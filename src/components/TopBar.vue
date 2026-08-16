@@ -21,24 +21,24 @@ const AGENT_ROUTES = {
   tutor: { path: '/chat', query: 'agent' },
   diagnose: { path: '/diagnosis', query: 'boot' },
   planner: { path: '/plan', query: 'boot' },
-  research: { path: '/research', query: 'boot' },
   career: { path: '/career', query: 'boot' },
-  practice: { path: '/practice', query: 'boot' },
-  // peer 入口已移除（赛事展示范围裁剪），AGENT_ROUTES.peer 删除
-  admission: { path: '/admission', query: 'boot' }
+  practice: { path: '/practice', query: 'boot' }
+  // T0-3: research/admission 入口已移除（赛事展示范围裁剪）
 }
 const coreAgents = [
   { key: 'tutor', label: 'AI 导师', en: 'Tutor', color: '#00d4aa', desc: '苏格拉底式教学' },
   { key: 'diagnose', label: '成长诊断', en: 'Diagnose', color: '#4d9de0', desc: '4 层根因链' },
   { key: 'planner', label: '学习规划', en: 'Planner', color: '#ffd166', desc: '动态周计划' },
-  { key: 'research', label: '科研探索', en: 'Research', color: '#e67e22', desc: '本科→研究生路线' }
+
+  // T0-3: research 已移除
 ]
 
 const moreAgents = [
   { key: 'career', label: '就业', en: 'Career', color: '#9b59b6', desc: '就业路径推荐' },
   { key: 'practice', label: '练习', en: 'Practice', color: '#e74c3c', desc: '针对性出题' },
   // { key: 'peer', label: '同伴', en: 'Peer', color: '#3498db', desc: '互助匹配' },  // 赛事展示范围裁剪，已移除
-  { key: 'admission', label: '择校', en: 'Admission', color: '#ff6b6b', desc: '数据驱动' }
+
+  // T0-3: admission 已移除
 ]
 
 // "更多"下拉

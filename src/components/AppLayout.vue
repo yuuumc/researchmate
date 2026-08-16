@@ -56,13 +56,14 @@ const coreNav = [
   { path: '/diagnosis', label: '成长诊断', icon: 'target' },
   { path: '/plan', label: '学习规划', icon: 'calendar' },
   { path: '/practice', label: '练习题', icon: 'pencil' },
-  { path: '/research', label: '科研探索', icon: 'flask' },
+
+  // T0-3: research 已移除
 ]
 
 const toolNav = [
   { path: '/career', label: '就业指导', icon: 'briefcase' },
   // { path: '/peer', label: '同伴学习', icon: 'users' },  // 赛事展示范围裁剪，已移除
-  { path: '/admission', label: '择校分析', icon: 'school' },
+  // T0-3: admission 已移除
 ]
 
 function isCurrent(path) {
