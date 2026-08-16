@@ -17,6 +17,8 @@ import { storage } from '@/utils/storage'
 import { callAgent } from '@/api/agent'
 import { supabase, isSupabaseConfigured } from '@/services/supabase'
 import { explainStageDecision, buildStageTimeline } from '@/utils/stagePlanner'
+// T1-9: normalize 纯函数（含派生字段 recomputeWeakPointCoverage）
+import { normalizePlanStructured } from '@/utils/planNormalize'
 
 const STORAGE_KEY = 'plan_version'
 
@@ -89,6 +91,18 @@ export const usePlanStore = defineStore('plan', {
         completedCycles: this.completedCycles,
         examDate: plan.exam_date || null
       })
+      const authoritativeTimeline = buildStageTimeline(decision.current_stage)
+
+      // T1-9 字段契约第 4 节：后端纯函数为权威值，覆盖 LLM 参考值并记录分叉日志（不阻断）
+      const llmStage = plan.target_stage || null
+      const llmCriteria = plan.stage_entry_criteria || null
+      if (llmStage && llmStage !== decision.current_stage) {
+        console.warn('[plan] target_stage 分叉：LLM=', llmStage, '后端=', decision.current_stage, '→ 以后端为准')
+      }
+      if (llmCriteria && llmCriteria !== decision.stage_entry_criteria) {
+        console.warn('[plan] stage_entry_criteria 分叉：LLM=', llmCriteria, '后端=', decision.stage_entry_criteria, '→ 以后端为准')
+      }
+
       const item = {
         version,
         created_at: new Date().toISOString(),
@@ -97,11 +111,12 @@ export const usePlanStore = defineStore('plan', {
         adjustments: plan.adjustments || { keep: [], strengthen: [], drop: [] },
         completion_rate: null,
         raw_plan: plan.raw_plan || '',
-        // Bug5: 阶段指针数据接线
+        // Bug5: 阶段指针数据接线（后端权威，覆盖 LLM 参考值）
         exam_date: plan.exam_date || null,
         current_stage: decision.current_stage,
         stage_entry_criteria: decision.stage_entry_criteria,
-        target_stage: plan.target_stage || null
+        target_stage: decision.current_stage,
+        stage_timeline: authoritativeTimeline
       }
       this.versions.push(item)
       this.currentVersion = version
@@ -229,9 +244,11 @@ export const usePlanStore = defineStore('plan', {
           weeks: normalized.weeks,
           adjustments: normalized.adjustments || s.adjustments || { keep: [], strengthen: [], drop: [] },
           raw_plan: res.content || '',
-          // Bug5: 透传 exam_date 与 LLM 的 target_stage（仅参考，权威指针由 addPlan 计算）
+          // Bug5: 透传 exam_date；v2.2 三字段透传 LLM 参考值，addPlan 内由后端纯函数覆盖并记分叉日志
           exam_date: input.exam_date || '',
-          target_stage: normalized.target_stage || s.target_stage || null
+          target_stage: normalized.target_stage || s.target_stage || null,
+          stage_entry_criteria: normalized.stage_entry_criteria || s.stage_entry_criteria || null,
+          stage_timeline: normalized.stage_timeline || s.stage_timeline || null
         })
 
         // W3-2: 持久化到数据库（非阻塞，失败不影响 UI）
@@ -269,7 +286,8 @@ export const usePlanStore = defineStore('plan', {
               exam_date: planItem.exam_date,
               current_stage: planItem.current_stage,
               stage_entry_criteria: planItem.stage_entry_criteria,
-              target_stage: planItem.target_stage
+              target_stage: planItem.target_stage,
+              stage_timeline: planItem.stage_timeline
             },
             active: true
           })
@@ -482,69 +500,9 @@ function parseStructuredFromContent(content) {
 }
 
 // ============================================================
-// P0 修复：plan prompt 输出 stages 结构，PlanCard 需要 weeks——normalize
-// LLM 输出结构有两种：① 顶层 stages ② 嵌套在 s.plan.stages
-// stages[].weekly_plans[] → weeks[]，映射 PlanCard 所需字段
-// Bug5: 透传 target_stage（LLM 参考值，权威指针由 addPlan 计算）
+// T1-9 后端绑定收口：normalize 纯函数（expandStagesToWeeks / normalizePlanStructured
+// / recomputeWeakPointCoverage）已抽至 src/utils/planNormalize.js
+// —— 无 @/ 别名依赖，可独立 Node 直测；供 T1-7 useMasteryData 统一学情数据层 import 复用
 // ============================================================
-function expandStagesToWeeks(stages) {
-  const weeks = []
-  for (const stage of stages) {
-    const plans = Array.isArray(stage.weekly_plans) ? stage.weekly_plans : []
-    for (const wp of plans) {
-      weeks.push({
-        week: wp.week || weeks.length + 1,
-        theme: stage.stage_name || stage.name || wp.goal || '',
-        tasks: Array.isArray(wp.knowledge_points)
-          ? wp.knowledge_points.map((k) =>
-              typeof k === 'string' ? k : (k?.name || k?.topic || String(k))
-            )
-          : [],
-        focus: stage.focus || '',
-        goal: wp.goal || '',
-        estimated_hours: wp.estimated_hours || null,
-        exercise_count: wp.exercise_count || null,
-        stage: stage.stage_name || stage.stage_id || ''
-      })
-    }
-  }
-  return weeks
-}
-
-function normalizePlanStructured(s) {
-  // ① 已有顶层 weeks 直接用
-  if (Array.isArray(s.weeks) && s.weeks.length > 0) return s
-
-  // ② 嵌套在 s.plan 里（LLM 常见输出：{student_name, target_major, plan:{stages,...}, plan_reason}）
-  const pf = s.plan
-  if (pf && typeof pf === 'object') {
-    if (Array.isArray(pf.weeks) && pf.weeks.length > 0) {
-      return { ...s, ...pf, weeks: pf.weeks }
-    }
-    if (Array.isArray(pf.stages) && pf.stages.length > 0) {
-      const weeks = expandStagesToWeeks(pf.stages)
-      return {
-        ...s,
-        ...pf,
-        weeks,
-        goal: pf.goal || s.goal || '',
-        total_weeks: pf.total_weeks || weeks.length,
-        adjustments: pf.adjustments || s.adjustments || { keep: [], strengthen: [], drop: [] }
-      }
-    }
-  }
-
-  // ③ 顶层 stages
-  if (Array.isArray(s.stages) && s.stages.length > 0) {
-    const weeks = expandStagesToWeeks(s.stages)
-    return {
-      ...s,
-      weeks,
-      goal: s.goal || '',
-      total_weeks: s.total_weeks || weeks.length,
-      adjustments: s.adjustments || { keep: [], strengthen: [], drop: [] }
-    }
-  }
-
-  return s
-}
+// expandStagesToWeeks / normalizePlanStructured / recomputeWeakPointCoverage
+// 见 src/utils/planNormalize.js（下方 import）
