@@ -159,9 +159,9 @@ function buildPathContextText(kp) {
     const statusLabel = {
       mastered: '✓已掌握',
       weak: '✗薄弱',
-      unknown: '○未学',
+      unknown: '',
       learning: '◐学习中'
-    }[p.mastery?.status] || '○未学'
+    }[p.mastery?.status] || ''
     const prefix = p.isTarget ? '【目标】' : `【前置${i + 1}】`
     return `${prefix}${p.name} ${statusLabel}${p.reason ? `（${p.reason}）` : ''}`
   }).join('\n')
