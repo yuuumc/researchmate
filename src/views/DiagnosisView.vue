@@ -861,7 +861,6 @@ function goJourney() {
 
 .generate-btn--mixed {
   background: linear-gradient(135deg, #38b2ac, #319795);
-  margin-bottom: 12px;
 }
 /* 空状态卡片 */
 .empty-state-card {
