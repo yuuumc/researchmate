@@ -52,7 +52,10 @@ export const useDiagnosisStore = defineStore('diagnosis', {
         // v2: 知识点变化对比用
         topics_snapshot: record.topics_snapshot || [],
         // v1.5: ability_stars 快照（HistoryView 趋势图用）
-        ability_stars_snapshot: record.ability_stars_snapshot || {}
+        ability_stars_snapshot: record.ability_stars_snapshot || {},
+        // A1/Bug2: 持久化完整 structured（4 层根因链 direct/middle/root/remediation），
+        // 离开诊断完成页后成长诊断页仍可直读同一数据源
+        structured: record.structured || null
       }
       this.history.push(item)
       this.persist()
@@ -123,6 +126,7 @@ export const useDiagnosisStore = defineStore('diagnosis', {
               raw_report: '',
               topics_snapshot: [],
               ability_stars_snapshot: s.ability_stars || {},
+              structured: s,  // A1/Bug2: DB 拉回的完整 structured
               _source: 'db'
             }
           })
@@ -161,7 +165,8 @@ export const useDiagnosisStore = defineStore('diagnosis', {
           root_causes: s.root_causes || s.direct_causes || [],
           raw_report: res.content || '',
           topics_snapshot: s.knowledge_points || [],
-          ability_stars_snapshot: s.ability_stars || {}
+          ability_stars_snapshot: s.ability_stars || {},
+          structured: s  // A1/Bug2: 持久化完整 structured 供根因链直读
         })
 
         // P0-1: 回写 profileStore（对齐 journey.js，三条诊断路径一致）

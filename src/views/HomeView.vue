@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProfileStore } from '@/stores/profile'
 import { useDiagnosisStore } from '@/stores/diagnosis'
+import { useMasteryData } from '@/composables/useMasteryData'
 import { usePlanStore } from '@/stores/plan'
 import { useJourneyStore } from '@/stores/journey'
 import { useWrongBookStore } from '@/stores/wrongBook'
@@ -12,6 +13,10 @@ import WrongBook from '@/components/WrongBook.vue'
 const router = useRouter()
 const profileStore = useProfileStore()
 const diagnosisStore = useDiagnosisStore()
+// A1: 统一学情数据层 — 主页优势/薄弱计数 + 最近诊断分数/薄弱数均直读共享数据源
+const mastery = useMasteryData()
+// 解构为顶层 ref，模板自动解包（避免 mastery.x 在模板中不解包）
+const { latestScore, weakPointCount, biggestWeakness } = mastery
 const planStore = usePlanStore()
 const journeyStore = useJourneyStore()
 const wrongBookStore = useWrongBookStore()
@@ -38,19 +43,12 @@ const abilityLabel = computed(() => {
   return '优秀'
 })
 
-// 首页导师卡：优势数（4-5星知识点）、薄弱数（1-2星知识点）、建议
-const strongCount = computed(() => {
-  const stars = profileStore.profile.ability_stars || {}
-  return Object.values(stars).filter((s) => s >= 4).length
-})
-
-const weakStarCount = computed(() => {
-  const stars = profileStore.profile.ability_stars || {}
-  return Object.values(stars).filter((s) => s <= 2 && s > 0).length
-})
+// A1: 优势/薄弱计数直读统一数据层（与诊断页星图同源同阈值 — A1-b）
+const strongCount = computed(() => mastery.strongCount.value)
+const weakStarCount = computed(() => mastery.weakStarCount.value)
 
 const mentorSuggestion = computed(() => {
-  const w = profileStore.biggestWeakness
+  const w = biggestWeakness.value
   if (w && w.topic) return `优先学习 ${w.topic}`
   if (profileStore.abilityLevel === 0) return '先做一次诊断，了解你的能力画像'
   return '保持节奏，继续巩固'
@@ -247,9 +245,9 @@ const wrongBookExpanded = ref(true)
             </div>
             <span class="weakness-icon">!</span>
           </div>
-          <div v-if="profileStore.biggestWeakness" class="weakness-body">
-            <div class="weakness-topic">{{ profileStore.biggestWeakness.topic }}</div>
-            <button class="weakness-cta" @click="goChat('帮我补强 ' + profileStore.biggestWeakness.topic)">
+          <div v-if="biggestWeakness" class="weakness-body">
+            <div class="weakness-topic">{{ biggestWeakness.topic }}</div>
+            <button class="weakness-cta" @click="goChat('帮我补强 ' + biggestWeakness.topic)">
               立即补强 →
             </button>
           </div>
@@ -314,7 +312,7 @@ const wrongBookExpanded = ref(true)
       </section>
 
       <!-- === 最近诊断速览 === -->
-      <section v-if="profileStore.profile.last_diagnosis_score !== null" class="card recent-card">
+      <section v-if="latestScore !== null" class="card recent-card">
         <div class="card-head">
           <div>
             <div class="card-title">最近诊断</div>
@@ -324,13 +322,13 @@ const wrongBookExpanded = ref(true)
         </div>
         <div class="recent-body">
           <div class="recent-score">
-            <span class="score-num">{{ profileStore.profile.last_diagnosis_score }}</span>
+            <span class="score-num">{{ latestScore }}</span>
             <span class="score-unit">分</span>
           </div>
           <div class="recent-meta">
             <div class="meta-row">
               <span class="meta-label">薄弱知识点</span>
-              <span class="meta-value">{{ profileStore.weakCount }} 个</span>
+              <span class="meta-value">{{ weakPointCount }} 个</span>
             </div>
             <div class="meta-row">
               <span class="meta-label">已掌握</span>

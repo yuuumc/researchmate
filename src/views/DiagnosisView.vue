@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProfileStore } from '@/stores/profile'
 import { useDiagnosisStore } from '@/stores/diagnosis'
+import { useMasteryData } from '@/composables/useMasteryData'
 import { buildDiagnosisInput } from '@/utils/diagnosisInput'
 import DiagnosisReport from '@/components/DiagnosisReport.vue'
 import AiGeneratedBadge from '@/components/AiGeneratedBadge.vue'
@@ -13,17 +14,17 @@ const router = useRouter()
 const profileStore = useProfileStore()
 const diagnosisStore = useDiagnosisStore()
 const authStore = useAuthStore()
+// A1: 统一学情数据层 — 星图 / 根因链 / 分数均直读共享数据源（Bug2/A1-b）
+const mastery = useMasteryData()
 
 // 是否有真实诊断数据（API 结果 / profile 能力星图 / 诊断历史记录）
 // 已登录用户无数据时显示空状态，不回退到种子 mock
 const hasRealData = computed(() => {
   if (hasApiResult.value) return true
-  // 游客：profile 被 injectSeedData 注入了种子画像 → 有数据
   if (authStore.isGuest) return true
-  // 已登录用户：检查 profile 是否有真实能力星图（>=3 项）或诊断历史
-  const stars = profileStore.profile?.ability_stars
-  if (stars && Object.keys(stars).length >= 3) return true
-  if (diagnosisStore.count > 0) return true
+  // A1: 直读统一数据层 — 有最近诊断记录或能力星图非空即视为有数据
+  if (mastery.latestDiagnosis.value) return true
+  if (mastery.abilityStars.value.length >= 3) return true
   return false
 })
 
@@ -33,36 +34,15 @@ const apiData = computed(() => diagnosisStore.lastReport?.structured || {})
 const loading = computed(() => diagnosisStore.loading)
 const error = computed(() => diagnosisStore.error)
 
-// 能力星图：API ability_stars 优先 → profileStore → 种子
+// A1: 能力星图直读统一数据层（与主页同源同阈值：1-2弱/3发展中/4-5优势 — A1-b）
 const abilityStars = computed(() => {
-  // API 返回 { topic: star } 对象
-  const apiStars = apiData.value.ability_stars
-  if (apiStars && typeof apiStars === 'object' && Object.keys(apiStars).length >= 3) {
-    return Object.entries(apiStars).map(([topic, star]) => ({
-      topic,
-      star,
-      score: star * 20,
-      type: star <= 2 ? 'weak' : 'strength'
-    }))
-  }
-  const stars = profileStore.profile?.ability_stars
-  if (stars && Object.keys(stars).length >= 3) {
-    return Object.entries(stars).map(([topic, star]) => {
-      const isWeak = star <= 2
-      const score = profileStore.profile?.subject_scores?.find((s) => s.subject === topic)?.score
-      return {
-        topic,
-        star,
-        score: typeof score === 'number' ? score : star * 20,
-        type: isWeak ? 'weak' : 'strength'
-      }
-    })
-  }
+  const stars = mastery.abilityStars.value
+  if (stars.length >= 3) return stars
   // 游客 fallback：profile 可能为空（store reset 后），用种子星图
   if (authStore.isGuest) {
     return SEED_ABILITY_STARS
   }
-  return []
+  return stars
 })
 
 const strengths = computed(() => abilityStars.value.filter((a) => a.type === 'strength').slice(0, 3))
@@ -71,20 +51,11 @@ const weakPoints = computed(() => abilityStars.value.filter((a) => a.type === 'w
 const strengthsCount = computed(() => abilityStars.value.filter((a) => a.type === 'strength').length)
 const weakPointsCount = computed(() => abilityStars.value.filter((a) => a.type === 'weak').length)
 
-// 诊断报告数据：API 优先，游客用种子 demo，无数据返回 null
+// A1/Bug2: 诊断报告直读统一数据层 rootCauseChain（持久化 structured，离开完成页仍可渲染 4 层根因链）
 const reportData = computed(() => {
-  if (hasApiResult.value) {
-    const s = apiData.value
-    return {
-      score: s.score ?? '—',
-      subject: s.subject || '—',
-      weak_points: (s.weak_points || []).map(p => typeof p === 'object' ? p.knowledge_point || p.reason || JSON.stringify(p) : p),
-      direct_causes: s.direct_causes || [],
-      middle_causes: s.middle_causes || [],
-      root_causes: s.root_causes || [],
-      remediation: s.remediation_path || ''
-    }
-  }
+  // 统一数据层（优先内存新鲜结果 → 持久化 structured）
+  const rc = mastery.rootCauseChain.value
+  if (rc) return rc
   // 游客：显示种子 demo 数据（评委展示用）
   if (authStore.isGuest) {
     return {

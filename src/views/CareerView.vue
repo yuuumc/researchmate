@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { useCareerStore } from '@/stores/career'
 import { useProfileStore } from '@/stores/profile'
+import { useMasteryData } from '@/composables/useMasteryData'
 import { useTagInput } from '@/composables/useTagInput'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { stripStructuredJson } from '@/utils/stripStructuredJson'
@@ -11,6 +12,8 @@ import AiGeneratedBadge from '@/components/AiGeneratedBadge.vue'
 
 const careerStore = useCareerStore()
 const profileStore = useProfileStore()
+// A1: 统一学情数据层 — 已掌握技能 / 弱弱点均直读共享数据源，禁止自行推断
+const mastery = useMasteryData()
 
 const schools = computed(() => schoolData.schools.map(s => ({
   name: s.school,
@@ -24,20 +27,11 @@ const form = ref({
   student_name: profileStore.profile?.name || profileStore.profile?.user_id || '',
   target_school: profileStore.profile?.target_school || '',
   target_major: profileStore.profile?.target_major || profileStore.profile?.major || '集成电路工程',
-  // P1-3: 从画像注入已掌握 / 薄弱知识点，不再初始化为空
-  // P1-3-fix: mastered 同时从 ability_stars (>=4星) 推导，避免自评优势未同步
-  mastered_skills: [...new Set([
-    ...(profileStore.profile?.mastered_topics || []),
-    ...Object.entries(profileStore.profile?.ability_stars || {})
-      .filter(([, s]) => s >= 4)
-      .map(([k]) => k)
-  ])],
-  weak_points: [...new Set([
-    ...(profileStore.profile?.weak_topics || []),
-    ...Object.entries(profileStore.profile?.ability_stars || {})
-      .filter(([, s]) => s > 0 && s <= 2)
-      .map(([k]) => k)
-  ])]
+  // A1: 直读统一学情数据层（diagnosis 唯一源 + 统一 >=4 星阈值）
+  //   - mastered_skills: 与主页/星图同源，诊断/练习判掌握即同步（A1-a/A1-c）
+  //   - weak_points: 只含诊断薄弱点（考纲内），零职业技能标签（Bug1 数据层隔离）
+  mastered_skills: [...mastery.masteredSkills.value],
+  weak_points: [...mastery.weakPoints.value]
 })
 
 const { input: skillInput, add: addSkill, remove: removeSkill } = useTagInput(form, 'mastered_skills')
