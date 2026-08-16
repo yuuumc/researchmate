@@ -1,13 +1,17 @@
 // ============================================================
-// Agent API 客户端（v3.1 前端集成）
+// Agent API 客户端（v3.1 前端集成 + B5 trace 落库）
 // ============================================================
 // 统一封装 POST /api/agent 调用，供 stores 和组件使用
 // 响应体结构：{ status, agent, content, structured, provider, usage }
 //   content: Markdown 文本
 //   structured: JSON 对象（可能为 null）
+//
+// B5：每次 Agent 调用返回后，客户端落 trace 到 agent_traces 表（RLS owner），
+//   供 /architecture 架构看板只读展示。fire-and-forget，不影响主流程。
 // ============================================================
 
 import axios from 'axios'
+import { recordAgentTrace, fetchAgentTraces as fetchTracesFromDB } from '@/services/agentTrace'
 
 const client = axios.create({
   headers: { 'Content-Type': 'application/json' },
@@ -16,16 +20,43 @@ const client = axios.create({
 
 /**
  * 调用 Agent API
- * @param {string} action - diagnose|plan|practice|tutor|career|peer
+ * @param {string} action - diagnose|plan|practice|tutor|career|peer|research
  * @param {object} input - 对应 agent 的输入参数
  * @returns {Promise<{ status, agent, content, structured, provider, usage }>}
  */
 export async function callAgent(action, input = {}) {
-  const { data } = await client.post('/api/agent', { action, input })
-  if (data.error) {
-    throw new Error('AGENT_ERROR: ' + data.error)
+  try {
+    const { data } = await client.post('/api/agent', { action, input })
+    if (data.error) {
+      // 落 error trace（不阻塞抛错）
+      recordAgentTrace({
+        agent_role: action, action, input,
+        output: { error: data.error },
+        status: 'error',
+      })
+      throw new Error('AGENT_ERROR: ' + data.error)
+    }
+    // 落 done trace（fire-and-forget）
+    recordAgentTrace({
+      agent_role: action,
+      action,
+      input,
+      output: { content: data.content, structured: data.structured },
+      usage: data.usage,
+      status: 'done',
+    })
+    return data
+  } catch (e) {
+    // 非业务错误（网络/超时）也落一条 error trace
+    if (e?.message && !e.message.startsWith('AGENT_ERROR')) {
+      recordAgentTrace({
+        agent_role: action, action, input,
+        output: { error: e.message },
+        status: 'error',
+      })
+    }
+    throw e
   }
-  return data
 }
 
 /**
@@ -121,4 +152,27 @@ export async function callChatWithMode(userInput, opts = {}) {
   } finally {
     if (timeoutId) clearTimeout(timeoutId)
   }
+}
+
+
+// ============================================================
+// B5 架构看板：真实 Agent trace 只读查询
+// 数据源：agent_traces 表（前端 callAgent / callResearchAgent 落库，RLS owner）
+// 返回结构：{ traces: [{ id, agent_role, action, input_summary,
+//   output_summary, tool_calls_trace, usage, status, created_at }] }
+// 鉴权：RLS — supabase 客户端用当前用户 session，auth.uid() = user_id 自动过滤。
+// ============================================================
+
+/**
+ * 拉取真实 Agent 调用记录（只读，仅本人）
+ * @param {object} opts - { limit = 50 }
+ * @returns {Promise<{ traces: Array }>}
+ */
+export async function fetchAgentTraces(opts = {}) {
+  const { limit = 50 } = opts
+  const result = await fetchTracesFromDB(limit)
+  if (result.error) {
+    throw new Error('AGENT_TRACES_ERROR: ' + result.error)
+  }
+  return result
 }

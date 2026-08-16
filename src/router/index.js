@@ -89,6 +89,13 @@ const routes = [
     component: () => import('@/views/PracticeView.vue'),
     meta: { title: '练习题', agent: 'practice' }
   },
+  // B5: 多 Agent 架构看板（数据来自 agent_traces 真实落库，只读展示）
+  {
+    path: '/architecture',
+    name: 'architecture',
+    component: () => import('@/views/ArchitectureView.vue'),
+    meta: { title: '架构看板', agent: 'cascade' }
+  },
   // 同伴学习模块：赛事展示范围裁剪（2026-08-16），入口移除、代码保留待赛后迭代启用
   // 直接访问 /peer 重定向回首页；PeerView.vue / stores/peer.js / api peer action 均未删除
   { path: '/peer', alias: '/peers', redirect: '/' },
