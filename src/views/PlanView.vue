@@ -1,14 +1,17 @@
 <script setup>
 import { computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { usePlanStore } from '@/stores/plan'
 import { useProfileStore } from '@/stores/profile'
 import { useDiagnosisStore } from '@/stores/diagnosis'
 import { getDiagnosisResultForPlan, getKnowledgeStructure, isValidDiagnosisRecord } from '@/utils/diagnosisInput'
 import KnowledgeGraph from '@/components/KnowledgeGraph.vue'
 import PlanCard from '@/components/PlanCard.vue'
+import StageTimeline from '@/components/StageTimeline.vue'
 import AiGeneratedBadge from '@/components/AiGeneratedBadge.vue'
 import { SEED_PLAN } from '@/data/seedDemo'
 
+const router = useRouter()
 const planStore = usePlanStore()
 const profileStore = useProfileStore()
 const diagnosisStore = useDiagnosisStore()
@@ -22,6 +25,10 @@ const loading = computed(() => planStore.loading)
 const error = computed(() => planStore.error)
 const progress = computed(() => planStore.progress)
 const completionRate = computed(() => planStore.completionRate)
+
+// Bug5: 四阶段视图信息
+const stageInfo = computed(() => planStore.stageInfo)
+const pendingRediagnosis = computed(() => stageInfo.value.pendingRediagnosis)
 
 const seedPlan = SEED_PLAN
 const hasApiPlan = computed(() => planStore.lastPlan !== null)
@@ -58,6 +65,11 @@ async function generatePlan() {
     // 错误已写入 planStore.error，由模板展示错误提示 + 重试按钮
     console.warn('[plan] 生成失败:', e.message)
   }
+}
+
+// Bug5: 跳转到诊断页（滚动重生成流程：先诊断再生成下一周期）
+function goToDiagnosis() {
+  router.push('/diagnosis')
 }
 
 // W3-2: 切换任务完成状态
@@ -103,8 +115,32 @@ function adjustmentCount(v) {
           <span>Dynamic Plan</span>
         </div>
         <h1 class="page-title">成长规划</h1>
-        <p class="page-subtitle">38 天风险重排 · plan_version 演进 · 诊断触发自动调整</p>
+        <p class="page-subtitle">四阶段全周期 · 3–4 周差异化冲刺 · 诊断触发滚动重生成</p>
       </div>
+
+      <!-- Bug5: 全周期四阶段视图（当前阶段高亮，未来阶段占位） -->
+      <StageTimeline
+        v-if="plan && plan.weeks?.length"
+        :current-stage="stageInfo.current_stage"
+        :completed-cycles="stageInfo.completedCycles"
+      />
+
+      <!-- Bug5: 周期完成提示（滚动重生成触发） -->
+      <section v-if="pendingRediagnosis" class="cycle-complete-banner">
+        <div class="ccb-icon">🎯</div>
+        <div class="ccb-body">
+          <div class="ccb-title">本周期任务已全部完成！</div>
+          <div class="ccb-desc">
+            建议重新进行知识诊断，系统将按新诊断滚动生成下一阶段计划，阶段指针自动前移。
+          </div>
+        </div>
+        <div class="ccb-actions">
+          <button class="ccb-btn ccb-primary" @click="goToDiagnosis">去诊断</button>
+          <button class="ccb-btn ccb-secondary" :disabled="loading" @click="generatePlan">
+            {{ loading ? '生成中…' : '直接生成下一周期' }}
+          </button>
+        </div>
+      </section>
 
       <!-- 版本演进条 -->
       <section v-if="versions.length > 1" class="version-bar">
@@ -166,8 +202,8 @@ function adjustmentCount(v) {
       <!-- 当前计划（API 生成或种子 fallback）；weeks 为空视为无效计划，走空态 -->
       <section v-if="plan && plan.weeks?.length" class="plan-section">
         <div class="section-header">
-          <h2 class="section-title">当前计划</h2>
-          <span class="section-en">Current Plan</span>
+          <h2 class="section-title">当前冲刺计划</h2>
+          <span class="section-en">Current Sprint</span>
           <AiGeneratedBadge v-if="hasApiPlan" />
           <span v-else class="plan-badge plan-badge--seed">Demo</span>
         </div>
@@ -495,6 +531,82 @@ function adjustmentCount(v) {
   color: var(--color-fg-tertiary);
 }
 
+/* Bug5: 周期完成提示横幅 */
+.cycle-complete-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 22px;
+  background: color-mix(in srgb, var(--color-node-active) 8%, var(--color-bg-elevated));
+  border: 1px solid color-mix(in srgb, var(--color-node-active) 30%, transparent);
+  border-radius: var(--radius-lg);
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+  animation: float-up 0.5s var(--ease-out) both;
+}
+
+.ccb-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.ccb-body { flex: 1; min-width: 0; }
+
+.ccb-title {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-ink-900);
+  margin-bottom: 4px;
+}
+
+.ccb-desc {
+  font-size: 12px;
+  color: var(--color-fg-secondary);
+  line-height: 1.5;
+}
+
+.ccb-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ccb-btn {
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.ccb-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ccb-primary {
+  background: var(--color-node-active);
+  color: var(--color-fg-inverse);
+}
+
+.ccb-primary:hover:not(:disabled) {
+  box-shadow: var(--shadow-md);
+}
+
+.ccb-secondary {
+  background: transparent;
+  border: 1px solid var(--color-border-default);
+  color: var(--color-ink-700);
+}
+
+.ccb-secondary:hover:not(:disabled) {
+  background: var(--color-bg-sunken);
+}
+
 /* === 空态 === */
 .empty-state {
   text-align: center;
@@ -534,6 +646,9 @@ function adjustmentCount(v) {
   .vb-node:not(:last-child)::after { right: -8px; font-size: 10px; }
   .empty-state { padding: 48px 16px; }
   .empty-icon { font-size: 28px; }
+  .cycle-complete-banner { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .ccb-actions { width: 100%; }
+  .ccb-btn { flex: 1; text-align: center; }
 }
 
 @media (max-width: 375px) {

@@ -1,9 +1,13 @@
 // ============================================================
 // 复习计划 store（v2 plan_version 迭代，v3.1 接入 Agent API，v4 数据库持久化）
+// Bug5 方案 A：全周期四阶段视图 + 当前阶段指针 + 滚动重生成
 // ============================================================
 // 数据契约：
 //   currentVersion: 当前生效版本号（整数）
-//   versions: [{ version, created_at, based_on_diagnosis, weeks, adjustments, completion_rate }]
+//   versions: [{ version, created_at, based_on_diagnosis, weeks, adjustments, completion_rate,
+//                exam_date, current_stage, stage_entry_criteria, target_stage }]
+//   completedCycles: 已完成的冲刺周期数（滚动触发计数）
+//   pendingRediagnosis: 当前周期任务全部完成，待重新诊断以生成下一周期
 // v3.1: runPlan() → POST /api/agent { action: 'plan' }
 // v4 (W3-2): Supabase 持久化 — plans 表 + plan_progress 表
 // ============================================================
@@ -12,6 +16,7 @@ import { defineStore } from 'pinia'
 import { storage } from '@/utils/storage'
 import { callAgent } from '@/api/agent'
 import { supabase, isSupabaseConfigured } from '@/services/supabase'
+import { explainStageDecision, buildStageTimeline } from '@/utils/stagePlanner'
 
 const STORAGE_KEY = 'plan_version'
 
@@ -27,7 +32,10 @@ export const usePlanStore = defineStore('plan', {
       // W3-2: 数据库持久化
       dbPlanId: null,
       progress: {},
-      progressLoading: false
+      progressLoading: false,
+      // Bug5: 滚动重生成状态
+      completedCycles: saved?.completedCycles || 0,
+      pendingRediagnosis: saved?.pendingRediagnosis || false
     }
   },
 
@@ -48,6 +56,17 @@ export const usePlanStore = defineStore('plan', {
         done += (state.progress[wn] || []).length
       }
       return total > 0 ? Math.round((done / total) * 100) : 0
+    },
+    // Bug5: 四阶段视图信息（阶段指针 + 时间线 + 滚动状态）
+    stageInfo(state) {
+      const plan = state.versions.find((v) => v.version === state.currentVersion)
+      const currentStage = plan?.current_stage || 'foundation'
+      return {
+        current_stage: currentStage,
+        timeline: buildStageTimeline(currentStage),
+        completedCycles: state.completedCycles || 0,
+        pendingRediagnosis: !!state.pendingRediagnosis
+      }
     }
   },
 
@@ -55,12 +74,21 @@ export const usePlanStore = defineStore('plan', {
     persist() {
       storage.set(STORAGE_KEY, {
         currentVersion: this.currentVersion,
-        versions: this.versions
+        versions: this.versions,
+        completedCycles: this.completedCycles,
+        pendingRediagnosis: this.pendingRediagnosis
       })
     },
 
     addPlan(plan) {
       const version = this.currentVersion + 1
+      // Bug5: 计算阶段指针（诊断分区间 + 已完成周期数 + 备考剩余时间）
+      const score = plan.based_on_diagnosis?.score ?? null
+      const decision = explainStageDecision({
+        score,
+        completedCycles: this.completedCycles,
+        examDate: plan.exam_date || null
+      })
       const item = {
         version,
         created_at: new Date().toISOString(),
@@ -68,10 +96,17 @@ export const usePlanStore = defineStore('plan', {
         weeks: Array.isArray(plan.weeks) ? plan.weeks : [],
         adjustments: plan.adjustments || { keep: [], strengthen: [], drop: [] },
         completion_rate: null,
-        raw_plan: plan.raw_plan || ''
+        raw_plan: plan.raw_plan || '',
+        // Bug5: 阶段指针数据接线
+        exam_date: plan.exam_date || null,
+        current_stage: decision.current_stage,
+        stage_entry_criteria: decision.stage_entry_criteria,
+        target_stage: plan.target_stage || null
       }
       this.versions.push(item)
       this.currentVersion = version
+      // Bug5: 新计划生成即代表上一周期已滚动续接，清除待诊断标记
+      this.pendingRediagnosis = false
       this.persist()
       return item
     },
@@ -96,7 +131,24 @@ export const usePlanStore = defineStore('plan', {
       this.currentVersion = 0
       this.dbPlanId = null
       this.progress = {}
+      this.completedCycles = 0
+      this.pendingRediagnosis = false
       this.persist()
+    },
+
+    // Bug5 方案 A·滚动重生成触发（GWT #3）：
+    // 当前周期任务全部完成 → completedCycles+1 → 标记待重新诊断 → 重新诊断后生成下一周期，指针前移
+    checkCycleCompletion() {
+      if (this.pendingRediagnosis) return false
+      if (!this.current || !this.current.weeks?.length) return false
+      if (this.completionRate >= 100) {
+        this.completedCycles = (this.completedCycles || 0) + 1
+        this.pendingRediagnosis = true
+        this.persist()
+        console.info('[plan] 冲刺周期全部完成，completedCycles=', this.completedCycles, '待重新诊断以生成下一阶段计划')
+        return true
+      }
+      return false
     },
 
     // v3.1: 调用 Agent API 生成计划
@@ -176,7 +228,10 @@ export const usePlanStore = defineStore('plan', {
           based_on_diagnosis: input.diagnosis_result || null,
           weeks: normalized.weeks,
           adjustments: normalized.adjustments || s.adjustments || { keep: [], strengthen: [], drop: [] },
-          raw_plan: res.content || ''
+          raw_plan: res.content || '',
+          // Bug5: 透传 exam_date 与 LLM 的 target_stage（仅参考，权威指针由 addPlan 计算）
+          exam_date: input.exam_date || '',
+          target_stage: normalized.target_stage || s.target_stage || null
         })
 
         // W3-2: 持久化到数据库（非阻塞，失败不影响 UI）
@@ -210,7 +265,11 @@ export const usePlanStore = defineStore('plan', {
               adjustments: planItem.adjustments,
               based_on_diagnosis: planItem.based_on_diagnosis,
               raw_plan: planItem.raw_plan,
-              version: planItem.version
+              version: planItem.version,
+              exam_date: planItem.exam_date,
+              current_stage: planItem.current_stage,
+              stage_entry_criteria: planItem.stage_entry_criteria,
+              target_stage: planItem.target_stage
             },
             active: true
           })
@@ -261,7 +320,9 @@ export const usePlanStore = defineStore('plan', {
             weeks: s.weeks,
             adjustments: s.adjustments || { keep: [], strengthen: [], drop: [] },
             based_on_diagnosis: s.based_on_diagnosis || null,
-            raw_plan: s.raw_plan || ''
+            raw_plan: s.raw_plan || '',
+            exam_date: s.exam_date || '',
+            target_stage: s.target_stage || null
           })
         }
 
@@ -281,6 +342,9 @@ export const usePlanStore = defineStore('plan', {
       } else {
         this.progress[weekNum] = [...current, taskIndex]
       }
+
+      // Bug5: 本地勾选后检查周期是否全部完成（滚动触发）
+      this.checkCycleCompletion()
 
       if (!this.dbPlanId || !isSupabaseConfigured) return
 
@@ -421,6 +485,7 @@ function parseStructuredFromContent(content) {
 // P0 修复：plan prompt 输出 stages 结构，PlanCard 需要 weeks——normalize
 // LLM 输出结构有两种：① 顶层 stages ② 嵌套在 s.plan.stages
 // stages[].weekly_plans[] → weeks[]，映射 PlanCard 所需字段
+// Bug5: 透传 target_stage（LLM 参考值，权威指针由 addPlan 计算）
 // ============================================================
 function expandStagesToWeeks(stages) {
   const weeks = []
