@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProfileStore } from '@/stores/profile'
 import { useDiagnosisStore } from '@/stores/diagnosis'
@@ -131,6 +131,12 @@ function goJourney() {
 
 // 错题本折叠状态（默认展开，便于首屏即可见）
 const wrongBookExpanded = ref(true)
+
+// OB-1: 挂载时从 DB 刷新诊断历史与错题本，避免 localStorage 残留旧记录（数据刷新链路）
+onMounted(async () => {
+  try { await diagnosisStore.loadFromDB() } catch (e) { /* silent */ }
+  try { await wrongBookStore.loadFromDB() } catch (e) { /* silent */ }
+})
 </script>
 
 <template>

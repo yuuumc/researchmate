@@ -27,7 +27,9 @@ const STORAGE_KEY = 'wrong_book'
 
 export const useWrongBookStore = defineStore('wrongBook', {
   state: () => ({
-    items: storage.get(STORAGE_KEY) || []
+    items: storage.get(STORAGE_KEY) || [],
+    // OB-1: DB wrong_book_entries 行数（按题计数，与 loadWrongQuestions 同源）
+    dbWrongCount: 0
   }),
 
   getters: {
@@ -128,6 +130,8 @@ export const useWrongBookStore = defineStore('wrongBook', {
           console.warn('[wrongBook] loadFromDB:', error.message)
           return
         }
+        // OB-1: 记录 DB 错题行数（按题），供错题重练 badge 与 loadWrongQuestions 对齐
+        this.dbWrongCount = (data || []).length
         if (data && data.length > 0) {
           // 拉取关联的 question 信息
           const qIds = data.map(w => w.question_id).filter(Boolean)

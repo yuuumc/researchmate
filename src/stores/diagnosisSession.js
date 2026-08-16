@@ -11,6 +11,8 @@ import { fetchSubjectiveQuestions, gradeDiagnosis } from '@/api/diagnosis'
 import { gradeObjective as _gradeObjective } from '@/utils/grading'
 import { useProfileStore } from '@/stores/profile'
 import { saveProfile } from '@/services/profileService'
+import { useDiagnosisStore } from '@/stores/diagnosis'
+import { useWrongBookStore } from '@/stores/wrongBook'
 
 const SUBJECTS = ['半导体物理', '微电子器件', '数字IC', '模拟IC', '固态物理']
 
@@ -235,6 +237,36 @@ export const useDiagnosisSessionStore = defineStore('diagnosisSession', {
         if (attError) console.error('[diagnosisSession] attempts insert:', attError)
       }
 
+      // OB-1: 错题回写 — 诊断客观题答错 → wrong_book_entries（与练习 gradeAndPersist 同口径，修复 RC-3）
+      const wrongResults = objectiveResults.filter(r => !r.is_correct)
+      if (wrongResults.length > 0) {
+        const wrongQIds = wrongResults.map(r => r.question_id)
+        const { data: attData } = await supabase
+          .from('question_attempts')
+          .select('id, question_id')
+          .eq('user_id', user.id)
+          .in('question_id', wrongQIds)
+          .order('created_at', { ascending: false })
+          .limit(wrongQIds.length * 2)
+        const attMap = {}
+        if (attData) {
+          for (const r of attData) {
+            if (!attMap[r.question_id]) attMap[r.question_id] = r.id
+          }
+        }
+        const wbRows = wrongResults.map(r => ({
+          user_id: user.id,
+          question_id: r.question_id,
+          attempt_id: attMap[r.question_id] || null,
+          wrong_count: 1,
+          last_wrong_at: new Date().toISOString(),
+        }))
+        const { error: wbError } = await supabase
+          .from('wrong_book_entries')
+          .upsert(wbRows, { onConflict: 'user_id,question_id' })
+        if (wbError) console.error('[diagnosisSession] wrong_book insert:', wbError)
+      }
+
       // 更新 profiles.weak_points（flat 列）
       const weakPoints = (structured.weak_points || []).map(wp => {
         if (typeof wp === 'string') return wp
@@ -247,6 +279,20 @@ export const useDiagnosisSessionStore = defineStore('diagnosisSession', {
         profileStore.updateProfile({ weak_points: weakPoints, weak_topics: weakPoints })
       } catch (e) {
         console.error('[diagnosisSession] profiles update:', e)
+      }
+
+      // OB-1: 刷新诊断历史与错题本 store，使主页/练习页即时读到新记录（数据刷新链路，修复 RC-1）
+      try {
+        const diagnosisStore = useDiagnosisStore()
+        await diagnosisStore.loadFromDB()
+      } catch (e) {
+        console.warn('[diagnosisSession] diagnosisStore refresh:', e)
+      }
+      try {
+        const wrongBookStore = useWrongBookStore()
+        await wrongBookStore.loadFromDB()
+      } catch (e) {
+        console.warn('[diagnosisSession] wrongBookStore refresh:', e)
       }
     },
 

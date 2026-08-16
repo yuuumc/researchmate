@@ -37,10 +37,8 @@ onMounted(async () => {
     const first = weakPoints.value[0]
     form.value.knowledge_point = typeof first === 'string' ? first : (first.knowledge_point || first.topic || '')
   }
-  // 加载错题本
-  if (wbStore.unresolvedCount === 0) {
-    try { await wbStore.loadFromDB() } catch (e) { /* silent */ }
-  }
+  // OB-1: 加载错题本（始终从 DB 刷新，确保 dbWrongCount 与 loadWrongQuestions 同源）
+  try { await wbStore.loadFromDB() } catch (e) { /* silent */ }
 })
 
 // LLM 模式
@@ -157,7 +155,7 @@ function switchTab(tab) {
           薄弱点练习
         </button>
         <button :class="['tab', { active: activeTab === 'retry' }]" @click="switchTab('retry')">
-          错题重练 <span v-if="wbStore.unresolvedCount" class="tab-badge">{{ wbStore.unresolvedCount }}</span>
+          错题重练 <span v-if="(wbStore.dbWrongCount || wbStore.unresolvedCount)" class="tab-badge">{{ wbStore.dbWrongCount || wbStore.unresolvedCount }}</span>
         </button>
         <button :class="['tab', { active: activeTab === 'llm' }]" @click="switchTab('llm')">
           AI 出题

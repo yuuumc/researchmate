@@ -134,6 +134,8 @@ export const useDiagnosisStore = defineStore('diagnosis', {
           const dbIds = new Set(dbRecords.map(r => r.id))
           const localOnly = this.history.filter(h => !dbIds.has(h.id))
           this.history = [...dbRecords, ...localOnly]
+          // OB-1: 按时间升序排列，确保 latest getter（末位）= 最新诊断记录（修复 RC-2 顺序倒置）
+          this.history.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
           this.persist()
         }
       } catch (e) {
