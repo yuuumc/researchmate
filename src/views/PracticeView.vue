@@ -206,7 +206,7 @@ function switchTab(tab) {
               <span class="q-tag q-tag--diff">难度 {{ q.difficulty }}</span>
               <span class="q-kp">{{ q.knowledge_point }}</span>
             </div>
-            <div class="q-stem">{{ idx + 1 }}. {{ q.stem }}</div>
+            <div class="q-stem">{{ idx + 1 }}. <MarkdownRenderer :content="q.stem" inline /></div>
 
             <div v-if="q.question_type === 'choice' && q.options" class="q-options">
               <label v-for="(opt, i) in q.options" :key="i" class="q-option"
@@ -215,7 +215,7 @@ function switchTab(tab) {
                   :checked="practiceStore.dbAnswers[q.id] === String.fromCharCode(65 + i)"
                   @change="setChoiceAnswer(q.id, i)" />
                 <span class="opt-letter">{{ String.fromCharCode(65 + i) }}</span>
-                <span class="opt-text">{{ typeof opt === 'string' ? opt : (opt.text || opt.label || opt) }}</span>
+                <span class="opt-text"><MarkdownRenderer :content="typeof opt === 'string' ? opt : (opt.text || opt.label || opt)" inline /></span>
               </label>
             </div>
 
@@ -245,7 +245,7 @@ function switchTab(tab) {
               <span class="q-tag q-tag--diff">难度 {{ d.difficulty }}</span>
               <span class="q-kp">{{ d.knowledge_point }}</span>
             </div>
-            <div class="q-stem">{{ idx + 1 }}. {{ d.stem }}</div>
+            <div class="q-stem">{{ idx + 1 }}. <MarkdownRenderer :content="d.stem" inline /></div>
             <div class="answer-row">
               <span class="answer-label">你的答案：</span>
               <span class="answer-value" :class="{ 'wrong-text': !d.is_correct }">{{ d.user_answer || '(未作答)' }}</span>
@@ -295,7 +295,7 @@ function switchTab(tab) {
               <span class="q-tag q-tag--type">{{ q.question_type === 'choice' ? '选择' : '填空' }}</span>
               <span class="q-kp">{{ q.knowledge_point }}</span>
             </div>
-            <div class="q-stem">{{ idx + 1 }}. {{ q.stem }}</div>
+            <div class="q-stem">{{ idx + 1 }}. <MarkdownRenderer :content="q.stem" inline /></div>
             <div v-if="q.question_type === 'choice' && q.options" class="q-options">
               <label v-for="(opt, i) in q.options" :key="i" class="q-option"
                 :class="{ active: practiceStore.dbAnswers[q.id] === String.fromCharCode(65 + i) }">
@@ -303,7 +303,7 @@ function switchTab(tab) {
                   :checked="practiceStore.dbAnswers[q.id] === String.fromCharCode(65 + i)"
                   @change="setChoiceAnswer(q.id, i)" />
                 <span class="opt-letter">{{ String.fromCharCode(65 + i) }}</span>
-                <span class="opt-text">{{ typeof opt === 'string' ? opt : (opt.text || opt.label || opt) }}</span>
+                <span class="opt-text"><MarkdownRenderer :content="typeof opt === 'string' ? opt : (opt.text || opt.label || opt)" inline /></span>
               </label>
             </div>
             <div v-else class="q-fill">
@@ -328,7 +328,7 @@ function switchTab(tab) {
               <span class="q-tag" :class="d.is_correct ? 'q-tag--ok' : 'q-tag--err'">{{ d.is_correct ? '✓ 正确' : '✗ 错误' }}</span>
               <span class="q-kp">{{ d.knowledge_point }}</span>
             </div>
-            <div class="q-stem">{{ idx + 1 }}. {{ d.stem }}</div>
+            <div class="q-stem">{{ idx + 1 }}. <MarkdownRenderer :content="d.stem" inline /></div>
             <div class="answer-row">
               <span class="answer-label">你的答案：</span>
               <span class="answer-value" :class="{ 'wrong-text': !d.is_correct }">{{ d.user_answer || '(未作答)' }}</span>
@@ -389,11 +389,11 @@ function switchTab(tab) {
               <span class="q-tag q-tag--type">{{ q.type || q.question_type || '题目' }}</span>
               <span v-if="q.difficulty_label" class="q-tag q-tag--diff">{{ q.difficulty_label }}</span>
             </div>
-            <div class="q-stem">{{ idx + 1 }}. {{ q.stem || q.question || '' }}</div>
+            <div class="q-stem">{{ idx + 1 }}. <MarkdownRenderer :content="q.stem || q.question || ''" inline /></div>
             <div v-if="q.options" class="q-options">
               <div v-for="(opt, key) in q.options" :key="key" class="q-option q-option--static">
                 <span class="opt-letter">{{ key }}</span>
-                <span class="opt-text">{{ opt }}</span>
+                <span class="opt-text"><MarkdownRenderer :content="opt" inline /></span>
               </div>
             </div>
             <button class="answer-toggle" @click="toggleAnswer(idx)">
@@ -401,7 +401,7 @@ function switchTab(tab) {
             </button>
             <div v-if="expandedAnswers.has(idx)" class="answer-block">
               <p><strong>答案：</strong>{{ q.answer }}</p>
-              <p v-if="q.explanation"><strong>解析：</strong>{{ q.explanation }}</p>
+              <p v-if="q.explanation"><strong>解析：</strong><MarkdownRenderer :content="q.explanation" inline /></p>
             </div>
           </div>
         </div>
@@ -413,13 +413,13 @@ function switchTab(tab) {
             <div class="q-meta">
               <span class="q-tag q-tag--type">{{ q.type || '题目' }}</span>
             </div>
-            <div class="q-stem">{{ idx + 1 }}. {{ q.stem }}</div>
+            <div class="q-stem">{{ idx + 1 }}. <MarkdownRenderer :content="q.stem" inline /></div>
             <button class="answer-toggle" @click="toggleSeedAnswer(idx)">
               {{ seedExpanded.has(idx) ? '隐藏答案' : '查看答案' }}
             </button>
             <div v-if="seedExpanded.has(idx)" class="answer-block">
               <p><strong>答案：</strong>{{ q.answer }}</p>
-              <p v-if="q.explanation"><strong>解析：</strong>{{ q.explanation }}</p>
+              <p v-if="q.explanation"><strong>解析：</strong><MarkdownRenderer :content="q.explanation" inline /></p>
             </div>
           </div>
         </div>

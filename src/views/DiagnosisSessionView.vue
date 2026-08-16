@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useDiagnosisSessionStore } from '@/stores/diagnosisSession'
 import { useProfileStore } from '@/stores/profile'
 import DiagnosisReport from '@/components/DiagnosisReport.vue'
+import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 
 const router = useRouter()
 const session = useDiagnosisSessionStore()
@@ -95,7 +96,7 @@ function restart() {
             <span class="q-tag q-tag--diff">难度 {{ q.difficulty }}</span>
             <span class="q-kp">{{ q.knowledge_point }}</span>
           </div>
-          <div class="q-stem">{{ idx + 1 }}. {{ q.stem }}</div>
+          <div class="q-stem">{{ idx + 1 }}. <MarkdownRenderer :content="q.stem" inline /></div>
 
           <!-- 选择题 -->
           <div v-if="q.question_type === 'choice' && q.options" class="q-options">
@@ -105,7 +106,7 @@ function restart() {
                 :checked="session.answers[q.id] === String.fromCharCode(65 + i)"
                 @change="session.setAnswer(q.id, String.fromCharCode(65 + i))" />
               <span class="opt-letter">{{ String.fromCharCode(65 + i) }}</span>
-              <span class="opt-text">{{ typeof opt === 'string' ? opt : (opt.text || opt.label || opt) }}</span>
+              <span class="opt-text"><MarkdownRenderer :content="typeof opt === 'string' ? opt : (opt.text || opt.label || opt)" inline /></span>
             </label>
           </div>
 
@@ -133,7 +134,7 @@ function restart() {
             <span v-if="q.difficulty" class="q-tag q-tag--diff">难度 {{ q.difficulty }}</span>
             <span class="q-kp">{{ q.knowledge_point }}</span>
           </div>
-          <div class="q-stem">{{ idx + 1 }}. {{ q.question }}</div>
+          <div class="q-stem">{{ idx + 1 }}. <MarkdownRenderer :content="q.question" inline /></div>
           <textarea class="essay-input" rows="6" placeholder="请详细作答，展现你的理解深度…"
             :value="session.answers[q.id] || ''"
             @input="session.setAnswer(q.id, $event.target.value)"></textarea>
