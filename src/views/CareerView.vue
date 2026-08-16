@@ -46,20 +46,9 @@ const { input: weakInput, add: addWeak, remove: removeWeak } = useTagInput(form,
 async function submit() {
   if (!form.value.student_name || !form.value.target_school) return
   await careerStore.runCareer({ ...form.value })
-  // P1-3: 推荐结果中的技能缺口回写画像薄弱点
-  const paths = careerStore.result?.structured?.career_paths || []
-  const gaps = new Set()
-  paths.forEach((p) => {
-    ;(p.target_roles || []).forEach((r) => (r.skill_gaps || []).forEach((g) => {
-      const skillStr = typeof g === 'object' ? (g.skill || g.name || '') : String(g)
-      if (skillStr && g.status !== '已具备') gaps.add(skillStr)
-    }))
-    ;(p.gap_skills || p.gap || []).forEach((g) => {
-      const skillStr = typeof g === 'object' ? (g.skill || g.name || '') : String(g)
-      if (skillStr) gaps.add(skillStr)
-    })
-  })
-  gaps.forEach((g) => { if (g) profileStore.addWeakTopic(g) })
+  // Bug1 热修：移除就业技能缺口回写画像薄弱点（原 P1-3 写回）
+  // 就业职业技能标签（运放/Verilog/UVM…）不应进入诊断薄弱点池，否则练习题按职业技能抽题
+  // T1-7 统一学情数据层将从数据源侧正式隔离 career 与 diagnosis 的薄弱点来源
 }
 
 const careerPaths = computed(() => careerStore.careerPaths)

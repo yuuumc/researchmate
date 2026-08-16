@@ -10,6 +10,8 @@ export const ANSWER_CORRECTIONS = [
   { match: /金刚石.*倒格矢|倒格矢.*金刚石/, correctAnswer: 'C' },
   { match: /BCS.*(Tc|临界温度|超导转变|能隙|德拜)|超导.*(Tc|临界温度).*BCS/, correctAnswer: '24.2' },
   { match: /CMOS.*反相器.*(Vth|阈值|开关阈值|阈值电压)|(Vth|阈值|开关阈值).*CMOS.*反相器/, correctAnswer: 'A' },
+  // Bug4 热修：CMOS Wp/Wn 填空题（μn=2.5μp 求 Wp/Wn）DB 误配为 choice+答案A，正确 2.5
+  { match: /Wp\s*\/\s*Wn|μn[\s\S]{0,15}μp|μp[\s\S]{0,15}μn|沟道宽度比|宽长比/, correctAnswer: '2.5' },
 ]
 
 /**
@@ -23,6 +25,14 @@ export function getCorrectedAnswer(question) {
     }
   }
   return question.correct_answer != null ? String(question.correct_answer) : ''
+}
+
+/**
+ * 判断题干是否命中答案订正表
+ */
+export function isCorrectedQuestion(question) {
+  const stem = question.stem || question.question || ''
+  return ANSWER_CORRECTIONS.some((c) => c.match.test(stem))
 }
 
 /**
@@ -46,7 +56,9 @@ export function gradeObjective(question, userAnswer) {
   const correct = getCorrectedAnswer(question)
   const user = String(userAnswer).trim()
 
-  if (question.question_type === 'choice') {
+  // Bug4 热修：命中答案订正的题目一律走填空判定，避免 DB 题型/答案配置错配
+  // （如 Wp/Wn 填空题被配成 choice+答案A，走字母比对会把 2.5 判错）
+  if (!isCorrectedQuestion(question) && question.question_type === 'choice') {
     const norm = (s) => s.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 1)
     return norm(correct) === norm(user)
   }
