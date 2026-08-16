@@ -96,6 +96,11 @@ export default async function handler(req, res) {
       `考试日期：${input.exam_date || input.diagnosis_result?.exam_date || ""}`,
       `可用时间：每周 ${input.weekly_hours ?? input.diagnosis_result?.available_hours ?? ""} 小时`,
     ].join("\n")
+    input.student_id = input.student_name || ''
+    input.session_id = ''
+    input.diagnostic_score = input.diagnosis_result?.score ?? null
+    input.completed_cycles = input.completed_cycles ?? 0
+    input.exam_date = input.exam_date || input.diagnosis_result?.exam_date || null
     input.now = new Date().toISOString()
   }
 
