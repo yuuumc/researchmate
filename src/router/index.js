@@ -99,13 +99,9 @@ const routes = [
     component: () => import('@/views/PracticeView.vue'),
     meta: { title: '练习题', agent: 'practice' }
   },
-  {
-    path: '/peer',
-    alias: '/peers',
-    name: 'peer',
-    component: () => import('@/views/PeerView.vue'),
-    meta: { title: '同伴匹配', agent: 'peer' }
-  },
+  // 同伴学习模块：赛事展示范围裁剪（2026-08-16），入口移除、代码保留待赛后迭代启用
+  // 直接访问 /peer 重定向回首页；PeerView.vue / stores/peer.js / api peer action 均未删除
+  { path: '/peer', alias: '/peers', redirect: '/' },
   {
     path: '/teacher/classes',
     name: 'teacher-classes',

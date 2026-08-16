@@ -61,7 +61,7 @@ const coreNav = [
 
 const toolNav = [
   { path: '/career', label: '就业指导', icon: 'briefcase' },
-  { path: '/peer', label: '同伴学习', icon: 'users' },
+  // { path: '/peer', label: '同伴学习', icon: 'users' },  // 赛事展示范围裁剪，已移除
   { path: '/admission', label: '择校分析', icon: 'school' },
 ]
 
