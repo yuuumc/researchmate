@@ -204,6 +204,11 @@ export const useDiagnosisSessionStore = defineStore('diagnosisSession', {
 
       const structured = gradeRes.structured || {}
 
+      // A2-e: 持久化客观题 ID 到 structured，供练习去重使用
+      if (objectiveResults && objectiveResults.length > 0) {
+        structured.objective_question_ids = objectiveResults.map(r => r.question_id)
+      }
+
       // 写 diagnoses 表
       const { error: diagError } = await supabase
         .from('diagnoses')

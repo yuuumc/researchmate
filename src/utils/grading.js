@@ -10,17 +10,35 @@ export const ANSWER_CORRECTIONS = [
   { match: /金刚石.*倒格矢|倒格矢.*金刚石/, correctAnswer: 'C' },
   { match: /BCS.*(Tc|临界温度|超导转变|能隙|德拜)|超导.*(Tc|临界温度).*BCS/, correctAnswer: '24.2' },
   { match: /CMOS.*反相器.*(Vth|阈值|开关阈值|阈值电压)|(Vth|阈值|开关阈值).*CMOS.*反相器/, correctAnswer: 'A' },
-  // Bug4 热修：CMOS Wp/Wn 填空题（μn=2.5μp 求 Wp/Wn）DB 误配为 choice+答案A，正确 2.5
-  { match: /Wp\s*\/\s*Wn|μn[\s\S]{0,15}μp|μp[\s\S]{0,15}μn|沟道宽度比|宽长比/, correctAnswer: '2.5' },
+  // Bug4: Wp/Wn — P1-2 收紧为仅 Wp/Wn 记号（移除宽长比/沟道宽度比/μnμp 等宽泛关键词）
+  { match: /Wp\s*\/\s*Wn/, correctAnswer: '2.5' },
 ]
+
+// P1-2: 辅助函数 — 判断题目是否有选项（合法选择题）
+function hasOptions(question) {
+  const opts = question.options
+  return Array.isArray(opts) && opts.length > 0
+}
+
+// P1-2: 辅助函数 — 查找命中的订正条目
+function findCorrection(question) {
+  const stem = question.stem || question.question || ''
+  for (const corr of ANSWER_CORRECTIONS) {
+    if (corr.match.test(stem)) return corr
+  }
+  return null
+}
 
 /**
  * 获取订正后的正确答案（用于显示 + 判分）
  */
 export function getCorrectedAnswer(question) {
-  const stem = question.stem || question.question || ''
-  for (const corr of ANSWER_CORRECTIONS) {
-    if (corr.match.test(stem)) {
+  const corr = findCorrection(question)
+  if (corr) {
+    // P1-2: 数字修正答案不覆盖带有选项的合法选择题
+    if (/^\d/.test(corr.correctAnswer) && question.question_type === 'choice' && hasOptions(question)) {
+      // 跳过，回退到数据库答案
+    } else {
       return corr.correctAnswer
     }
   }
@@ -31,8 +49,13 @@ export function getCorrectedAnswer(question) {
  * 判断题干是否命中答案订正表
  */
 export function isCorrectedQuestion(question) {
-  const stem = question.stem || question.question || ''
-  return ANSWER_CORRECTIONS.some((c) => c.match.test(stem))
+  const corr = findCorrection(question)
+  if (!corr) return false
+  // P2-4: 单字母修正答案跳过强制填空，使用选择题路径
+  if (/^[A-Z]$/.test(corr.correctAnswer)) return false
+  // P1-2: 数字修正答案 + 带有选项的选择题跳过强制填空
+  if (/^\d/.test(corr.correctAnswer) && question.question_type === 'choice' && hasOptions(question)) return false
+  return true
 }
 
 /**
