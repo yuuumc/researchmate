@@ -86,6 +86,19 @@ export default async function handler(req, res) {
   }
 
   // ---- Placeholder 替换 + 数据注入 ----
+  // T1-9: plan Agent 占位符映射（v2.1 prompt 用语义化占位符名；diagnosis_result 是对象需序列化）
+  if (action === "plan") {
+    input.cascade_diagnosis = input.diagnosis_result ? JSON.stringify(input.diagnosis_result, null, 2) : ""
+    input.profile_context = [
+      `学生：${input.student_name || ""}`,
+      `目标专业：${input.target_major || ""}`,
+      `能力星级：${JSON.stringify(input.diagnosis_result?.ability_stars ?? null)}`,
+      `考试日期：${input.exam_date || input.diagnosis_result?.exam_date || ""}`,
+      `可用时间：每周 ${input.weekly_hours ?? input.diagnosis_result?.available_hours ?? ""} 小时`,
+    ].join("\n")
+    input.now = new Date().toISOString()
+  }
+
   let systemPrompt = substitute(promptTemplate, input)
 
   // career Agent: 注入院校就业画像
