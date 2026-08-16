@@ -37,6 +37,7 @@ import { safeParseJSON } from '@/utils/validator'
 import { useTraceStore } from '@/stores/trace'
 import { callTool, getToolSchemas } from './tools'
 import { parseIntentResult } from './tools/intentParser'
+import { detectEmotionSignal } from './emotionGuard'
 
 // 意图识别 Prompt（P0-2 D3：可选工具调用 + 解析兜底）
 // 动态注入工具 schema，LLM 可选返回 {intent, tool, tool_args}
@@ -120,6 +121,11 @@ export async function route(userInput, options = {}) {
     return { error: 'empty_input', agent: 'router' }
   }
 
+  // 情绪/危机信号确定性拦截（安全护栏，优先于 LLM 意图识别）
+  // 8/16 复现：情绪输入被意图 LLM 误判为 diagnose -> 路由到 Diagnose，
+  //         导致 tutor/student.md 5.3 安全边界从未触发。命中即强制留在 concept(Tutor)。
+  const emotionSignal = detectEmotionSignal(userInput)
+
   // 初始化 trace store（Pinia 已在 main.js 中注册）
   const traceStore = useTraceStore()
   traceStore.startSession(userInput)
@@ -186,10 +192,13 @@ export async function route(userInput, options = {}) {
       }
     : null
 
-  const intentPromise = recognizeIntentWithTool(userInput).catch((e) => {
-    console.warn('[router] intent recognition failed:', e.message)
-    return { __error: e, intent: 'concept', tool: null, tool_args: null, degraded: 'intent_call_failed' }
-  })
+  // 情绪信号命中 -> 跳过意图识别 LLM，直接锁定 concept（省一次 LLM 调用 + 不可被绕过）
+  const intentPromise = emotionSignal.hit
+    ? Promise.resolve({ intent: 'concept', tool: null, tool_args: null, __emotionGuard: emotionSignal })
+    : recognizeIntentWithTool(userInput).catch((e) => {
+        console.warn('[router] intent recognition failed:', e.message)
+        return { __error: e, intent: 'concept', tool: null, tool_args: null, degraded: 'intent_call_failed' }
+      })
 
   const tutorPromise = tutorAgent(userInput, profile, { onToken: tutorPreCallback, signal, history }).catch((e) => {
     console.warn('[router] tutor prewarm failed:', e.message)
@@ -243,6 +252,16 @@ export async function route(userInput, options = {}) {
   traceStore.updateStep(routerStepIdx, 'done', {
     detail: INTENT_LABELS[intentForNext] || intentForNext
   })
+
+  // 情绪护栏覆盖：无论意图 LLM 怎么判，命中情绪/危机信号一律留在 Tutor
+  if (emotionSignal.hit) {
+    intentForNext = 'concept'
+    try {
+      traceStore.updateStep(routerStepIdx, 'done', {
+        detail: `情绪护栏拦截（${emotionSignal.level === 'crisis' ? '危机' : '情绪'}信号「${emotionSignal.keyword}」-> 留在导师）`
+      })
+    } catch (_) { /* trace best-effort */ }
+  }
 
   // P0-2 D3: 工具调用（INTENT_PROMPT 返回 tool 时执行，带 trace）
   //   三种兜底已在 recognizeIntentWithTool 内完成（parseIntentResult），
