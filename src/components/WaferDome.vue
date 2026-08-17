@@ -110,16 +110,14 @@ function label(topic: string) {
   let s = topic.trim()
   // 去副标题（冒号后部分）
   s = s.split(/[：:]/)[0]
+  // 英文术语/缩写：≤7 字符原样保留（MOSFET/CMOS/Verilog 等）
+  if (/^[A-Z][A-Za-z0-9]+$/.test(s) && s.length <= 7) return s
   // 去填充词「的」
   s = s.replace(/的/g, '')
-  // 去尾部通用词以压缩（基础/原理/理论/性质/电路/效应）
-  if (s.length > 4) {
-    s = s.replace(/(基础|原理|理论|性质|电路|效应)$/, '')
-  }
-  // 超长取前 4 字，不加省略号
-  if (s.length > 4) {
-    s = s.slice(0, 4)
-  }
+  if (s.length <= 4) return s
+  // 去尾部通用词以压缩
+  s = s.replace(/(基础|原理|理论|性质|电路|效应|物理|技术|方法|分析|设计|系统|结构|模型|定律|定理|方程|函数|信号|器件|工艺|材料|图|结)$/, '')
+  if (s.length > 4) s = s.slice(0, 4)
   return s
 }
 
@@ -482,7 +480,7 @@ onUnmounted(() => {
   border: 1px solid;
   border-radius: var(--tile-radius, 10px);
   background: transparent;
-  overflow: hidden;
+  overflow: visible;
   backface-visibility: hidden;
   transition: transform 300ms, box-shadow 0.2s, opacity 0.2s;
   cursor: pointer;
