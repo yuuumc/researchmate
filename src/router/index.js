@@ -124,6 +124,13 @@ const routes = [
     component: () => import('@/views/TutorPhotoView.vue'),
     meta: { title: '拍题讲解', agent: 'tutor' }
   },
+  // F3: 模拟考试
+  {
+    path: '/exam',
+    name: 'exam',
+    component: () => import('@/views/ExamView.vue'),
+    meta: { title: '模拟考试', agent: 'tutor' }
+  },
   // 同伴学习模块：赛事展示范围裁剪（2026-08-16），入口移除、代码保留待赛后迭代启用
   // 直接访问 /peer 重定向回首页；PeerView.vue / stores/peer.js / api peer action 均未删除
   { path: '/peer', alias: '/peers', redirect: '/' },
