@@ -9,7 +9,13 @@
       "chapter": "第1章",
       "source_id": "semi-phys-ch1-p1",
       "description": "半导体定义、导体/绝缘体区别、电阻率温度特性",
-      "keywords": ["半导体", "导体", "绝缘体", "电阻率"]
+      "keywords": [
+        "半导体",
+        "导体",
+        "绝缘体",
+        "电阻率"
+      ],
+      "subject": "半导体物理"
     },
     {
       "id": "energy-band",
@@ -17,7 +23,16 @@
       "chapter": "第1章",
       "source_id": "semi-phys-ch1-p2",
       "description": "价带、导带、禁带、带隙，硅/砷化镓禁带宽度",
-      "keywords": ["能带", "价带", "导带", "禁带", "带隙", "硅", "砷化镓"]
+      "keywords": [
+        "能带",
+        "价带",
+        "导带",
+        "禁带",
+        "带隙",
+        "硅",
+        "砷化镓"
+      ],
+      "subject": "半导体物理"
     },
     {
       "id": "carrier-statistics",
@@ -25,7 +40,12 @@
       "chapter": "第2章",
       "source_id": "semi-phys-ch2-p1",
       "description": "本征半导体、本征载流子浓度公式 n_i",
-      "keywords": ["本征半导体", "本征载流子浓度", "有效状态密度"]
+      "keywords": [
+        "本征半导体",
+        "本征载流子浓度",
+        "有效状态密度"
+      ],
+      "subject": "半导体物理"
     },
     {
       "id": "doped-semiconductor",
@@ -33,7 +53,15 @@
       "chapter": "第2章",
       "source_id": "semi-phys-ch2-p2",
       "description": "n型/p型掺杂、施主/受主、多数载流子",
-      "keywords": ["杂质半导体", "掺杂", "n型", "p型", "施主", "受主"]
+      "keywords": [
+        "杂质半导体",
+        "掺杂",
+        "n型",
+        "p型",
+        "施主",
+        "受主"
+      ],
+      "subject": "半导体物理"
     },
     {
       "id": "fermi-level",
@@ -41,7 +69,12 @@
       "chapter": "第2章",
       "source_id": "semi-phys-ch2-p3",
       "description": "费米能级定义、费米-狄拉克分布、不同半导体费米能级位置",
-      "keywords": ["费米能级", "费米-狄拉克分布", "禁带"]
+      "keywords": [
+        "费米能级",
+        "费米-狄拉克分布",
+        "禁带"
+      ],
+      "subject": "半导体物理"
     },
     {
       "id": "poisson",
@@ -49,7 +82,14 @@
       "chapter": "第3章",
       "source_id": "semi-phys-ch3-p1",
       "description": "泊松方程 d²ψ/dx² = -ρ/ε，电势/电场分布",
-      "keywords": ["泊松方程", "电势", "电荷密度", "介电常数", "电场"]
+      "keywords": [
+        "泊松方程",
+        "电势",
+        "电荷密度",
+        "介电常数",
+        "电场"
+      ],
+      "subject": "半导体物理"
     },
     {
       "id": "drift-diffusion",
@@ -57,7 +97,14 @@
       "chapter": "第3章",
       "source_id": "semi-phys-ch3-p2",
       "description": "漂移电流、扩散电流、爱因斯坦关系",
-      "keywords": ["漂移", "扩散", "电流密度", "迁移率", "爱因斯坦关系"]
+      "keywords": [
+        "漂移",
+        "扩散",
+        "电流密度",
+        "迁移率",
+        "爱因斯坦关系"
+      ],
+      "subject": "半导体物理"
     },
     {
       "id": "continuity",
@@ -65,7 +112,13 @@
       "chapter": "第3章",
       "source_id": "semi-phys-ch3-p3",
       "description": "载流子浓度随时间变化、产生率/复合率、少子寿命",
-      "keywords": ["连续性方程", "产生率", "复合率", "少子寿命"]
+      "keywords": [
+        "连续性方程",
+        "产生率",
+        "复合率",
+        "少子寿命"
+      ],
+      "subject": "半导体物理"
     },
     {
       "id": "pn-junction",
@@ -73,7 +126,15 @@
       "chapter": "第4章",
       "source_id": "semi-phys-ch4-p1",
       "description": "PN结形成、内建电场、耗尽层、C-V特性",
-      "keywords": ["PN结", "内建电场", "扩散", "漂移", "耗尽层", "C-V特性"]
+      "keywords": [
+        "PN结",
+        "内建电场",
+        "扩散",
+        "漂移",
+        "耗尽层",
+        "C-V特性"
+      ],
+      "subject": "半导体物理"
     },
     {
       "id": "pn-band",
@@ -81,7 +142,14 @@
       "chapter": "第4章",
       "source_id": "semi-phys-ch4-p2",
       "description": "费米能级对齐、能带弯曲、内建电势 V_bi",
-      "keywords": ["PN结", "费米能级", "能带", "势垒", "内建电势"]
+      "keywords": [
+        "PN结",
+        "费米能级",
+        "能带",
+        "势垒",
+        "内建电势"
+      ],
+      "subject": "半导体物理"
     },
     {
       "id": "pn-rectification",
@@ -89,7 +157,14 @@
       "chapter": "第4章",
       "source_id": "semi-phys-ch4-p3",
       "description": "单向导电性、肖克利方程、反向饱和电流",
-      "keywords": ["PN结", "整流", "单向导电", "肖克利方程", "反向饱和电流"]
+      "keywords": [
+        "PN结",
+        "整流",
+        "单向导电",
+        "肖克利方程",
+        "反向饱和电流"
+      ],
+      "subject": "半导体物理"
     },
     {
       "id": "mos-structure",
@@ -97,7 +172,17 @@
       "chapter": "第5章",
       "source_id": "semi-phys-ch5-p3",
       "description": "金属-氧化层-半导体结构、积累/耗尽/反型",
-      "keywords": ["MOS", "金属", "氧化层", "半导体", "积累", "耗尽", "反型", "平带"]
+      "keywords": [
+        "MOS",
+        "金属",
+        "氧化层",
+        "半导体",
+        "积累",
+        "耗尽",
+        "反型",
+        "平带"
+      ],
+      "subject": "半导体物理"
     },
     {
       "id": "mosfet-threshold",
@@ -105,7 +190,15 @@
       "chapter": "第5章",
       "source_id": "semi-phys-ch5-p2",
       "description": "强反型判据、阈值电压 V_th 推导",
-      "keywords": ["MOSFET", "阈值电压", "强反型", "表面势", "费米势", "平带电压"]
+      "keywords": [
+        "MOSFET",
+        "阈值电压",
+        "强反型",
+        "表面势",
+        "费米势",
+        "平带电压"
+      ],
+      "subject": "半导体物理"
     },
     {
       "id": "mosfet-basics",
@@ -113,7 +206,16 @@
       "chapter": "第5章",
       "source_id": "semi-phys-ch5-p1",
       "description": "MOSFET 结构、栅源电压、关键参数",
-      "keywords": ["MOSFET", "阈值电压", "表面势", "费米势", "强反型", "栅源电压", "氧化层电容"]
+      "keywords": [
+        "MOSFET",
+        "阈值电压",
+        "表面势",
+        "费米势",
+        "强反型",
+        "栅源电压",
+        "氧化层电容"
+      ],
+      "subject": "半导体物理"
     },
     {
       "id": "cv-characteristic",
@@ -121,7 +223,16 @@
       "chapter": "第5章",
       "source_id": "semi-phys-ch5-p4",
       "description": "低频/高频C-V曲线、平带电容、界面状态分析",
-      "keywords": ["C-V特性", "MOS", "低频", "高频", "反型层", "平带电容", "界面状态"]
+      "keywords": [
+        "C-V特性",
+        "MOS",
+        "低频",
+        "高频",
+        "反型层",
+        "平带电容",
+        "界面状态"
+      ],
+      "subject": "半导体物理"
     },
     {
       "id": "short-channel",
@@ -129,7 +240,16 @@
       "chapter": "第5章",
       "source_id": "semi-phys-ch5-p5",
       "description": "V_th roll-off、DIBL、亚阈值斜率退化",
-      "keywords": ["短沟道效应", "MOSFET", "沟道长度", "V_th roll-off", "DIBL", "漏致势垒降低", "亚阈值斜率"]
+      "keywords": [
+        "短沟道效应",
+        "MOSFET",
+        "沟道长度",
+        "V_th roll-off",
+        "DIBL",
+        "漏致势垒降低",
+        "亚阈值斜率"
+      ],
+      "subject": "半导体物理"
     },
     {
       "id": "bjt",
@@ -137,7 +257,17 @@
       "chapter": "第6章",
       "source_id": "semi-phys-ch6-p1",
       "description": "BJT结构、NPN/PNP、电流放大系数 β",
-      "keywords": ["双极型晶体管", "BJT", "NPN", "PNP", "电流控制", "基极", "集电极", "放大系数"]
+      "keywords": [
+        "双极型晶体管",
+        "BJT",
+        "NPN",
+        "PNP",
+        "电流控制",
+        "基极",
+        "集电极",
+        "放大系数"
+      ],
+      "subject": "半导体物理"
     },
     {
       "id": "heterojunction",
@@ -145,7 +275,17 @@
       "chapter": "第7章",
       "source_id": "semi-phys-ch7-p1",
       "description": "异质结能带偏移、HBT",
-      "keywords": ["异质结", "带隙", "能带", "导带", "价带", "HBT", "发射区", "注入效率"]
+      "keywords": [
+        "异质结",
+        "带隙",
+        "能带",
+        "导带",
+        "价带",
+        "HBT",
+        "发射区",
+        "注入效率"
+      ],
+      "subject": "半导体物理"
     },
     {
       "id": "photoelectric",
@@ -153,7 +293,15 @@
       "chapter": "第8章",
       "source_id": "semi-phys-ch8-p1",
       "description": "光吸收、光生载流子、光电导、太阳能电池",
-      "keywords": ["光电效应", "光吸收", "光生载流子", "光电导", "吸收系数", "太阳能电池"]
+      "keywords": [
+        "光电效应",
+        "光吸收",
+        "光生载流子",
+        "光电导",
+        "吸收系数",
+        "太阳能电池"
+      ],
+      "subject": "半导体物理"
     },
     {
       "id": "fabrication",
@@ -161,30 +309,124 @@
       "chapter": "第9章",
       "source_id": "semi-phys-ch9-p1",
       "description": "晶体生长、光刻、刻蚀、掺杂、CMOS工艺",
-      "keywords": ["半导体制造", "晶体生长", "氧化", "光刻", "刻蚀", "掺杂", "CMOS", "摩尔定律"]
+      "keywords": [
+        "半导体制造",
+        "晶体生长",
+        "氧化",
+        "光刻",
+        "刻蚀",
+        "掺杂",
+        "CMOS",
+        "摩尔定律"
+      ],
+      "subject": "半导体物理"
     }
   ],
   "edges": [
-    { "from": "semi-basics", "to": "energy-band", "reason": "能带理论建立在半导体基本概念之上" },
-    { "from": "energy-band", "to": "carrier-statistics", "reason": "载流子统计需要能带概念" },
-    { "from": "energy-band", "to": "doped-semiconductor", "reason": "杂质半导体改变能带结构" },
-    { "from": "carrier-statistics", "to": "fermi-level", "reason": "费米能级描述载流子分布" },
-    { "from": "doped-semiconductor", "to": "fermi-level", "reason": "掺杂影响费米能级位置" },
-    { "from": "fermi-level", "to": "poisson", "reason": "泊松方程需要电势/电荷分布" },
-    { "from": "poisson", "to": "drift-diffusion", "reason": "电场驱动漂移电流" },
-    { "from": "drift-diffusion", "to": "continuity", "reason": "连续性方程描述载流子输运" },
-    { "from": "continuity", "to": "pn-junction", "reason": "PN结分析需要连续性方程" },
-    { "from": "fermi-level", "to": "pn-junction", "reason": "PN结平衡需费米能级对齐" },
-    { "from": "pn-junction", "to": "pn-band", "reason": "PN结能带是PN结的能带分析" },
-    { "from": "pn-band", "to": "pn-rectification", "reason": "整流特性源于能带势垒" },
-    { "from": "pn-junction", "to": "mos-structure", "reason": "MOS结构含半导体-氧化层界面" },
-    { "from": "mos-structure", "to": "mosfet-basics", "reason": "MOSFET基于MOS结构" },
-    { "from": "mosfet-basics", "to": "mosfet-threshold", "reason": "阈值电压是MOSFET核心参数" },
-    { "from": "mosfet-threshold", "to": "cv-characteristic", "reason": "C-V特性分析MOSFET界面" },
-    { "from": "mosfet-threshold", "to": "short-channel", "reason": "短沟道效应影响阈值电压" },
-    { "from": "pn-junction", "to": "bjt", "reason": "BJT由两个PN结构成" },
-    { "from": "bjt", "to": "heterojunction", "reason": "HBT是BJT的异质结升级" },
-    { "from": "pn-junction", "to": "photoelectric", "reason": "光电效应涉及PN结光生伏特" },
-    { "from": "mosfet-basics", "to": "fabrication", "reason": "CMOS工艺制造MOSFET" }
+    {
+      "from": "semi-basics",
+      "to": "energy-band",
+      "reason": "能带理论建立在半导体基本概念之上"
+    },
+    {
+      "from": "energy-band",
+      "to": "carrier-statistics",
+      "reason": "载流子统计需要能带概念"
+    },
+    {
+      "from": "energy-band",
+      "to": "doped-semiconductor",
+      "reason": "杂质半导体改变能带结构"
+    },
+    {
+      "from": "carrier-statistics",
+      "to": "fermi-level",
+      "reason": "费米能级描述载流子分布"
+    },
+    {
+      "from": "doped-semiconductor",
+      "to": "fermi-level",
+      "reason": "掺杂影响费米能级位置"
+    },
+    {
+      "from": "fermi-level",
+      "to": "poisson",
+      "reason": "泊松方程需要电势/电荷分布"
+    },
+    {
+      "from": "poisson",
+      "to": "drift-diffusion",
+      "reason": "电场驱动漂移电流"
+    },
+    {
+      "from": "drift-diffusion",
+      "to": "continuity",
+      "reason": "连续性方程描述载流子输运"
+    },
+    {
+      "from": "continuity",
+      "to": "pn-junction",
+      "reason": "PN结分析需要连续性方程"
+    },
+    {
+      "from": "fermi-level",
+      "to": "pn-junction",
+      "reason": "PN结平衡需费米能级对齐"
+    },
+    {
+      "from": "pn-junction",
+      "to": "pn-band",
+      "reason": "PN结能带是PN结的能带分析"
+    },
+    {
+      "from": "pn-band",
+      "to": "pn-rectification",
+      "reason": "整流特性源于能带势垒"
+    },
+    {
+      "from": "pn-junction",
+      "to": "mos-structure",
+      "reason": "MOS结构含半导体-氧化层界面"
+    },
+    {
+      "from": "mos-structure",
+      "to": "mosfet-basics",
+      "reason": "MOSFET基于MOS结构"
+    },
+    {
+      "from": "mosfet-basics",
+      "to": "mosfet-threshold",
+      "reason": "阈值电压是MOSFET核心参数"
+    },
+    {
+      "from": "mosfet-threshold",
+      "to": "cv-characteristic",
+      "reason": "C-V特性分析MOSFET界面"
+    },
+    {
+      "from": "mosfet-threshold",
+      "to": "short-channel",
+      "reason": "短沟道效应影响阈值电压"
+    },
+    {
+      "from": "pn-junction",
+      "to": "bjt",
+      "reason": "BJT由两个PN结构成"
+    },
+    {
+      "from": "bjt",
+      "to": "heterojunction",
+      "reason": "HBT是BJT的异质结升级"
+    },
+    {
+      "from": "pn-junction",
+      "to": "photoelectric",
+      "reason": "光电效应涉及PN结光生伏特"
+    },
+    {
+      "from": "mosfet-basics",
+      "to": "fabrication",
+      "reason": "CMOS工艺制造MOSFET"
+    }
   ]
 }

@@ -1,8 +1,11 @@
 <script setup>
 import { computed } from 'vue'
 import { useProfileStore } from '@/stores/profile'
+import { useMasteryData } from '@/composables/useMasteryData'
 
 const profileStore = useProfileStore()
+// A1: 统一学情数据层 — 薄弱/已掌握计数与主页/诊断页同源同阈值
+const mastery = useMasteryData()
 
 // 能力星级列表（按星级升序，薄弱的在前）
 const abilityList = computed(() => {
@@ -11,6 +14,12 @@ const abilityList = computed(() => {
     .map(([topic, s]) => ({ topic, stars: s }))
     .sort((a, b) => a.stars - b.stars)
 })
+
+// A1: 薄弱知识点/已掌握 — 统一数据层（诊断唯一源 + ability_stars >=4 星）
+const weakTopics = computed(() => mastery.weakPoints.value)
+const masteredTopics = computed(() => mastery.masteredSkills.value)
+const weakCount = computed(() => weakTopics.value.length)
+const masteredCount = computed(() => masteredTopics.value.length)
 
 const stageLabel = computed(() => {
   const map = {
@@ -92,15 +101,15 @@ function renderStars(n) {
         </div>
       </div>
 
-      <!-- 薄弱知识点 chips -->
+      <!-- 薄弱知识点 chips（A1: 统一数据层 — 诊断唯一源） -->
       <div class="topics-section">
         <div class="section-title">
           薄弱知识点
-          <span class="count">{{ profileStore.weakCount }}</span>
+          <span class="count">{{ weakCount }}</span>
         </div>
-        <div v-if="profileStore.weakCount > 0" class="chip-list">
+        <div v-if="weakCount > 0" class="chip-list">
           <span
-            v-for="t in profileStore.profile.weak_topics"
+            v-for="t in weakTopics"
             :key="`w-${t}`"
             class="chip chip-weak"
           >
@@ -110,15 +119,15 @@ function renderStars(n) {
         <div v-else class="empty-hint">暂无</div>
       </div>
 
-      <!-- 已掌握 chips -->
+      <!-- 已掌握 chips（A1: 统一数据层 — ability_stars >=4 星） -->
       <div class="topics-section">
         <div class="section-title">
           已掌握
-          <span class="count">{{ profileStore.masteredCount }}</span>
+          <span class="count">{{ masteredCount }}</span>
         </div>
-        <div v-if="profileStore.masteredCount > 0" class="chip-list">
+        <div v-if="masteredCount > 0" class="chip-list">
           <span
-            v-for="t in profileStore.profile.mastered_topics"
+            v-for="t in masteredTopics"
             :key="`m-${t}`"
             class="chip chip-mastered"
           >

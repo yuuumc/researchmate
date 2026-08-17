@@ -39,6 +39,9 @@ const { input: weakInput, add: addWeak, remove: removeWeak } = useTagInput(form,
 
 async function submit() {
   if (!form.value.student_name || !form.value.target_school) return
+  // A1: 提交时重新读取最新学情数据（避免 form 初始化后 mastery 更新不同步）
+  form.value.mastered_skills = [...mastery.masteredSkills.value]
+  form.value.weak_points = [...mastery.weakPoints.value]
   await careerStore.runCareer({ ...form.value })
   // Bug1 热修：移除就业技能缺口回写画像薄弱点（原 P1-3 写回）
   // 就业职业技能标签（运放/Verilog/UVM…）不应进入诊断薄弱点池，否则练习题按职业技能抽题

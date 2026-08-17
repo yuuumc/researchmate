@@ -297,12 +297,32 @@ export function getPrerequisiteChain(graph, nodeId, visited = new Set()) {
 export function getNodeMastery(node, profile) {
   const topic = node.name
 
-  // 优先检查 ability_stars（v1 正式版认知模型）
+  // 优先检查 ability_stars（v1 正式版认知模型）—— 精确到节点名
   if (profile.ability_stars && profile.ability_stars[topic] != null) {
     const stars = profile.ability_stars[topic]
     if (stars >= 4) return { status: 'mastered', stars }
     if (stars <= 2) return { status: 'weak', stars }
     return { status: 'learning', stars }
+  }
+
+  // P2-1 修复：科目级 fallback —— 向导自评按科目打分（如"半导体物理"=3星），
+  // 图谱节点是科目下的具体知识点（如"半导体基础"），名称不匹配导致全部 unknown。
+  // 当节点有 subject 字段时，用科目的 ability_stars / self_assessment 做降级判定。
+  const subject = node.subject
+  if (subject) {
+    if (profile.ability_stars && profile.ability_stars[subject] != null) {
+      const stars = profile.ability_stars[subject]
+      if (stars >= 4) return { status: 'mastered', stars }
+      if (stars <= 2) return { status: 'weak', stars }
+      return { status: 'learning', stars }
+    }
+    // self_assessment 格式与 ability_stars 一致（{科目: 1-5星}）
+    if (profile.self_assessment && profile.self_assessment[subject] != null) {
+      const stars = profile.self_assessment[subject]
+      if (stars >= 4) return { status: 'mastered', stars }
+      if (stars <= 2) return { status: 'weak', stars }
+      return { status: 'learning', stars }
+    }
   }
 
   // 兼容旧字段 mastered_topics / weak_topics
