@@ -55,6 +55,24 @@ function toolName(call) {
   return call.name || call.tool || call.tool_name || JSON.stringify(call)
 }
 
+
+const ROLE_ICONS = {
+  route: '<path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>',
+  activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+  message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  clipboard: '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/>',
+  'check-square': '<polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+  briefcase: '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>',
+  search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>',
+  users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  cpu: '<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/>'
+}
+
+function roleIconSvg(iconName) {
+  const paths = ROLE_ICONS[iconName] || ROLE_ICONS.cpu
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`
+}
+
 onMounted(load)
 </script>
 
@@ -69,13 +87,13 @@ onMounted(load)
         </p>
       </div>
       <button class="arch-refresh" :disabled="loading" @click="load">
-        <span :class="{ 'arch-refresh__spin': loading }">⟳</span> {{ loading ? '加载中' : '刷新' }}
+        <svg :class="{ 'arch-refresh__spin': loading }" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg> {{ loading ? '加载中' : '刷新' }}
       </button>
     </div>
 
     <!-- 错误态 -->
     <div v-if="error" class="arch-error">
-      <span class="arch-error__icon">⚠</span>
+      <svg class="arch-error__icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
       <span>看板数据加载失败：{{ error }}。请稍后点击「刷新」重试。</span>
     </div>
 
@@ -113,7 +131,7 @@ onMounted(load)
           :style="{ '--agent-color': card.meta.color }"
         >
           <div class="agent-card__head">
-            <span class="agent-card__icon">{{ card.meta.icon }}</span>
+            <span class="agent-card__icon" v-html="roleIconSvg(card.meta.icon)"></span>
             <div class="agent-card__name">
               <div class="agent-card__label">{{ card.meta.label }}</div>
               <div class="agent-card__role">{{ card.role }}</div>
@@ -142,9 +160,7 @@ onMounted(load)
           :class="statusMeta(trace.status).className"
         >
           <div class="trace-item__main" @click="toggleExpand(trace.id || i)">
-            <span class="trace-item__icon" :style="{ color: roleMeta(trace.agent_role).color }">
-              {{ roleMeta(trace.agent_role).icon }}
-            </span>
+            <span class="trace-item__icon" :style="{ color: roleMeta(trace.agent_role).color }" v-html="roleIconSvg(roleMeta(trace.agent_role).icon)"></span>
             <div class="trace-item__info">
               <div class="trace-item__line1">
                 <span class="trace-item__role">{{ roleMeta(trace.agent_role).label }}</span>
@@ -175,7 +191,7 @@ onMounted(load)
                   target="_blank"
                   rel="noopener noreferrer"
                   class="detail-link"
-                >🔗 {{ link }}</a>
+                ><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 2px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> {{ link }}</a>
               </div>
             </div>
             <div v-if="trace.tool_calls_trace.length" class="detail-block">
@@ -246,6 +262,7 @@ onMounted(load)
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* === 错误 / 空态 === */
+.arch-error__icon { flex-shrink: 0; }
 .arch-error {
   display: flex;
   align-items: center;
@@ -320,7 +337,7 @@ onMounted(load)
   gap: 10px;
   margin-bottom: 8px;
 }
-.agent-card__icon { font-size: 22px; }
+.agent-card__icon { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; color: var(--agent-color, #6b7280); } .agent-card__icon svg { width: 20px; height: 20px; }
 .agent-card__label {
   font-size: 14px;
   font-weight: 700;
@@ -383,7 +400,7 @@ onMounted(load)
   transition: background 0.15s;
 }
 .trace-item__main:hover { background: rgba(0, 212, 170, 0.03); }
-.trace-item__icon { font-size: 18px; flex-shrink: 0; }
+.trace-item__icon { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; flex-shrink: 0; } .trace-item__icon svg { width: 18px; height: 18px; }
 .trace-item__info { flex: 1; min-width: 0; }
 .trace-item__line1 {
   display: flex;

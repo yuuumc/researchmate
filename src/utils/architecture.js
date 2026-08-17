@@ -5,17 +5,17 @@
 
 // Agent 角色元信息（展示用；未登记角色走 fallback）
 export const AGENT_ROLE_META = {
-  router:   { label: '意图路由',   icon: '🔀', color: '#8b5cf6', desc: '识别用户意图，分发到对应 Agent' },
-  diagnose: { label: '诊断 Agent', icon: '🎯', color: '#f59e0b', desc: '混合诊断出题与学情评估' },
-  tutor:    { label: '导师 Agent', icon: '✨', color: '#00d4aa', desc: '智能对话与答疑辅导' },
-  plan:     { label: '规划 Agent', icon: '📅', color: '#3b82f6', desc: '生成个性化复习计划' },
-  practice: { label: '练习 Agent', icon: '✏️', color: '#ec4899', desc: '薄弱点抽题与判分' },
-  career:   { label: '就业 Agent', icon: '💼', color: '#10b981', desc: '就业方向指导' },
-  research: { label: '科研 Agent', icon: '🔬', color: '#6366f1', desc: '科研探索与工具调用' },
-  peer:     { label: '同伴 Agent', icon: '👥', color: '#14b8a6', desc: '同伴学习协作' }
+  router:   { label: '意图路由',   icon: 'route', color: '#8b5cf6', desc: '识别用户意图，分发到对应 Agent' },
+  diagnose: { label: '诊断 Agent', icon: 'activity', color: '#f59e0b', desc: '混合诊断出题与学情评估' },
+  tutor:    { label: '导师 Agent', icon: 'message', color: '#00d4aa', desc: '智能对话与答疑辅导' },
+  plan:     { label: '规划 Agent', icon: 'clipboard', color: '#3b82f6', desc: '生成个性化复习计划' },
+  practice: { label: '练习 Agent', icon: 'check-square', color: '#ec4899', desc: '薄弱点抽题与判分' },
+  career:   { label: '就业 Agent', icon: 'briefcase', color: '#10b981', desc: '就业方向指导' },
+  research: { label: '科研 Agent', icon: 'search', color: '#6366f1', desc: '科研探索与工具调用' },
+  peer:     { label: '同伴 Agent', icon: 'users', color: '#14b8a6', desc: '同伴学习协作' }
 }
 
-const FALLBACK_META = { label: '未知 Agent', icon: '⚙️', color: '#6b7280', desc: '未登记的角色' }
+const FALLBACK_META = { label: '未知 Agent', icon: 'cpu', color: '#6b7280', desc: '未登记的角色' }
 
 // 取角色展示元信息；未知角色保留原角色名
 export function roleMeta(role) {
