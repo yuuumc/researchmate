@@ -1,5 +1,6 @@
 // ============================================================
 // 共享判分工具（T0-1 题库答案硬伤 + T0-2 填空判定宽松化）
+// B3: P2-3 容差裁定 — max(绝对容差, 相对容差 × |正确答案|)
 // ============================================================
 // practice.js / diagnosisSession.js 共用，确保诊断与练习判分一致
 // ============================================================
@@ -13,6 +14,13 @@ export const ANSWER_CORRECTIONS = [
   // Bug4: Wp/Wn — P1-2 收紧为仅 Wp/Wn 记号（移除宽长比/沟道宽度比/μnμp 等宽泛关键词）
   { match: /Wp\s*\/\s*Wn/, correctAnswer: '2.5' },
 ]
+
+// P2-3: 容差配置
+// 绝对容差 0.5：对小数值提供合理容差（如正确答案 2.5 时 3.4 判错）
+// 相对容差 5%：对大数值提供比例容差（如正确答案 24.2 时 25.3 判对）
+// 公式：|user - correct| ≤ max(ABS_TOLERANCE, REL_TOLERANCE × |correct|)
+export const ABS_TOLERANCE = 0.5
+export const REL_TOLERANCE = 0.05
 
 // P1-2: 辅助函数 — 判断题目是否有选项（合法选择题）
 function hasOptions(question) {
@@ -71,7 +79,17 @@ export function normalizeFillText(s) {
 }
 
 /**
+ * P2-3: 计算数值容差
+ * @param {number} correct - 正确答案数值
+ * @returns {number} 容差值
+ */
+export function computeTolerance(correct) {
+  return Math.max(ABS_TOLERANCE, REL_TOLERANCE * Math.abs(correct))
+}
+
+/**
  * 客观题判分（选择题 + 填空题）
+ * P2-3: 数值容差改为 max(绝对容差, 相对容差 × |正确答案|)
  */
 export function gradeObjective(question, userAnswer) {
   if (!userAnswer || !question.correct_answer) return false
@@ -79,9 +97,19 @@ export function gradeObjective(question, userAnswer) {
   const correct = getCorrectedAnswer(question)
   const user = String(userAnswer).trim()
 
-  // Bug4 热修：命中答案订正的题目一律走填空判定，避免 DB 题型/答案配置错配
-  // （如 Wp/Wn 填空题被配成 choice+答案A，走字母比对会把 2.5 判错）
+  // Bug4 热修：命中答案订正的题目一律走填空判定
   if (!isCorrectedQuestion(question) && question.question_type === 'choice') {
+    // Bug4 订正：选择题用户输入数字时，尝试用订正答案的数值容差判定
+    const corr = findCorrection(question)
+    if (corr && /^\d/.test(corr.correctAnswer) && /^\d/.test(user)) {
+      const numC = parseFloat(corr.correctAnswer)
+      const numU = parseFloat(user)
+      if (!isNaN(numC) && !isNaN(numU)) {
+        const tolerance = computeTolerance(numC)
+        if (Math.abs(numC - numU) <= tolerance + 1e-9) return true
+      }
+      return false
+    }
     const norm = (s) => s.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 1)
     return norm(correct) === norm(user)
   }
@@ -93,8 +121,10 @@ export function gradeObjective(question, userAnswer) {
   const numC = parseFloat(nc.replace(/[^0-9.\-]/g, ''))
   const numU = parseFloat(nu.replace(/[^0-9.\-]/g, ''))
   if (!isNaN(numC) && !isNaN(numU)) {
-    if (Math.abs(numC - numU) <= 1) return true
-    if (Math.round(numC) === Math.round(numU)) return true
+    // P2-3: 统一容差裁定 — max(绝对容差, 相对容差 × |正确答案|)
+    // epsilon 1e-9 消除浮点精度问题（如 0.05*24.2 vs 25.41-24.2）
+    const tolerance = computeTolerance(numC)
+    if (Math.abs(numC - numU) <= tolerance + 1e-9) return true
   }
   return false
 }

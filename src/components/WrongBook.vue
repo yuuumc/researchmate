@@ -40,6 +40,9 @@ function handleRemove(item) {
 function practiceInChat(topic) {
   router.push({ path: '/chat', query: { q: `帮我补强「${topic}」` } })
 }
+function practiceVariant(topic) {
+  router.push('/variant/' + encodeURIComponent(topic))
+}
 </script>
 
 <template>
@@ -77,6 +80,13 @@ function practiceInChat(topic) {
             @click="practiceInChat(item.topic)"
           >
             去补强
+          </button>
+          <button
+            v-if="!item.resolved"
+            class="wb-btn"
+            @click="practiceVariant(item.topic)"
+          >
+            变式练习
           </button>
           <button
             v-if="!item.resolved"

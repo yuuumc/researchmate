@@ -96,6 +96,13 @@ const routes = [
     component: () => import('@/views/DerivationView.vue'),
     meta: { title: '白板推导', agent: 'tutor' }
   },
+  // B3: 变式题练习
+  {
+    path: '/variant/:topic',
+    name: 'variant-practice',
+    component: () => import('@/views/VariantPracticeView.vue'),
+    meta: { title: '变式练习', requireAuth: true }
+  },
   // B5: 多 Agent 架构看板（数据来自 agent_traces 真实落库，只读展示）
   {
     path: '/architecture',
