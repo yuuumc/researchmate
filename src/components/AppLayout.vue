@@ -66,6 +66,8 @@ const toolNav = [
   { path: '/derivation', label: '白板推导', icon: 'edit' },
   // B5: 多 Agent 架构看板入口
   { path: '/architecture', label: '架构看板', icon: 'chip' },
+  // B4: 知识图谱可视化入口
+  { path: '/knowledge-graph', label: '知识图谱', icon: 'graph' },
   // { path: '/peer', label: '同伴学习', icon: 'users' },  // 赛事展示范围裁剪，已移除
   // T0-3: admission 已移除
 ]
@@ -235,6 +237,7 @@ onBeforeUnmount(() => {
           <svg v-else-if="item.icon === 'users'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           <svg v-else-if="item.icon === 'school'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1 2.7 3 6 3s6-2 6-3v-5"/></svg>
           <svg v-else-if="item.icon === 'chip'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/></svg>
+          <svg v-else-if="item.icon === 'graph'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="12" cy="18" r="3"/><path d="M8.5 7.5L11 15.5M15.5 7.5L13 15.5M8 6h8"/></svg>
           <span class="yx-sidebar__item-text">{{ item.label }}</span>
         </RouterLink>
       </nav>

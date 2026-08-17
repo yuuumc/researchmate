@@ -110,6 +110,13 @@ const routes = [
     component: () => import('@/views/ArchitectureView.vue'),
     meta: { title: '架构看板', agent: 'cascade' }
   },
+  // B4: 知识图谱可视化
+  {
+    path: '/knowledge-graph',
+    name: 'knowledge-graph',
+    component: () => import('@/views/KnowledgeGraphView.vue'),
+    meta: { title: '知识图谱', agent: 'tutor' }
+  },
   // 同伴学习模块：赛事展示范围裁剪（2026-08-16），入口移除、代码保留待赛后迭代启用
   // 直接访问 /peer 重定向回首页；PeerView.vue / stores/peer.js / api peer action 均未删除
   { path: '/peer', alias: '/peers', redirect: '/' },
