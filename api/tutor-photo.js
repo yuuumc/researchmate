@@ -132,6 +132,22 @@ async function handleRecognize(req, res, body) {
     if (!r.ok) {
       const errText = await r.text()
       console.error('[api/tutor-photo] recognize upstream error:', r.status, errText.slice(0, 300))
+      // 400 = 图片无效/太小/格式不支持 → 提示重拍（GWT #4: 不卡死、画像零写入）
+      if (r.status === 400 || r.status === 422) {
+        return res.status(200).json({
+          is_valid: false,
+          message: '图片无法识别，请重新拍摄清晰的考题照片',
+          knowledge_point: '',
+          question_type: '',
+          question_stem: '',
+          correct_answer: '',
+        })
+      }
+      // 429 限流 → 提示稍后重试
+      if (r.status === 429) {
+        return res.status(429).json({ error: 'rate_limited', message: '请求过于频繁，请稍后重试' })
+      }
+      // 5xx → 上游服务异常
       return res.status(502).json({ error: 'upstream_error', status: r.status })
     }
 
