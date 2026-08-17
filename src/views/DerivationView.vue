@@ -32,7 +32,7 @@ const KNOWLEDGE_PRESETS = [
 
 const knowledgePoints = computed(() => {
   // 从 mastery 获取薄弱知识点，合并预设
-  const weak = mastery.weakPoints || []
+  const weak = mastery.weakPoints.value || []
   const weakNames = weak.map(w => w.name || w.topic || w).filter(Boolean)
   const all = [...new Set([...weakNames, ...KNOWLEDGE_PRESETS])]
   return all
