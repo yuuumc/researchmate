@@ -21,9 +21,9 @@ const mastery = useMasteryData()
 
 // ===== DomeGallery 参数（对齐 vue-bits demo 口径）=====
 const SEGMENTS = 30            // segments 网格列数（demo 量级，晶粒大而密）
-const MAX_VERT_DEG = 12        // 垂直旋转钳制（保留上一轮已对的 12°）
+const MAX_VERT_DEG = 9         // 垂直旋转钳制（对齐演示版 9°）
 const DRAG_SENS = 20           // dragSensitivity
-const DRAG_DAMP = 2            // dragDampening
+const DRAG_DAMP = 3.2          // dragDampening（对齐演示版 3.2，0-5 量纲）
 const FIT = 0.8                // 充盈度（demo 口径）
 const FIT_BASIS = 'width'      // fitBasis：按容器宽度算半径，让球左右近满幅
 const MIN_RADIUS = 400         // minRadius 调大，小球也饱满（demo 口径）
@@ -107,7 +107,20 @@ function tileColors(type: string) {
 
 function label(topic: string) {
   if (!topic) return ''
-  return topic.length > 5 ? topic.slice(0, 4) + '…' : topic
+  let s = topic.trim()
+  // 去副标题（冒号后部分）
+  s = s.split(/[：:]/)[0]
+  // 去填充词「的」
+  s = s.replace(/的/g, '')
+  // 去尾部通用词以压缩（基础/原理/理论/性质/电路/效应）
+  if (s.length > 4) {
+    s = s.replace(/(基础|原理|理论|性质|电路|效应)$/, '')
+  }
+  // 超长取前 4 字，不加省略号
+  if (s.length > 4) {
+    s = s.slice(0, 4)
+  }
+  return s
 }
 
 function masteryText(type: string) {
@@ -206,7 +219,7 @@ function startInertia(vx: number, vy: number) {
   const MAX_V = 1.4
   let vX = clamp(vx, -MAX_V, MAX_V) * 80
   let vY = clamp(vy, -MAX_V, MAX_V) * 80
-  const d = clamp(DRAG_DAMP, 0, 1)
+  const d = clamp(DRAG_DAMP / 5, 0, 1)
   const friction = 0.94 + 0.055 * d
   const stopThreshold = 0.015 - 0.01 * d
   const maxFrames = Math.round(90 + 270 * d)
@@ -465,7 +478,7 @@ onUnmounted(() => {
 }
 .item__tile {
   position: absolute;
-  inset: 5px;
+  inset: 2px;
   border: 1px solid;
   border-radius: var(--tile-radius, 10px);
   background: transparent;
@@ -561,7 +574,7 @@ onUnmounted(() => {
   position: absolute; bottom: 8px; left: 50%;
   transform: translateX(-50%);
   font-family: var(--font-mono, monospace);
-  font-size: 9px; color: var(--text-muted, rgba(140,160,200,0.3));
+  font-size: 9px; color: var(--text-secondary, #64748b);
   letter-spacing: 1.5px; pointer-events: none;
 }
 
