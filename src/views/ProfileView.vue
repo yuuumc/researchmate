@@ -8,18 +8,12 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProfileStore } from '@/stores/profile'
 import { isSupabaseConfigured } from '@/services/supabase'
-import KnowledgeGraph from '@/components/KnowledgeGraph.vue'
-import { getKnowledgeStructure } from '@/utils/diagnosisInput'
+import WaferDome from '@/components/WaferDome.vue'
+import AbilityWaveform from '@/components/AbilityWaveform.vue'
 
 const router = useRouter()
 const profileStore = useProfileStore()
 const profile = computed(() => profileStore.profile)
-
-// #9: 知识图谱真实知识点标签
-const knowledgeLabels = computed(() => {
-  const structure = getKnowledgeStructure()
-  return structure.slice(0, 8)
-})
 
 // 基础信息
 const avatarInitial = computed(() => {
@@ -77,8 +71,6 @@ function goEdit() {
 
 <template>
   <div class="profile-view">
-    <KnowledgeGraph :node-count="14" :flow-dots="true" :labels="knowledgeLabels" />
-
     <div class="profile-content">
       <!-- 页头 -->
       <div class="page-header">
@@ -132,6 +124,9 @@ function goEdit() {
             </div>
           </div>
 
+          <!-- 能力波形 -->
+          <AbilityWaveform />
+
           <!-- AI 评价卡 -->
           <div class="ai-card">
             <div class="ai-header">
@@ -160,6 +155,9 @@ function goEdit() {
 
         <!-- 右列：知识图谱 + 时间线 -->
         <div class="profile-right">
+          <!-- 知识晶圆穹顶 -->
+          <WaferDome />
+
           <!-- 知识路径 -->
           <div class="path-card">
             <h3 class="card-title">知识图谱路径</h3>

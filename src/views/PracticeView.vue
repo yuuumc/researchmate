@@ -5,6 +5,7 @@ import { useProfileStore } from '@/stores/profile'
 import { useMasteryData } from '@/composables/useMasteryData'
 import { useWrongBookStore } from '@/stores/wrongBook'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
+import { useRoute } from 'vue-router'
 import { SEED_QUESTIONS } from '@/data/seedDemo'
 import { useAuthStore } from '@/stores/auth'
 import AiGeneratedBadge from '@/components/AiGeneratedBadge.vue'
@@ -14,6 +15,7 @@ const profileStore = useProfileStore()
 const wbStore = useWrongBookStore()
 // A1: 薄弱点抽题源直读统一学情数据层（诊断唯一源），杜绝职业技能标签污染（Bug1）
 const mastery = useMasteryData()
+const route = useRoute()
 
 // 模式切换：llm | db | retry
 const activeTab = ref('db')
@@ -33,7 +35,12 @@ const questionTypes = ['选择题', '填空题', '简答题', '计算题']
 const weakPoints = computed(() => mastery.weakPoints.value)
 
 onMounted(async () => {
-  if (!form.value.knowledge_point && weakPoints.value.length > 0) {
+  // 晶圆穹顶点击跳转：?topic=xxx 预填知识点并切到 LLM 模式
+  const topicParam = route.query.topic
+  if (topicParam && typeof topicParam === 'string') {
+    form.value.knowledge_point = topicParam
+    activeTab.value = 'llm'
+  } else if (!form.value.knowledge_point && weakPoints.value.length > 0) {
     const first = weakPoints.value[0]
     form.value.knowledge_point = typeof first === 'string' ? first : (first.knowledge_point || first.topic || '')
   }
