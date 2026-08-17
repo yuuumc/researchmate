@@ -24,6 +24,7 @@ const SEGMENTS = 30            // segments 网格列数（demo 量级，晶粒�
 const MAX_VERT_DEG = 9         // 垂直旋转钳制（对齐演示版 9°）
 const DRAG_SENS = 20           // dragSensitivity
 const DRAG_DAMP = 3.2          // dragDampening（对齐演示版 3.2，0-5 量纲）
+const CLICK_SLOP_PX = 5        // 点击/拖拽判定阈值：位移 < 5px 视为静止点击
 const FIT = 0.8                // 充盈度（demo 口径）
 const FIT_BASIS = 'width'      // fitBasis：按容器宽度算半径，让球左右近满幅
 const MIN_RADIUS = 400         // minRadius 调大，小球也饱满（demo 口径）
@@ -108,17 +109,30 @@ function tileColors(type: string) {
 function label(topic: string) {
   if (!topic) return ''
   let s = topic.trim()
-  // 去副标题（冒号后部分）
-  s = s.split(/[：:]/)[0]
-  // 英文术语/缩写：≤7 字符原样保留（MOSFET/CMOS/Verilog 等）
-  if (/^[A-Z][A-Za-z0-9]+$/.test(s) && s.length <= 7) return s
+  // 纯英文术语整段保留（允许空格/连字符/斜杠等）：MOSFET I-V / BJT / CMOS / Bandgap
+  if (/^[A-Za-z][A-Za-z0-9\s\-/\\.+#]*$/.test(s)) {
+    if (s.length <= 14) return s
+    // 过长英文：空格/连字符分段后取最长 token
+    const toks = s.split(/[\s\-/]+/).filter(Boolean)
+    return toks.reduce((a, b) => (b.length > a.length ? b : a), toks[0] || s.slice(0, 10))
+  }
+  // 去副标题（冒号后部分）：载流子输运：漂移与扩散 → 载流子输运
+  s = s.split(/[：:]/)[0].trim()
   // 去填充词「的」
   s = s.replace(/的/g, '')
-  if (s.length <= 4) return s
-  // 去尾部通用词以压缩
-  s = s.replace(/(基础|原理|理论|性质|电路|效应|物理|技术|方法|分析|设计|系统|结构|模型|定律|定理|方程|函数|信号|器件|工艺|材料|图|结)$/, '')
-  if (s.length > 4) s = s.slice(0, 4)
-  return s
+  // 5 字以内整体保留（载流子输运）
+  if (s.length <= 5) return s
+  // 并列结构取首段：PN结能带图与内建电场 → PN结能带图；BJT 电流增益与频率特性 → BJT 电流增益
+  s = s.split(/[与和及、]/)[0].trim()
+  if (s.length <= 8) return s
+  // 去尾部通用词以压缩（补「输运」「特性」「图」「结」等）
+  const stripped = s.replace(/(基础|原理|理论|性质|电路|效应|物理|技术|方法|分析|设计|系统|结构|模型|定律|定理|方程|函数|信号|器件|工艺|材料|特性|输运|图|结)$/, '')
+  if (stripped.length >= 2) s = stripped
+  if (s.length <= 8) return s
+  // 中英混合：保留英文 token + 中文核心（最多 4 字）
+  const m = s.match(/^([A-Za-z][A-Za-z0-9]*)\s*(.+)$/)
+  if (m) return m[1] + ' ' + m[2].replace(/\s+/g, '').slice(0, 4)
+  return s.slice(0, 8)
 }
 
 function masteryText(type: string) {
@@ -126,9 +140,10 @@ function masteryText(type: string) {
 }
 
 function onTileClick(tile: { topic: string }) {
+  // 仅键盘路径（Enter/Space）走这里；鼠标点击经 pointer capture 重定向到 main，
+  // 由 onPointerUp 的位移阈值 + elementFromPoint 命中处理，不会重复触发。
   if (draggingRef) return
-  if (movedRef) return
-  if (performance.now() - lastDragEndAt < 80) return
+  if (performance.now() - lastDragEndAt < 120) return
   if (!tile.topic) return
   emit('tile-click', tile.topic)
   router.push({ path: '/practice', query: { topic: tile.topic } })
@@ -205,13 +220,30 @@ function onPointerMove(e: PointerEvent) {
 function onPointerUp(e: PointerEvent) {
   if (!draggingRef) return
   draggingRef = false
-  if (movedRef && startPosRef) {
-    const vx = clamp(((e.clientX - startPosRef.x) / DRAG_SENS) * 0.02, -1.2, 1.2)
-    const vy = clamp(((e.clientY - startPosRef.y) / DRAG_SENS) * 0.02, -1.2, 1.2)
+  const dx = startPosRef ? e.clientX - startPosRef.x : 0
+  const dy = startPosRef ? e.clientY - startPosRef.y : 0
+  const dist2 = dx * dx + dy * dy
+  const isClick = startPosRef !== null && dist2 < CLICK_SLOP_PX * CLICK_SLOP_PX
+  if (!isClick && startPosRef) {
+    // 拖拽：启动惯性
+    const vx = clamp((dx / DRAG_SENS) * 0.02, -1.2, 1.2)
+    const vy = clamp((dy / DRAG_SENS) * 0.02, -1.2, 1.2)
     if (Math.abs(vx) > 0.005 || Math.abs(vy) > 0.005) startInertia(vx, vy)
     lastDragEndAt = performance.now()
   }
   movedRef = false
+  // 静止点击：位移 < 阈值视为点击，命中晶粒则跳转 /practice?topic=xxx
+  // pointer capture 把 pointerup 重定向到 main，故用 elementFromPoint 取实际命中元素
+  if (isClick) {
+    const hit = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null
+    const itemEl = hit?.closest?.('.item') as HTMLElement | null
+    const topic = itemEl?.getAttribute('data-src') || ''
+    if (topic && itemEl && !itemEl.classList.contains('is-empty')) {
+      emit('tile-click', topic)
+      router.push({ path: '/practice', query: { topic } })
+    }
+  }
+  startPosRef = null
 }
 function startInertia(vx: number, vy: number) {
   const MAX_V = 1.4
@@ -335,7 +367,8 @@ onUnmounted(() => {
                   boxShadow: `0 0 10px ${tileColors(tile.type).glow}`,
                 }"
                 @click.stop="onTileClick(tile)"
-                @pointerup.stop="onTileClick(tile)"
+                @keydown.enter.stop="onTileClick(tile)"
+                @keydown.space.prevent.stop="onTileClick(tile)"
                 @mouseenter="hoveredTile = tile"
                 @mouseleave="hoveredTile = null"
               >
