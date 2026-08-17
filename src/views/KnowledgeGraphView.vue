@@ -133,7 +133,7 @@ function renderChart() {
       id: node.id,
       name: node.name,
       symbolSize: 28 + connections * 4,
-      category: m.status,
+      category: MASTERY_LABELS[m.status],
       value: m.stars,
       itemStyle: {
         color: MASTERY_COLORS[m.status],
