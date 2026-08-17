@@ -91,12 +91,17 @@ async function loadGraphData() {
     const data = await resp.json()
     graphData.value = data
     graphEngine.value = loadGraph('半导体物理', data)
-    renderChart()
   } catch (e) {
     error.value = e.message || '加载知识图谱失败'
     console.error('[KnowledgeGraphView] loadGraphData error:', e)
   } finally {
     loading.value = false
+  }
+  // loading=false 后 chartRef 才解除 display:none，必须等 nextTick 再 init ECharts，
+  // 否则 echarts.init 在 display:none 容器上读到 0×0 尺寸，画布渲染为空
+  if (graphEngine.value && !error.value) {
+    await nextTick()
+    renderChart()
   }
 }
 
