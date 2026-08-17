@@ -62,6 +62,8 @@ const coreNav = [
 
 const toolNav = [
   { path: '/career', label: '就业指导', icon: 'briefcase' },
+  // B2: AI 白板推导入口
+  { path: '/derivation', label: '白板推导', icon: 'edit' },
   // B5: 多 Agent 架构看板入口
   { path: '/architecture', label: '架构看板', icon: 'chip' },
   // { path: '/peer', label: '同伴学习', icon: 'users' },  // 赛事展示范围裁剪，已移除

@@ -89,6 +89,13 @@ const routes = [
     component: () => import('@/views/PracticeView.vue'),
     meta: { title: '练习题', agent: 'practice' }
   },
+  // B2: AI 白板推导
+  {
+    path: '/derivation',
+    name: 'derivation',
+    component: () => import('@/views/DerivationView.vue'),
+    meta: { title: '白板推导', agent: 'tutor' }
+  },
   // B5: 多 Agent 架构看板（数据来自 agent_traces 真实落库，只读展示）
   {
     path: '/architecture',
