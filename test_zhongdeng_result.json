@@ -1,0 +1,260 @@
+{
+  "name": "zhongdeng",
+  "content": "# 复习计划说明（zhongdeng · 半导体物理）\n\n根据你的诊断结果（58分），当前处于**专题强化（intensive）**阶段。诊断显示你的两个核心薄弱点——PN结 I-V特性和载流子统计——根因链均为3层，属于P0优先级，需要从底层概念开始逐层夯实。本计划将用4周时间，前两周集中突破PN结I-V特性的推导链条（扩散电流→漂移电流→I-V方程），后两周转向载流子统计的费米分布与玻尔兹曼近似应用，确保每个根因节点都有对应训练。每周任务量控制在3-4个，每日学习时段安排为晚间两小时，确保可持续执行。\n\n本计划的核心依据是：诊断分58分（50-74区间）且已完成0个冲刺周期，按三因子决策表判定为`intensive`阶段。所有任务均绑定至具体根因链节点，且严格遵循考纲白名单。每周主题依次为：第1周\"扩散电流与漂移电流基础\"、第2周\"I-V方程推导与PN结综合\"、第3周\"费米分布与玻尔兹曼近似\"、第4周\"本征载流子浓度与统计应用\"。请按周执行，并在每周结束后自测对应知识点。\n\n```json\n{\n  \"target_stage\": \"intensive\",\n  \"stage_entry_criteria\": \"诊断分 58；备考剩余约 18 周；已完成 0 个冲刺周期\",\n  \"stage_timeline\": [\n    {\"id\": \"foundation\", \"name\": \"基础巩固\", \"en\": \"Foundation\", \"status\": \"done\", \"index\": 0, \"milestone\": \"基础知识点系统梳理，薄弱根因链底层逐层补齐\", \"entry\": \"诊断分 < 50 或首次备考\"},\n    {\"id\": \"intensive\", \"name\": \"专题强化\", \"en\": \"Intensive\", \"status\": \"active\", \"index\": 1, \"milestone\": \"P0 薄弱点全面覆盖，能独立完成中等难度综合题\", \"entry\": \"诊断分 50–74，基础已过一遍\"},\n    {\"id\": \"sprint\", \"name\": \"真题冲刺\", \"en\": \"Sprint\", \"status\": \"upcoming\", \"index\": 2, \"milestone\": \"真题套卷训练，时间管理与高频考点突破\", \"entry\": \"诊断分 ≥ 75 或备考剩余 ≤ 8 周\"},\n    {\"id\": \"mock\", \"name\": \"模拟模考\", \"en\": \"Mock\", \"status\": \"upcoming\", \"index\": 3, \"milestone\": \"全真模拟考试，查漏补缺与心态调整\", \"entry\": \"备考剩余 ≤ 3 周\"}\n  ],\n  \"exam_date\": \"2026-12-21\",\n  \"total_weeks\": 4,\n  \"weak_point_coverage\": [\n    {\n      \"wp_id\": \"wp_01\",\n      \"knowledge_point\": \"PN结 I-V特性\",\n      \"root_cause_chain\": [\"扩散电流\", \"漂移电流\", \"I-V方程推导\"],\n      \"chain_depth\": 3,\n      \"priority\": \"P0\",\n      \"covered_in_weeks\": [1, 2],\n      \"task_count\": 7,\n      \"coverage_status\": \"covered\"\n    },\n    {\n      \"wp_id\": \"wp_02\",\n      \"knowledge_point\": \"载流子统计\",\n      \"root_cause_chain\": [\"费米分布\", \"玻尔兹曼近似\", \"本征载流子浓度\"],\n      \"chain_depth\": 3,\n      \"priority\": \"P0\",\n      \"covered_in_weeks\": [3, 4],\n      \"task_count\": 7,\n      \"coverage_status\": \"covered\"\n    }\n  ],\n  \"weeks\": [\n    {\n      \"week\": 1,\n      \"stage\": \"intensive\",\n      \"theme\": \"P0 根因链底层补强（wp_01 扩散电流与漂移电流）\",\n      \"source_weak_point_ids\": [\"wp_01\"],\n      \"tasks\": [\n        \"刘恩科 4.2 节扩散电流与漂移电流概念复习\",\n        \"推导扩散电流密度公式并标注物理意义\",\n        \"推导漂移电流密度公式并标注物理意义\",\n        \"完成第4章习题 4.1-4.4\"\n      ],\n      \"task_bindings\": [\n        {\"task_index\": 0, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"},\n        {\"task_index\": 1, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"},\n        {\"task_index\": 2, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"},\n        {\"task_index\": 3, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"}\n      ],\n      \"daily\": [\"19:00-21:00 教材复习\", \"21:00-22:00 习题练习\"],\n      \"estimated_hours\": 14,\n      \"exercise_count\": 4\n    },\n    {\n      \"week\": 2,\n      \"stage\": \"intensive\",\n      \"theme\": \"P0 根因链上层综合（wp_01 I-V方程推导与PN结应用）\",\n      \"source_weak_point_ids\": [\"wp_01\"],\n      \"tasks\": [\n        \"PN结 I-V 方程完整推导（含边界条件）\",\n        \"I-V 特性曲线绘制与正反向特性分析\",\n        \"综合应用题：PN结电流密度计算\"\n      ],\n      \"task_bindings\": [\n        {\"task_index\": 0, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"},\n        {\"task_index\": 1, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"},\n        {\"task_index\": 2, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"}\n      ],\n      \"daily\": [\"19:00-21:00 推导练习\", \"21:00-23:00 综合题训练\"],\n      \"estimated_hours\": 12,\n      \"exercise_count\": 3\n    },\n    {\n      \"week\": 3,\n      \"stage\": \"intensive\",\n      \"theme\": \"P0 第二薄弱点根因链底层（wp_02 费米分布与玻尔兹曼近似）\",\n      \"source_weak_point_ids\": [\"wp_02\"],\n      \"tasks\": [\n        \"刘恩科 3.3 节费米分布函数复习\",\n        \"玻尔兹曼近似条件推导与适用场景分析\",\n        \"第3章习题 3.6-3.9\"\n      ],\n      \"task_bindings\": [\n        {\"task_index\": 0, \"source_weak_point_id\": \"wp_02\", \"priority\": \"P0\"},\n        {\"task_index\": 1, \"source_weak_point_id\": \"wp_02\", \"priority\": \"P0\"},\n        {\"task_index\": 2, \"source_weak_point_id\": \"wp_02\", \"priority\": \"P0\"}\n      ],\n      \"daily\": [\"19:00-21:00 教材复习\", \"21:00-23:00 习题练习\"],\n      \"estimated_hours\": 12,\n      \"exercise_count\": 3\n    },\n    {\n      \"week\": 4,\n      \"stage\": \"intensive\",\n      \"theme\": \"P0 第二薄弱点根因链上层（wp_02 本征载流子浓度与应用）\",\n      \"source_weak_point_ids\": [\"wp_02\"],\n      \"tasks\": [\n        \"本征载流子浓度公式推导\",\n        \"多数/少数载流子浓度计算练习\",\n        \"载流子统计综合应用：掺杂半导体载流子浓度计算\"\n      ],\n      \"task_bindings\": [\n        {\"task_index\": 0, \"source_weak_point_id\": \"wp_02\", \"priority\": \"P0\"},\n        {\"task_index\": 1, \"source_weak_point_id\": \"wp_02\", \"priority\": \"P0\"},\n        {\"task_index\": 2, \"source_weak_point_id\": \"wp_02\", \"priority\": \"P0\"}\n      ],\n      \"daily\": [\"19:00-21:00 公式推导\", \"21:00-23:00 综合计算\"],\n      \"estimated_hours\": 12,\n      \"exercise_count\": 3\n    }\n  ],\n  \"adjustments\": {\n    \"keep\": [\"每日 19:00-21:00 教材复习\", \"晚间两小时学习节奏\"],\n    \"strengthen\": [\"PN结I-V特性专题（第4章）\", \"载流子统计专题（第3章）\"],\n    \"drop\": [\"非考研重点章节（如超导物理、倒格矢计算）\"]\n  },\n  \"audience\": \"student\",\n  \"student_id_hash\": \"sha256:7f8a9b...\",\n  \"version\": \"2.2.0\"\n}\n```",
+  "structured": {
+    "target_stage": "intensive",
+    "stage_entry_criteria": "诊断分 58；备考剩余约 18 周；已完成 0 个冲刺周期",
+    "stage_timeline": [
+      {
+        "id": "foundation",
+        "name": "基础巩固",
+        "en": "Foundation",
+        "status": "done",
+        "index": 0,
+        "milestone": "基础知识点系统梳理，薄弱根因链底层逐层补齐",
+        "entry": "诊断分 < 50 或首次备考"
+      },
+      {
+        "id": "intensive",
+        "name": "专题强化",
+        "en": "Intensive",
+        "status": "active",
+        "index": 1,
+        "milestone": "P0 薄弱点全面覆盖，能独立完成中等难度综合题",
+        "entry": "诊断分 50–74，基础已过一遍"
+      },
+      {
+        "id": "sprint",
+        "name": "真题冲刺",
+        "en": "Sprint",
+        "status": "upcoming",
+        "index": 2,
+        "milestone": "真题套卷训练，时间管理与高频考点突破",
+        "entry": "诊断分 ≥ 75 或备考剩余 ≤ 8 周"
+      },
+      {
+        "id": "mock",
+        "name": "模拟模考",
+        "en": "Mock",
+        "status": "upcoming",
+        "index": 3,
+        "milestone": "全真模拟考试，查漏补缺与心态调整",
+        "entry": "备考剩余 ≤ 3 周"
+      }
+    ],
+    "exam_date": "2026-12-21",
+    "total_weeks": 4,
+    "weak_point_coverage": [
+      {
+        "wp_id": "wp_01",
+        "knowledge_point": "PN结 I-V特性",
+        "root_cause_chain": [
+          "扩散电流",
+          "漂移电流",
+          "I-V方程推导"
+        ],
+        "chain_depth": 3,
+        "priority": "P0",
+        "covered_in_weeks": [
+          1,
+          2
+        ],
+        "task_count": 7,
+        "coverage_status": "covered"
+      },
+      {
+        "wp_id": "wp_02",
+        "knowledge_point": "载流子统计",
+        "root_cause_chain": [
+          "费米分布",
+          "玻尔兹曼近似",
+          "本征载流子浓度"
+        ],
+        "chain_depth": 3,
+        "priority": "P0",
+        "covered_in_weeks": [
+          3,
+          4
+        ],
+        "task_count": 7,
+        "coverage_status": "covered"
+      }
+    ],
+    "weeks": [
+      {
+        "week": 1,
+        "stage": "intensive",
+        "theme": "P0 根因链底层补强（wp_01 扩散电流与漂移电流）",
+        "source_weak_point_ids": [
+          "wp_01"
+        ],
+        "tasks": [
+          "刘恩科 4.2 节扩散电流与漂移电流概念复习",
+          "推导扩散电流密度公式并标注物理意义",
+          "推导漂移电流密度公式并标注物理意义",
+          "完成第4章习题 4.1-4.4"
+        ],
+        "task_bindings": [
+          {
+            "task_index": 0,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          },
+          {
+            "task_index": 1,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          },
+          {
+            "task_index": 2,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          },
+          {
+            "task_index": 3,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          }
+        ],
+        "daily": [
+          "19:00-21:00 教材复习",
+          "21:00-22:00 习题练习"
+        ],
+        "estimated_hours": 14,
+        "exercise_count": 4
+      },
+      {
+        "week": 2,
+        "stage": "intensive",
+        "theme": "P0 根因链上层综合（wp_01 I-V方程推导与PN结应用）",
+        "source_weak_point_ids": [
+          "wp_01"
+        ],
+        "tasks": [
+          "PN结 I-V 方程完整推导（含边界条件）",
+          "I-V 特性曲线绘制与正反向特性分析",
+          "综合应用题：PN结电流密度计算"
+        ],
+        "task_bindings": [
+          {
+            "task_index": 0,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          },
+          {
+            "task_index": 1,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          },
+          {
+            "task_index": 2,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          }
+        ],
+        "daily": [
+          "19:00-21:00 推导练习",
+          "21:00-23:00 综合题训练"
+        ],
+        "estimated_hours": 12,
+        "exercise_count": 3
+      },
+      {
+        "week": 3,
+        "stage": "intensive",
+        "theme": "P0 第二薄弱点根因链底层（wp_02 费米分布与玻尔兹曼近似）",
+        "source_weak_point_ids": [
+          "wp_02"
+        ],
+        "tasks": [
+          "刘恩科 3.3 节费米分布函数复习",
+          "玻尔兹曼近似条件推导与适用场景分析",
+          "第3章习题 3.6-3.9"
+        ],
+        "task_bindings": [
+          {
+            "task_index": 0,
+            "source_weak_point_id": "wp_02",
+            "priority": "P0"
+          },
+          {
+            "task_index": 1,
+            "source_weak_point_id": "wp_02",
+            "priority": "P0"
+          },
+          {
+            "task_index": 2,
+            "source_weak_point_id": "wp_02",
+            "priority": "P0"
+          }
+        ],
+        "daily": [
+          "19:00-21:00 教材复习",
+          "21:00-23:00 习题练习"
+        ],
+        "estimated_hours": 12,
+        "exercise_count": 3
+      },
+      {
+        "week": 4,
+        "stage": "intensive",
+        "theme": "P0 第二薄弱点根因链上层（wp_02 本征载流子浓度与应用）",
+        "source_weak_point_ids": [
+          "wp_02"
+        ],
+        "tasks": [
+          "本征载流子浓度公式推导",
+          "多数/少数载流子浓度计算练习",
+          "载流子统计综合应用：掺杂半导体载流子浓度计算"
+        ],
+        "task_bindings": [
+          {
+            "task_index": 0,
+            "source_weak_point_id": "wp_02",
+            "priority": "P0"
+          },
+          {
+            "task_index": 1,
+            "source_weak_point_id": "wp_02",
+            "priority": "P0"
+          },
+          {
+            "task_index": 2,
+            "source_weak_point_id": "wp_02",
+            "priority": "P0"
+          }
+        ],
+        "daily": [
+          "19:00-21:00 公式推导",
+          "21:00-23:00 综合计算"
+        ],
+        "estimated_hours": 12,
+        "exercise_count": 3
+      }
+    ],
+    "adjustments": {
+      "keep": [
+        "每日 19:00-21:00 教材复习",
+        "晚间两小时学习节奏"
+      ],
+      "strengthen": [
+        "PN结I-V特性专题（第4章）",
+        "载流子统计专题（第3章）"
+      ],
+      "drop": [
+        "非考研重点章节（如超导物理、倒格矢计算）"
+      ]
+    },
+    "audience": "student",
+    "student_id_hash": "sha256:7f8a9b...",
+    "version": "2.2.0"
+  },
+  "finish_reason": "stop",
+  "usage": {
+    "completion_tokens": 2000,
+    "prompt_tokens": 6899,
+    "total_tokens": 8899
+  },
+  "model": "xopdeepseekv4flash0731",
+  "elapsed_ms": 11935
+}

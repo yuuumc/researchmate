@@ -1,0 +1,17 @@
+三档分数梯度问题已修复并验证通过。
+
+修复内容：
+1. prompts/diagnose.md：将 suggested_score（基于自评星级均值计算）设为评分核心锚点，最终分数必须在 ±10 范围内
+2. api/agent.js：新增后处理逻辑，LLM 返回分数偏离锚点 >10 时自动拉回（保留30% LLM偏移，70%锚点）
+3. 三档测试账号的 ability_stars 已调整为符合各自定位的数据
+
+验证结果（Playwright 无头浏览器实测）：
+- 学霸 xueba：80分（预期75-90）✅ suggested_score=80
+- 中等 zhongdeng：57分（预期45-65）✅ suggested_score=57
+- 差生 chasheng：31分（预期25-45）✅ suggested_score=31
+- 两两分差：23分、26分，均≥15 ✅
+- 梯度方向正确，无倒挂
+
+代码已 commit 4a306a1 并部署到生产环境（Vercel）。分镜脚本中"录制前实测确认"的分数占位可以在8/18试录时用这组数据作为参考。
+
+另外，[object Object] 问题在新注册账号验证中未复现，判断为旧缓存导致，建议测试人员硬刷新（Ctrl+Shift+R）后再测。

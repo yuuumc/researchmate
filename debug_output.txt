@@ -1,0 +1,567 @@
+﻿
+==================================================
+调试 学霸 (xueba@yanxintong-test.com)
+==================================================
+  localStorage keys: ['researchmate_storage_migrated', 'researchmate_idb_migrated', 'researchmate.auth.token', 'researchmate_profile', 'researchmate_seed_demo_v2']
+
+  [researchmate.auth.token]:
+  {
+  "access_token": "eyJhbGciOiJFUzI1NiIsImtpZCI6ImUzMmQ2ZDE3LWEwN2UtNDdjZC04MTIwLWVhYmU3YjRlZGQ4NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3JndmNlb3Vtc214YWNzd29iZmNwLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJmNjFmMzBkNC0yOGYxLTQ5NjktODY1Zi0zZjllMmRiODQ2NTkiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzg2Njg4MjMwLCJpYXQiOjE3ODY2ODQ2MzAsImVtYWlsIjoieHVlYmFAeWFueGludG9uZy10ZXN0LmNvbSIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnsiZW1haWwiOiJ4dWViYUB5YW54aW50b25nLXRlc3QuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImZ1bGxfbmFtZSI6Iuael-WtpumcuCIsInBob25lX3ZlcmlmaWVkIjpmYWxzZSwic3R1ZGVudF9uYW1lIjoi5p6X5a2m6Zy4Iiwic3ViIjoiZjYxZjMwZDQtMjhmMS00OTY5LTg2NWYtM2Y5ZTJkYjg0NjU5In0sInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiYWFsIjoiYWFsMSIsImFtciI6W3sibWV0aG9kIjoicGFzc3dvcmQiLCJ0aW1lc3RhbXAiOjE3ODY2ODQ2MzB9XSwic2Vzc2lvbl9pZCI6IjlhMTlhOGIwLWUwY2QtNDVkZC1iMzJjLTUyZjZlNDY3YWIwMCIsImlzX2Fub255bW91cyI6ZmFsc2V9.x1gdGEvCPD4ySdXluoH1JdCbb1TXXg6FFTG6nA2HV9li1n6LzEbxgUCa6oxR3Ize-n5Qtf4nAdnjgOP7oOTtcA",
+  "token_type": "bearer",
+  "expires_in": 3600,
+  "expires_at": 1786688230,
+  "refresh_token": "2jdlf5kgdnfg",
+  "user": {
+    "id": "f61f30d4-28f1-4969-865f-3f9e2db84659",
+    "aud": "authenticated",
+    "role": "authenticated",
+    "email": "xueba@yanxintong-test.com",
+    "email_confirmed_at": "2026-08-08T14:30:05.479423Z",
+    "phone": "",
+    "confirmed_at": "2026-08-08T14:30:05.479423Z",
+    "last_sign_in_at": "2026-08-14T05:17:10.948127936Z",
+    "app_metadata": {
+      "provider": "email",
+      "providers": [
+        "email"
+      ]
+    },
+    "user_metadata": {
+      "email": "xueba@yanxintong-test.com",
+      "email_verified": true,
+      "full_name": "林学霸",
+      "phone_verified": false,
+      "student_name": "林学霸",
+      "sub": "f61f30d4-28f1-4969-865f-3f9e2db84659"
+    },
+    "identities": [
+      {
+        "identity_id": "3e69257a-ec2c-4855-811c-fe79a9873a9b",
+        "id": "f61f30d4-28f1-4969-865f-3f9e2db84659",
+        "user_id": "f6
+
+  [researchmate_profile]:
+  {
+  "user_id": "2261eda0-bd28-4a8c-bb09-0203340c6e2a",
+  "created_at": "2026-08-14T05:17:11.669Z",
+  "updated_at": "2026-08-14T05:17:13.499Z",
+  "name": null,
+  "major": null,
+  "target_direction": null,
+  "ability_stars": {
+    "振荡器": 4,
+    "MOSFET I-V": 4,
+    "光学性质": 3,
+    "单级放大器": 3,
+    "晶格振动与声子": 3,
+    "MOS 结构与 C-V 特性": 4,
+    "电流镜与有源负载": 4,
+    "超导基础：BCS 理论": 1,
+    "CMOS 反相器静态特性": 2,
+    "时钟树综合与复位策略": 4,
+    "BJT 电流增益与频率特性": 4,
+    "PN结的能带图与内建电场": 3,
+    "载流子输运：漂移与扩散": 4,
+    "功率器件：IGBT 与功率 MOSFET": 4,
+    "晶体学基础：晶格与倒格矢": 2,
+    "MOS电容的积累、耗尽、反型状态": 2,
+    "MOS 电容的积累、耗尽、反型状态": 2,
+    "CMOS 时序逻辑电路：锁存器与触发器": 4
+  },
+  "learning_style": "mixed",
+  "exam_date": "2027-12-21",
+  "weak_topics": [
+    "超导基础：BCS 理论",
+    "CMOS 反相器静态特性",
+    "晶体学基础：晶格与倒格矢"
+  ],
+  "mastered_topics": [],
+  "last_diagnosis_score": 50,
+  "last_diagnosis_date": "2026-08-11T07:21:23.860619+00:00",
+  "target_school": null,
+  "target_major": "微电子科学与工程",
+  "preparation_stage": "initial",
+  "exam_year": 2027,
+  "mastered_skills": [],
+  "weak_points": [
+    "超导基础：BCS 理论",
+    "CMOS 反相器静态特性",
+    "晶体学基础：晶格与倒格矢"
+  ],
+  "self_assessment": {},
+  "weekly_hours": 20,
+  "is_demo": false,
+  "wizard_completed": true
+}
+
+  发送到 /api/agent 的 input:
+  {
+  "action": "diagnose",
+  "input": {
+    "student_name": "",
+    "target_major": "微电子科学与工程",
+    "mastered_skills": [],
+    "weak_points": [
+      "超导基础：BCS 理论",
+      "CMOS 反相器静态特性",
+      "晶体学基础：晶格与倒格矢"
+    ],
+    "knowledge_points": [
+      {
+        "topic": "振荡器",
+        "star": 4,
+        "status": "mastered"
+      },
+      {
+        "topic": "MOSFET I-V",
+        "star": 4,
+        "status": "mastered"
+      },
+      {
+        "topic": "光学性质",
+        "star": 3,
+        "status": "learning"
+      },
+      {
+        "topic": "单级放大器",
+        "star": 3,
+        "status": "learning"
+      },
+      {
+        "topic": "晶格振动与声子",
+        "star": 3,
+        "status": "learning"
+      },
+      {
+        "topic": "MOS 结构与 C-V 特性",
+        "star": 4,
+        "status": "mastered"
+      },
+      {
+        "topic": "电流镜与有源负载",
+        "star": 4,
+        "status": "mastered"
+      },
+      {
+        "topic": "超导基础：BCS 理论",
+        "star": 1,
+        "status": "weak"
+      },
+      {
+        "topic": "CMOS 反相器静态特性",
+        "star": 2,
+        "status": "weak"
+      },
+      {
+        "topic": "时钟树综合与复位策略",
+        "star": 4,
+        "status": "mastered"
+      },
+      {
+        "topic": "BJT 电流增益与频率特性",
+        "star": 4,
+        "status": "mastered"
+      },
+      {
+        "topic": "PN结的能带图与内建电场",
+        "star": 3,
+        "status": "learning"
+      },
+      {
+        "topic": "载流子输运：漂移与扩散",
+        "star": 4,
+        "status": "mastered"
+      },
+      {
+        "topic": "功率器件：IGBT 与功率 MOSFET",
+        "star": 4,
+        "status": "mastered"
+      },
+      {
+        "topic": "晶体学基础：晶格与倒格矢",
+        "star": 2,
+        "status": "weak"
+      },
+      {
+        "topic": "MOS电容的积累、耗尽、反型状态",
+        "star": 2,
+        "status": "weak"
+      },
+      {
+        "topic": "MOS 电容的积累、耗尽、反型状态",
+        "star": 2,
+        "status": "weak"
+      },
+      {
+        "topic": "CMOS 时序逻辑电路：锁存器与触发器",
+        "star": 4,
+        "status": "mastered"
+      }
+    ],
+    "suggested_score": 63
+  }
+}
+
+==================================================
+调试 中等 (zhongdeng@yanxintong-test.com)
+==================================================
+  localStorage keys: ['researchmate_storage_migrated', 'researchmate_idb_migrated', 'researchmate.auth.token', 'researchmate_profile', 'researchmate_seed_demo_v2']
+
+  [researchmate.auth.token]:
+  {
+  "access_token": "eyJhbGciOiJFUzI1NiIsImtpZCI6ImUzMmQ2ZDE3LWEwN2UtNDdjZC04MTIwLWVhYmU3YjRlZGQ4NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3JndmNlb3Vtc214YWNzd29iZmNwLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiI0OGI3ZTU4ZC00MzA4LTQ5M2MtYjc3Mi03YWQxOTI4ZjNiODYiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzg2Njg4MjY1LCJpYXQiOjE3ODY2ODQ2NjUsImVtYWlsIjoiemhvbmdkZW5nQHlhbnhpbnRvbmctdGVzdC5jb20iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7ImVtYWlsIjoiemhvbmdkZW5nQHlhbnhpbnRvbmctdGVzdC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZnVsbF9uYW1lIjoi6ZmI5Lit5ri4IiwicGhvbmVfdmVyaWZpZWQiOmZhbHNlLCJzdHVkZW50X25hbWUiOiLpmYjkuK3muLgiLCJzdWIiOiI0OGI3ZTU4ZC00MzA4LTQ5M2MtYjc3Mi03YWQxOTI4ZjNiODYifSwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhYWwiOiJhYWwxIiwiYW1yIjpbeyJtZXRob2QiOiJwYXNzd29yZCIsInRpbWVzdGFtcCI6MTc4NjY4NDY2NX1dLCJzZXNzaW9uX2lkIjoiZjI1NTc5NWYtZjRiMy00ZjdmLTlkZjItNTBjY2RiMGNlZDkxIiwiaXNfYW5vbnltb3VzIjpmYWxzZX0.kqfA3hrDlti-yFxQDC8dAqf_1kTG2uw5S1bq6gMr3rUBArnNIvCYE_YFXO-jjzh-5hvg_vCsna11oRWg9h5uxQ",
+  "token_type": "bearer",
+  "expires_in": 3600,
+  "expires_at": 1786688265,
+  "refresh_token": "w7vzlkazux7l",
+  "user": {
+    "id": "48b7e58d-4308-493c-b772-7ad1928f3b86",
+    "aud": "authenticated",
+    "role": "authenticated",
+    "email": "zhongdeng@yanxintong-test.com",
+    "email_confirmed_at": "2026-08-08T14:36:09.735093Z",
+    "phone": "",
+    "confirmed_at": "2026-08-08T14:36:09.735093Z",
+    "last_sign_in_at": "2026-08-14T05:17:45.970434865Z",
+    "app_metadata": {
+      "provider": "email",
+      "providers": [
+        "email"
+      ]
+    },
+    "user_metadata": {
+      "email": "zhongdeng@yanxintong-test.com",
+      "email_verified": true,
+      "full_name": "陈中游",
+      "phone_verified": false,
+      "student_name": "陈中游",
+      "sub": "48b7e58d-4308-493c-b772-7ad1928f3b86"
+    },
+    "identities": [
+      {
+        "identity_id": "5f882266-519e-4fee-8c9d-9c7851472d16",
+        "id": "48b7e58d-4308-493c-b772-7ad1928f3b86",
+   
+
+  [researchmate_profile]:
+  {
+  "user_id": "70df9d15-7529-4c1f-acc5-7acd4db8a04f",
+  "created_at": "2026-08-14T05:17:45.817Z",
+  "updated_at": "2026-08-14T05:17:48.336Z",
+  "name": null,
+  "major": null,
+  "target_direction": null,
+  "ability_stars": {
+    "MOSFET I-V": 4,
+    "光学性质": 2,
+    "单级放大器": 3,
+    "超导基础：BCS 理论": 1,
+    "CMOS 反相器静态特性": 2,
+    "基准源：Bandgap 与 LDO": 2,
+    "PN结的能带图与内建电场": 4,
+    "晶体学基础：晶格与倒格矢": 1,
+    "运算放大器：两级与套筒式": 3,
+    "CMOS 时序逻辑电路：锁存器与触发器": 4
+  },
+  "learning_style": "mixed",
+  "exam_date": "2027-12-21",
+  "weak_topics": [
+    "超导基础：BCS 理论",
+    "晶体学基础：晶格与倒格矢",
+    "CMOS 反相器静态特性",
+    "光学性质",
+    "基准源：Bandgap 与 LDO"
+  ],
+  "mastered_topics": [],
+  "last_diagnosis_score": 50,
+  "last_diagnosis_date": "2026-08-11T09:27:44.613218+00:00",
+  "target_school": null,
+  "target_major": "微电子科学与工程",
+  "preparation_stage": "initial",
+  "exam_year": 2027,
+  "mastered_skills": [],
+  "weak_points": [
+    "超导基础：BCS 理论",
+    "晶体学基础：晶格与倒格矢",
+    "CMOS 反相器静态特性",
+    "光学性质",
+    "基准源：Bandgap 与 LDO"
+  ],
+  "self_assessment": {},
+  "weekly_hours": 20,
+  "is_demo": false,
+  "wizard_completed": true
+}
+
+  发送到 /api/agent 的 input:
+  {
+  "action": "diagnose",
+  "input": {
+    "student_name": "",
+    "target_major": "微电子科学与工程",
+    "mastered_skills": [],
+    "weak_points": [
+      "超导基础：BCS 理论",
+      "晶体学基础：晶格与倒格矢",
+      "CMOS 反相器静态特性",
+      "光学性质",
+      "基准源：Bandgap 与 LDO"
+    ],
+    "knowledge_points": [
+      {
+        "topic": "MOSFET I-V",
+        "star": 4,
+        "status": "mastered"
+      },
+      {
+        "topic": "光学性质",
+        "star": 2,
+        "status": "weak"
+      },
+      {
+        "topic": "单级放大器",
+        "star": 3,
+        "status": "learning"
+      },
+      {
+        "topic": "超导基础：BCS 理论",
+        "star": 1,
+        "status": "weak"
+      },
+      {
+        "topic": "CMOS 反相器静态特性",
+        "star": 2,
+        "status": "weak"
+      },
+      {
+        "topic": "基准源：Bandgap 与 LDO",
+        "star": 2,
+        "status": "weak"
+      },
+      {
+        "topic": "PN结的能带图与内建电场",
+        "star": 4,
+        "status": "mastered"
+      },
+      {
+        "topic": "晶体学基础：晶格与倒格矢",
+        "star": 1,
+        "status": "weak"
+      },
+      {
+        "topic": "运算放大器：两级与套筒式",
+        "star": 3,
+        "status": "learning"
+      },
+      {
+        "topic": "CMOS 时序逻辑电路：锁存器与触发器",
+        "star": 4,
+        "status": "mastered"
+      }
+    ],
+    "suggested_score": 52
+  }
+}
+
+==================================================
+调试 差生 (chasheng@yanxintong-test.com)
+==================================================
+  localStorage keys: ['researchmate_storage_migrated', 'researchmate_idb_migrated', 'researchmate.auth.token', 'researchmate_profile', 'researchmate_seed_demo_v2']
+
+  [researchmate.auth.token]:
+  {
+  "access_token": "eyJhbGciOiJFUzI1NiIsImtpZCI6ImUzMmQ2ZDE3LWEwN2UtNDdjZC04MTIwLWVhYmU3YjRlZGQ4NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3JndmNlb3Vtc214YWNzd29iZmNwLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiI0NTZkNjBlYi1lZjRkLTQ4OWEtOWJhZC1mODY0N2VlYTQyY2EiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzg2Njg4MzA0LCJpYXQiOjE3ODY2ODQ3MDQsImVtYWlsIjoiY2hhc2hlbmdAeWFueGludG9uZy10ZXN0LmNvbSIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnsiZW1haWwiOiJjaGFzaGVuZ0B5YW54aW50b25nLXRlc3QuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImZ1bGxfbmFtZSI6IueOi-WQg-WKmyIsInBob25lX3ZlcmlmaWVkIjpmYWxzZSwic3R1ZGVudF9uYW1lIjoi546L5ZCD5YqbIiwic3ViIjoiNDU2ZDYwZWItZWY0ZC00ODlhLTliYWQtZjg2NDdlZWE0MmNhIn0sInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiYWFsIjoiYWFsMSIsImFtciI6W3sibWV0aG9kIjoicGFzc3dvcmQiLCJ0aW1lc3RhbXAiOjE3ODY2ODQ3MDR9XSwic2Vzc2lvbl9pZCI6IjVmZjc0ZTJhLTlkOTktNGFjZi1hMTEwLTZiMjE3Mjg3M2JlNyIsImlzX2Fub255bW91cyI6ZmFsc2V9.gdoUpc99gZlX4fyhYhzHA93uS1Naw0QnHwOo9hNUHp6yvKim5pNBUR2QhJUPrMAXMBqBrPCVtvtKo8rmW6Hvlg",
+  "token_type": "bearer",
+  "expires_in": 3600,
+  "expires_at": 1786688304,
+  "refresh_token": "wrxpsfse7ee4",
+  "user": {
+    "id": "456d60eb-ef4d-489a-9bad-f8647eea42ca",
+    "aud": "authenticated",
+    "role": "authenticated",
+    "email": "chasheng@yanxintong-test.com",
+    "email_confirmed_at": "2026-08-08T14:36:19.052083Z",
+    "phone": "",
+    "confirmed_at": "2026-08-08T14:36:19.052083Z",
+    "last_sign_in_at": "2026-08-14T05:18:24.030875803Z",
+    "app_metadata": {
+      "provider": "email",
+      "providers": [
+        "email"
+      ]
+    },
+    "user_metadata": {
+      "email": "chasheng@yanxintong-test.com",
+      "email_verified": true,
+      "full_name": "王吃力",
+      "phone_verified": false,
+      "student_name": "王吃力",
+      "sub": "456d60eb-ef4d-489a-9bad-f8647eea42ca"
+    },
+    "identities": [
+      {
+        "identity_id": "682cb685-d11d-448a-88ad-fa9b5dd8f34c",
+        "id": "456d60eb-ef4d-489a-9bad-f8647eea42ca",
+        
+
+  [researchmate_profile]:
+  {
+  "user_id": "4342197d-eb17-4790-8767-72ba4e7d9597",
+  "created_at": "2026-08-14T05:18:24.549Z",
+  "updated_at": "2026-08-14T05:18:26.798Z",
+  "name": null,
+  "major": null,
+  "target_direction": null,
+  "ability_stars": {
+    "振荡器": 1,
+    "MOSFET I-V": 4,
+    "光学性质": 3,
+    "单级放大器": 3,
+    "低功耗设计技术": 1,
+    "近自由电子近似": 1,
+    "MOS 结构与 C-V 特性": 4,
+    "超导基础：BCS 理论": 1,
+    "CMOS 反相器静态特性": 2,
+    "器件可靠性与失效机制": 1,
+    "PN结的能带图与内建电势": 4,
+    "MOSFET 高频模型与频率特性": 4,
+    "晶体学基础：晶格与倒格矢": 2,
+    "固体磁性：顺磁/铁磁/反铁磁": 1,
+    "ADC 基本原理：SAR/Delta-Sigma/Pipeline": 4,
+    "CMOS 时序逻辑电路：锁存器与触发器": 4,
+    "MOS电容的积累、耗尽、反型状态与阈值电压": 2
+  },
+  "learning_style": "mixed",
+  "exam_date": "2027-12-21",
+  "weak_topics": [
+    "超导基础：BCS 理论",
+    "CMOS 反相器静态特性",
+    "晶体学基础：晶格与倒格矢",
+    "光学性质",
+    "单级放大器"
+  ],
+  "mastered_topics": [],
+  "last_diagnosis_score": 50,
+  "last_diagnosis_date": "2026-08-11T10:55:01.195163+00:00",
+  "target_school": null,
+  "target_major": "微电子科学与工程",
+  "preparation_stage": "initial",
+  "exam_year": 2027,
+  "mastered_skills": [],
+  "weak_points": [
+    "超导基础：BCS 理论",
+    "CMOS 反相器静态特性",
+    "晶体学基础：晶格与倒格矢",
+    "光学性质",
+    "单级放大器"
+  ],
+  "self_assessment": {},
+  "weekly_hours": 20,
+  "is_demo": false,
+  "wizard_completed": true
+}
+
+  发送到 /api/agent 的 input:
+  {
+  "action": "diagnose",
+  "input": {
+    "student_name": "",
+    "target_major": "微电子科学与工程",
+    "mastered_skills": [],
+    "weak_points": [
+      "超导基础：BCS 理论",
+      "CMOS 反相器静态特性",
+      "晶体学基础：晶格与倒格矢",
+      "光学性质",
+      "单级放大器"
+    ],
+    "knowledge_points": [
+      {
+        "topic": "振荡器",
+        "star": 1,
+        "status": "weak"
+      },
+      {
+        "topic": "MOSFET I-V",
+        "star": 4,
+        "status": "mastered"
+      },
+      {
+        "topic": "光学性质",
+        "star": 3,
+        "status": "weak"
+      },
+      {
+        "topic": "单级放大器",
+        "star": 3,
+        "status": "weak"
+      },
+      {
+        "topic": "低功耗设计技术",
+        "star": 1,
+        "status": "weak"
+      },
+      {
+        "topic": "近自由电子近似",
+        "star": 1,
+        "status": "weak"
+      },
+      {
+        "topic": "MOS 结构与 C-V 特性",
+        "star": 4,
+        "status": "mastered"
+      },
+      {
+        "topic": "超导基础：BCS 理论",
+        "star": 1,
+        "status": "weak"
+      },
+      {
+        "topic": "CMOS 反相器静态特性",
+        "star": 2,
+        "status": "weak"
+      },
+      {
+        "topic": "器件可靠性与失效机制",
+        "star": 1,
+        "status": "weak"
+      },
+      {
+        "topic": "PN结的能带图与内建电势",
+        "star": 4,
+        "status": "mastered"
+      },
+      {
+        "topic": "MOSFET 高频模型与频率特性",
+        "star": 4,
+        "status": "mastered"
+      },
+      {
+        "topic": "晶体学基础：晶格与倒格矢",
+        "star": 2,
+        "status": "weak"
+      },
+      {
+        "topic": "固体磁性：顺磁/铁磁/反铁磁",
+        "star": 1,
+        "status": "weak"
+      },
+      {
+        "topic": "ADC 基本原理：SAR/Delta-Sigma/Pipeline",
+        "star": 4,
+        "status": "mastered"
+      },
+      {
+        "topic": "CMOS 时序逻辑电路：锁存器与触发器",
+        "star": 4,
+        "status": "mastered"
+      },
+      {
+        "topic": "MOS电容的积累、耗尽、反型状态与阈值电压",
+        "star": 2,
+        "status": "weak"
+      }
+    ],
+    "suggested_score": 49
+  }
+}

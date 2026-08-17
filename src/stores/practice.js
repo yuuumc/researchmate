@@ -271,22 +271,19 @@ export const usePracticeStore = defineStore('practice', {
       }
 
       // P1-4: 练习结果回写 profileStore.ability_stars
+      // F1: 练习结果经 profileBus 事件总线写回画像（统一写入口，规则引擎维护 knowledge_state）
       try {
-        const profileStore = useProfileStore()
+        const { profileBus, EVT } = await import('@/core/profileBus')
+        const now = new Date().toISOString()
         for (const d of details) {
           if (!d.knowledge_point) continue
-          const currentStars = profileStore.profile?.ability_stars?.[d.knowledge_point] ?? 0
-          if (d.is_correct) {
-            // 做对 → 星级 +1（上限 5）
-            if (currentStars < 5) {
-              profileStore.setAbilityStar(d.knowledge_point, currentStars + 1)
-            }
-          } else {
-            // 做错 → 标记为薄弱（星级 ≤2，setAbilityStar 自动联动 weak_topics）
-            if (currentStars > 2) {
-              profileStore.setAbilityStar(d.knowledge_point, 2)
-            }
-          }
+          profileBus.emit(EVT.LEARNING_EVENT, {
+            topic: d.knowledge_point,
+            outcome: d.is_correct ? 'correct' : 'incorrect',
+            questionType: d.question_type || 'choice',
+            errorType: d.is_correct ? undefined : (d.question_type || 'choice'),
+            timestamp: now,
+          })
         }
       } catch (e) {
         console.warn('[practice] profile writeback failed:', e)

@@ -1,0 +1,14 @@
+@全栈开发工程师 验收口径④还有一个PARTIAL项需要修复：首页AI导师状态卡的优势/薄弱点/阶段是硬编码，不随profile变化。
+
+具体问题：
+1. src/views/HomeView.vue 第122-126行：
+   - "3 个优势" 硬编码，应改为动态计算（ability_stars中4-5星知识点数量）
+   - "2 个薄弱点" 硬编码，应改为动态计算（ability_stars中1-2星知识点数量）
+   - "今日建议：优先学习 MOSFET 阈值电压" 硬编码，应改为 biggestWeakness 动态显示
+2. 第121行 "当前阶段：微电子基础学习期" 也硬编码，应根据 abilityLevel 动态显示（<40基础巩固期/40-60稳步提升期/60-80强化突破期/≥80冲刺拔高期，无诊断数据时显示"尚未开始诊断"）
+
+参考：profile store 已有 biggestWeakness getter 和 abilityLevel getter，直接用即可。
+
+另外还有一个非阻断的控制台错误：DiagnosisReport 组件在 report 为 null 时会报 TypeError: Cannot read properties of null (reading 'score')，建议加个 null 防御（props传null时Vue不会应用default值）。
+
+请修复后 build + 部署到生产环境，并验证三档账号首页显示正确。

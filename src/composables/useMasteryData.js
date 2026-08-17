@@ -18,6 +18,8 @@ import { computed } from 'vue'
 import { useDiagnosisStore } from '@/stores/diagnosis'
 import { useProfileStore } from '@/stores/profile'
 
+let _masteryDecayDone = false  // F1: 同次会话只衰减一次
+
 const WEAK_MAX = 2      // 1-2 星 = 薄弱
 const STRONG_MIN = 4    // 4-5 星 = 优势/已掌握
 // 3 星 = developing（发展中，既非薄弱也非优势）
@@ -155,6 +157,18 @@ export function useMasteryData() {
     return null
   })
 
+  // === F1: knowledge_state 多维掌握度（画像引擎地基读路径） ===
+  const knowledgeState = computed(() => profileStore.profile?.knowledge_state || {})
+
+  // F1: 画像页打开时跑一次遗忘衰减（GWT3：lastStudied 越久 → mastery 经衰减后低于记录值）
+  if (!_masteryDecayDone) {
+    _masteryDecayDone = true
+    try { profileStore.decayStaleMastery && profileStore.decayStaleMastery() } catch (e) { console.warn('[mastery] decay failed:', e) }
+  }
+
+  // F1: 手动触发衰减刷新
+  const decayStaleMastery = () => profileStore.decayStaleMastery && profileStore.decayStaleMastery()
+
   return {
     latestDiagnosis,
     latestScore,
@@ -167,5 +181,7 @@ export function useMasteryData() {
     masteredSkills,
     rootCauseChain,
     biggestWeakness,
+    knowledgeState,
+    decayStaleMastery,
   }
 }

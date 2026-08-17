@@ -1,0 +1,257 @@
+{
+  "name": "xueba",
+  "content": "# 📋 xueba 的 4 周个性化复习计划\n\n## 计划策略说明\n\n**当前阶段判定**：根据三因子决策表，你的诊断分为 82 分（≥75），且备考剩余约 18 周（>8 周），因此当前处于 **专题强化（intensive）** 阶段。基础巩固阶段已完成，后续将自然过渡到真题冲刺与模拟模考。\n\n**薄弱点分析**：本次诊断发现 2 个 P0 级薄弱点，均集中在 MOS 结构模块：\n- **wp_01（MOSFET 阈值电压推导）**：根因链深达 4 层（泊松方程→表面势→强反型判据→阈值电压推导），说明底层物理基础需要系统补强。计划用 2 周从最底层逐层向上攻克。\n- **wp_02（C-V 特性）**：根因链 3 层（MOS电容结构→积累/耗尽/反型→C-V特性曲线），与 wp_01 共享 MOS 物理基础，安排在第 2 周并行推进。\n\n**时间安排**：每周计划约 12-14 小时，按每晚 2 小时 + 周末半天的节奏分配，确保可持续执行。\n\n\n```json\n{\n  \"target_stage\": \"intensive\",\n  \"stage_entry_criteria\": \"诊断分 82；备考剩余约 18 周；已完成 1 个冲刺周期\",\n  \"stage_timeline\": [\n    {\"id\": \"foundation\", \"name\": \"基础巩固\", \"en\": \"Foundation\", \"status\": \"done\", \"index\": 0, \"milestone\": \"基础知识点系统梳理，薄弱根因链底层逐层补齐\", \"entry\": \"诊断分 < 50 或首次备考\"},\n    {\"id\": \"intensive\", \"name\": \"专题强化\", \"en\": \"Intensive\", \"status\": \"active\", \"index\": 1, \"milestone\": \"P0 薄弱点全面覆盖，能独立完成中等难度综合题\", \"entry\": \"诊断分 50–74，基础已过一遍\"},\n    {\"id\": \"sprint\", \"name\": \"真题冲刺\", \"en\": \"Sprint\", \"status\": \"upcoming\", \"index\": 2, \"milestone\": \"真题套卷训练，时间管理与高频考点突破\", \"entry\": \"诊断分 ≥ 75 或备考剩余 ≤ 8 周\"},\n    {\"id\": \"mock\", \"name\": \"模拟模考\", \"en\": \"Mock\", \"status\": \"upcoming\", \"index\": 3, \"milestone\": \"全真模拟考试，查漏补缺与心态调整\", \"entry\": \"备考剩余 ≤ 3 周\"}\n  ],\n  \"exam_date\": \"2026-12-21\",\n  \"total_weeks\": 4,\n  \"weak_point_coverage\": [\n    {\n      \"wp_id\": \"wp_01\",\n      \"knowledge_point\": \"MOSFET 阈值电压推导\",\n      \"root_cause_chain\": [\"泊松方程\", \"表面势\", \"强反型判据\", \"阈值电压推导\"],\n      \"chain_depth\": 4,\n      \"priority\": \"P0\",\n      \"covered_in_weeks\": [1, 2],\n      \"task_count\": 6,\n      \"coverage_status\": \"covered\"\n    },\n    {\n      \"wp_id\": \"wp_02\",\n      \"knowledge_point\": \"C-V 特性\",\n      \"root_cause_chain\": [\"MOS电容结构\", \"积累/耗尽/反型\", \"C-V特性曲线\"],\n      \"chain_depth\": 3,\n      \"priority\": \"P0\",\n      \"covered_in_weeks\": [2],\n      \"task_count\": 3,\n      \"coverage_status\": \"covered\"\n    }\n  ],\n  \"weeks\": [\n    {\n      \"week\": 1,\n      \"stage\": \"intensive\",\n      \"theme\": \"P0 根因链底层补强（wp_01 泊松方程→表面势）\",\n      \"source_weak_point_ids\": [\"wp_01\"],\n      \"tasks\": [\n        \"刘恩科 3.1-3.2 节泊松方程复习\",\n        \"手绘泊松方程推导并标注边界条件\",\n        \"第 3 章习题 3.1-3.5\"\n      ],\n      \"task_bindings\": [\n        {\"task_index\": 0, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"},\n        {\"task_index\": 1, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"},\n        {\"task_index\": 2, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"}\n      ],\n      \"daily\": [\"19:00-21:00 教材\", \"21:00-23:00 习题\"],\n      \"estimated_hours\": 14,\n      \"exercise_count\": 5\n    },\n    {\n      \"week\": 2,\n      \"stage\": \"intensive\",\n      \"theme\": \"P0 根因链上层 + 第二薄弱点（wp_01 强反型→阈值电压, wp_02 C-V）\",\n      \"source_weak_point_ids\": [\"wp_01\", \"wp_02\"],\n      \"tasks\": [\n        \"表面势与强反型判据推导练习\",\n        \"阈值电压完整推导（含工艺参数）\",\n        \"MOS电容 C-V 特性曲线绘制与分区标注\"\n      ],\n      \"task_bindings\": [\n        {\"task_index\": 0, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"},\n        {\"task_index\": 1, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"},\n        {\"task_index\": 2, \"source_weak_point_id\": \"wp_02\", \"priority\": \"P0\"}\n      ],\n      \"daily\": [\"19:00-21:00 推导\", \"21:00-23:00 习题\"],\n      \"estimated_hours\": 12,\n      \"exercise_count\": 4\n    },\n    {\n      \"week\": 3,\n      \"stage\": \"intensive\",\n      \"theme\": \"P0 薄弱点综合应用 + 跨章节串联（wp_01 阈值电压 + wp_02 C-V）\",\n      \"source_weak_point_ids\": [\"wp_01\", \"wp_02\"],\n      \"tasks\": [\n        \"MOS结构综合题：由C-V曲线反推阈值电压\",\n        \"刘恩科 5.3 节 MOSFET I-V 特性复习\",\n        \"MOSFET 跨章节综合题（C-V + I-V 联动）\"\n      ],\n      \"task_bindings\": [\n        {\"task_index\": 0, \"source_weak_point_id\": \"wp_02\", \"priority\": \"P0\"},\n        {\"task_index\": 1, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"},\n        {\"task_index\": 2, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"}\n      ],\n      \"daily\": [\"19:00-21:00 专题训练\", \"21:00-23:00 习题\"],\n      \"estimated_hours\": 12,\n      \"exercise_count\": 4\n    },\n    {\n      \"week\": 4,\n      \"stage\": \"intensive\",\n      \"theme\": \"P0 薄弱点巩固 + 小结检测（wp_01 + wp_02 全链条复盘）\",\n      \"source_weak_point_ids\": [\"wp_01\", \"wp_02\"],\n      \"tasks\": [\n        \"MOSFET 阈值电压 + C-V 特性 综合自测（限时 60 分钟）\",\n        \"错题归因分析：对照根因链定位薄弱环节\",\n        \"整理 MOS 结构知识点思维导图（含 4 层根因链）\"\n      ],\n      \"task_bindings\": [\n        {\"task_index\": 0, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"},\n        {\"task_index\": 1, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"},\n        {\"task_index\": 2, \"source_weak_point_id\": \"wp_02\", \"priority\": \"P0\"}\n      ],\n      \"daily\": [\"19:00-21:00 自测与复盘\", \"21:00-23:00 总结\"],\n      \"estimated_hours\": 10,\n      \"exercise_count\": 3\n    }\n  ],\n  \"adjustments\": {\n    \"keep\": [\"每日 19:00-21:00 教材复习\", \"周末综合训练\"],\n    \"strengthen\": [\"薄弱点专题（第3、5章）\", \"MOS 结构跨章节综合训练\"],\n    \"drop\": [\"非考研重点章节\"]\n  },\n  \"audience\": \"student\",\n  \"student_id_hash\": \"sha256:7f8a9b...\",\n  \"version\": \"2.2.0\"\n}\n```",
+  "structured": {
+    "target_stage": "intensive",
+    "stage_entry_criteria": "诊断分 82；备考剩余约 18 周；已完成 1 个冲刺周期",
+    "stage_timeline": [
+      {
+        "id": "foundation",
+        "name": "基础巩固",
+        "en": "Foundation",
+        "status": "done",
+        "index": 0,
+        "milestone": "基础知识点系统梳理，薄弱根因链底层逐层补齐",
+        "entry": "诊断分 < 50 或首次备考"
+      },
+      {
+        "id": "intensive",
+        "name": "专题强化",
+        "en": "Intensive",
+        "status": "active",
+        "index": 1,
+        "milestone": "P0 薄弱点全面覆盖，能独立完成中等难度综合题",
+        "entry": "诊断分 50–74，基础已过一遍"
+      },
+      {
+        "id": "sprint",
+        "name": "真题冲刺",
+        "en": "Sprint",
+        "status": "upcoming",
+        "index": 2,
+        "milestone": "真题套卷训练，时间管理与高频考点突破",
+        "entry": "诊断分 ≥ 75 或备考剩余 ≤ 8 周"
+      },
+      {
+        "id": "mock",
+        "name": "模拟模考",
+        "en": "Mock",
+        "status": "upcoming",
+        "index": 3,
+        "milestone": "全真模拟考试，查漏补缺与心态调整",
+        "entry": "备考剩余 ≤ 3 周"
+      }
+    ],
+    "exam_date": "2026-12-21",
+    "total_weeks": 4,
+    "weak_point_coverage": [
+      {
+        "wp_id": "wp_01",
+        "knowledge_point": "MOSFET 阈值电压推导",
+        "root_cause_chain": [
+          "泊松方程",
+          "表面势",
+          "强反型判据",
+          "阈值电压推导"
+        ],
+        "chain_depth": 4,
+        "priority": "P0",
+        "covered_in_weeks": [
+          1,
+          2
+        ],
+        "task_count": 6,
+        "coverage_status": "covered"
+      },
+      {
+        "wp_id": "wp_02",
+        "knowledge_point": "C-V 特性",
+        "root_cause_chain": [
+          "MOS电容结构",
+          "积累/耗尽/反型",
+          "C-V特性曲线"
+        ],
+        "chain_depth": 3,
+        "priority": "P0",
+        "covered_in_weeks": [
+          2
+        ],
+        "task_count": 3,
+        "coverage_status": "covered"
+      }
+    ],
+    "weeks": [
+      {
+        "week": 1,
+        "stage": "intensive",
+        "theme": "P0 根因链底层补强（wp_01 泊松方程→表面势）",
+        "source_weak_point_ids": [
+          "wp_01"
+        ],
+        "tasks": [
+          "刘恩科 3.1-3.2 节泊松方程复习",
+          "手绘泊松方程推导并标注边界条件",
+          "第 3 章习题 3.1-3.5"
+        ],
+        "task_bindings": [
+          {
+            "task_index": 0,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          },
+          {
+            "task_index": 1,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          },
+          {
+            "task_index": 2,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          }
+        ],
+        "daily": [
+          "19:00-21:00 教材",
+          "21:00-23:00 习题"
+        ],
+        "estimated_hours": 14,
+        "exercise_count": 5
+      },
+      {
+        "week": 2,
+        "stage": "intensive",
+        "theme": "P0 根因链上层 + 第二薄弱点（wp_01 强反型→阈值电压, wp_02 C-V）",
+        "source_weak_point_ids": [
+          "wp_01",
+          "wp_02"
+        ],
+        "tasks": [
+          "表面势与强反型判据推导练习",
+          "阈值电压完整推导（含工艺参数）",
+          "MOS电容 C-V 特性曲线绘制与分区标注"
+        ],
+        "task_bindings": [
+          {
+            "task_index": 0,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          },
+          {
+            "task_index": 1,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          },
+          {
+            "task_index": 2,
+            "source_weak_point_id": "wp_02",
+            "priority": "P0"
+          }
+        ],
+        "daily": [
+          "19:00-21:00 推导",
+          "21:00-23:00 习题"
+        ],
+        "estimated_hours": 12,
+        "exercise_count": 4
+      },
+      {
+        "week": 3,
+        "stage": "intensive",
+        "theme": "P0 薄弱点综合应用 + 跨章节串联（wp_01 阈值电压 + wp_02 C-V）",
+        "source_weak_point_ids": [
+          "wp_01",
+          "wp_02"
+        ],
+        "tasks": [
+          "MOS结构综合题：由C-V曲线反推阈值电压",
+          "刘恩科 5.3 节 MOSFET I-V 特性复习",
+          "MOSFET 跨章节综合题（C-V + I-V 联动）"
+        ],
+        "task_bindings": [
+          {
+            "task_index": 0,
+            "source_weak_point_id": "wp_02",
+            "priority": "P0"
+          },
+          {
+            "task_index": 1,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          },
+          {
+            "task_index": 2,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          }
+        ],
+        "daily": [
+          "19:00-21:00 专题训练",
+          "21:00-23:00 习题"
+        ],
+        "estimated_hours": 12,
+        "exercise_count": 4
+      },
+      {
+        "week": 4,
+        "stage": "intensive",
+        "theme": "P0 薄弱点巩固 + 小结检测（wp_01 + wp_02 全链条复盘）",
+        "source_weak_point_ids": [
+          "wp_01",
+          "wp_02"
+        ],
+        "tasks": [
+          "MOSFET 阈值电压 + C-V 特性 综合自测（限时 60 分钟）",
+          "错题归因分析：对照根因链定位薄弱环节",
+          "整理 MOS 结构知识点思维导图（含 4 层根因链）"
+        ],
+        "task_bindings": [
+          {
+            "task_index": 0,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          },
+          {
+            "task_index": 1,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          },
+          {
+            "task_index": 2,
+            "source_weak_point_id": "wp_02",
+            "priority": "P0"
+          }
+        ],
+        "daily": [
+          "19:00-21:00 自测与复盘",
+          "21:00-23:00 总结"
+        ],
+        "estimated_hours": 10,
+        "exercise_count": 3
+      }
+    ],
+    "adjustments": {
+      "keep": [
+        "每日 19:00-21:00 教材复习",
+        "周末综合训练"
+      ],
+      "strengthen": [
+        "薄弱点专题（第3、5章）",
+        "MOS 结构跨章节综合训练"
+      ],
+      "drop": [
+        "非考研重点章节"
+      ]
+    },
+    "audience": "student",
+    "student_id_hash": "sha256:7f8a9b...",
+    "version": "2.2.0"
+  },
+  "finish_reason": "stop",
+  "usage": {
+    "completion_tokens": 1983,
+    "prompt_tokens": 6915,
+    "total_tokens": 8898
+  },
+  "model": "xopdeepseekv4flash0731",
+  "elapsed_ms": 12150
+}

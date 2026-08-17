@@ -1,0 +1,113 @@
+Vercel CLI 58.4.4 (Node.js 24.16.0)
+Retrieving project…
+Deploying yuuumcs-projects/yanxintong
+Uploading [--------------------] (0.0B/51.3MB)
+Uploading [=====---------------] (12.8MB/51.3MB)
+Uploading [==========----------] (25.7MB/51.3MB)
+Uploading [===============-----] (38.5MB/51.3MB)
+Uploading [====================] (51.3MB/51.3MB)
+  Inspect         https://vercel.com/yuuumcs-projects/yanxintong/JE3SNYakEXGQXQmmUk5byPFuSgek
+  Production      https://yanxintong-kobofbsc6-yuuumcs-projects.vercel.app
+Building…
+Building…
+Running build in Washington, D.C., USA (East) – iad1
+Build machine configuration: 2 cores, 8 GB
+Retrieving list of deployment files...
+Downloading 2081 deployment files...
+Restored build cache from previous deployment (8nkBwxgUjZ5oTH5ok5ocEKM7qDkM)
+Running "vercel build"
+Vercel CLI 58.1.0
+Installing dependencies...
+up to date in 835ms
+17 packages are looking for funding
+run `npm fund` for details
+> researchmate@1.0.0 build
+> vite build
+vite v5.4.21 building for production...
+transforming...
+node_modules/@vueuse/core/dist/index.js (3362:0): A comment
+"/* #__PURE__ */"
+in "node_modules/@vueuse/core/dist/index.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+node_modules/@vueuse/core/dist/index.js (5780:22): A comment
+"/* #__PURE__ */"
+in "node_modules/@vueuse/core/dist/index.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+✓ 2405 modules transformed.
+rendering chunks...
+[plugin:vite:reporter] [plugin vite:reporter]
+(!) /vercel/path0/src/stores/profile.js is dynamically imported by /vercel/path0/src/stores/diagnosis.js but also statically imported by /vercel/path0/src/components/ChatWindow.vue, /vercel/path0/src/components/ProfileWizard.vue, /vercel/path0/src/core/profileLoader.js, /vercel/path0/src/core/profileUpdater.js, /vercel/path0/src/data/seedDemo.js, /vercel/path0/src/services/sync.js, /vercel/path0/src/stores/auth.js, /vercel/path0/src/stores/diagnosisSession.js, /vercel/path0/src/stores/journey.js, /vercel/path0/src/stores/practice.js, /vercel/path0/src/stores/sync.js, /vercel/path0/src/utils/diagnosisInput.js, /vercel/path0/src/views/AdmissionView.vue, /vercel/path0/src/views/CareerView.vue, /vercel/path0/src/views/DiagnosisSessionView.vue, /vercel/path0/src/views/DiagnosisView.vue, /vercel/path0/src/views/HomeView.vue, /vercel/path0/src/views/JourneyView.vue, /vercel/path0/src/views/PeerView.vue, /vercel/path0/src/views/PlanView.vue, /vercel/path0/src/views/PracticeView.vue, /vercel/path0/src/views/ProfileView.vue, /vercel/path0/src/views/ResearchView.vue, dynamic import will not move module into another chunk.
+[plugin:vite:reporter] [plugin vite:reporter]
+(!) /vercel/path0/src/services/profileService.js is dynamically imported by /vercel/path0/src/stores/profile.js but also statically imported by /vercel/path0/src/components/ProfileWizard.vue, /vercel/path0/src/router/index.js, /vercel/path0/src/stores/auth.js, /vercel/path0/src/stores/diagnosisSession.js, dynamic import will not move module into another chunk.
+[plugin:vite:reporter] [plugin vite:reporter]
+(!) /vercel/path0/src/stores/auth.js is dynamically imported by /vercel/path0/src/stores/profile.js but also statically imported by /vercel/path0/src/components/AppLayout.vue, /vercel/path0/src/components/AuthModal.vue, /vercel/path0/src/components/ProfileWizard.vue, /vercel/path0/src/data/seedDemo.js, /vercel/path0/src/main.js, /vercel/path0/src/router/index.js, /vercel/path0/src/stores/sync.js, /vercel/path0/src/views/AdmissionView.vue, /vercel/path0/src/views/DiagnosisView.vue, /vercel/path0/src/views/LoginView.vue, /vercel/path0/src/views/PracticeView.vue, /vercel/path0/src/views/teacher/ClassListView.vue, dynamic import will not move module into another chunk.
+computing gzip size...
+dist/index.html                                                                             0.56 kB │ gzip:   0.48 kB
+dist/assets/AiGeneratedBadge-K05fPI03.css                                                   0.43 kB │ gzip:   0.28 kB
+dist/assets/KnowledgeGraph-Kt0tw4Fy.css                                                     0.81 kB │ gzip:   0.42 kB
+dist/assets/ClassStatsView-CjER4bx8.css                                                     3.36 kB │ gzip:   0.93 kB
+dist/assets/AdmissionCard-BFCZBvNH.css                                                      3.71 kB │ gzip:   0.99 kB
+dist/assets/ResearchView-N5FOm8K6.css                                                       3.86 kB │ gzip:   1.10 kB
+dist/assets/AdmissionView-CpsLRBE5.css                                                      4.02 kB │ gzip:   1.04 kB
+dist/assets/PlanCard-Cud-_Hfh.css                                                           4.57 kB │ gzip:   1.13 kB
+dist/assets/MarkdownRenderer-BOUHmRdW.css                                                   4.95 kB │ gzip:   1.11 kB
+dist/assets/ProfileWizardView-D4hlrWrT.css                                                  5.20 kB │ gzip:   1.48 kB
+dist/assets/HistoryView-CDBNp5nJ.css                                                        5.23 kB │ gzip:   1.32 kB
+dist/assets/DiagnosisReport-DCvaUWbs.css                                                    5.25 kB │ gzip:   1.22 kB
+dist/assets/CareerView-DgtAugMB.css                                                         5.91 kB │ gzip:   1.37 kB
+dist/assets/StudentProfileView-By6xPM7m.css                                                 5.97 kB │ gzip:   1.34 kB
+dist/assets/LoginView-DMqyk9Sm.css                                                          6.32 kB │ gzip:   1.45 kB
+dist/assets/DiagnosisSessionView-hGAX9YBe.css                                               6.33 kB │ gzip:   1.69 kB
+dist/assets/PeerView-D6fedleO.css                                                           6.43 kB │ gzip:   1.47 kB
+dist/assets/PlanView-DVwoDBu4.css                                                           6.59 kB │ gzip:   1.54 kB
+dist/assets/ProfileView-Bz1sZssu.css                                                        7.39 kB │ gzip:   1.57 kB
+dist/assets/PracticeView-BgQ-WaSJ.css                                                       8.17 kB │ gzip:   1.98 kB
+dist/assets/ClassListView-yCI9Q0jA.css                                                      8.47 kB │ gzip:   1.81 kB
+dist/assets/ResearchCard-CWYoQKgv.css                                                       8.75 kB │ gzip:   1.76 kB
+dist/assets/JourneyView-DlEIYZmy.css                                                        9.59 kB │ gzip:   2.01 kB
+dist/assets/DiagnosisView-PCC0XOad.css                                                     11.04 kB │ gzip:   2.15 kB
+dist/assets/HomeView-DMcJOcXK.css                                                          17.92 kB │ gzip:   3.25 kB
+dist/assets/ChatView-CY0aFawW.css                                                          34.39 kB │ gzip:   6.02 kB
+dist/assets/index-DMlEsemC.css                                                             94.97 kB │ gzip:  15.28 kB
+dist/assets/useTagInput-DD2UNZ-l.js                                                         0.25 kB │ gzip:   0.20 kB
+dist/assets/AiGeneratedBadge-DMLQGE_m.js                                                    0.54 kB │ gzip:   0.36 kB
+dist/assets/stripStructuredJson-Bsdb_7M7.js                                                 1.56 kB │ gzip:   1.02 kB
+dist/assets/diagnosisInput-scIFotXx.js                                                      2.04 kB │ gzip:   0.90 kB
+dist/assets/wrongBook-jcf9KT4h.js                                                           2.65 kB │ gzip:   1.07 kB
+dist/assets/AdmissionCard-B-mzq-Z1.js                                                       2.72 kB │ gzip:   1.38 kB
+dist/assets/PlanCard-BGQNqXSm.js                                                            2.74 kB │ gzip:   1.22 kB
+dist/assets/ResearchView-DmRKhsL6.js                                                        3.61 kB │ gzip:   1.80 kB
+dist/assets/DiagnosisReport-DzEgwzOd.js                                                     3.85 kB │ gzip:   1.79 kB
+dist/assets/AdmissionView-_mzBR4tM.js                                                       3.86 kB │ gzip:   2.24 kB
+dist/assets/journey-DNrhwSkJ.js                                                             3.91 kB │ gzip:   1.68 kB
+dist/assets/PlanView-Dc8FTNsT.js                                                            4.63 kB │ gzip:   2.47 kB
+dist/assets/ProfileView-DF7An4_f.js                                                         4.82 kB │ gzip:   2.18 kB
+dist/assets/KnowledgeGraph-CEBBT_mG.js                                                      4.99 kB │ gzip:   2.01 kB
+dist/assets/StudentProfileView-Bl6PAau4.js                                                  5.43 kB │ gzip:   2.45 kB
+dist/assets/ResearchCard-C6lXeipl.js                                                        6.02 kB │ gzip:   2.06 kB
+dist/assets/LoginView-BWFktoel.js                                                           7.11 kB │ gzip:   2.67 kB
+dist/assets/PeerView-C-SMaOQf.js                                                            7.30 kB │ gzip:   2.99 kB
+dist/assets/ClassListView-DNlPkqtR.js                                                       8.14 kB │ gzip:   3.42 kB
+dist/assets/DiagnosisView-0STQfmuc.js                                                       8.49 kB │ gzip:   3.42 kB
+dist/assets/JourneyView-9GPo8aRx.js                                                         8.73 kB │ gzip:   3.65 kB
+dist/assets/ProfileWizardView-PJGgyfXV.js                                                   9.28 kB │ gzip:   3.83 kB
+dist/assets/HomeView-uOyPreMj.js                                                           10.99 kB │ gzip:   4.95 kB
+dist/assets/CareerView-B_ouzmQI.js                                                         11.79 kB │ gzip:   5.32 kB
+dist/assets/DiagnosisSessionView-t5u_MFaX.js                                               11.98 kB │ gzip:   4.75 kB
+dist/assets/PracticeView-DOzCrfAV.js                                                       22.45 kB │ gzip:   7.07 kB
+dist/assets/HistoryView-8-DD5zkr.js                                                        39.49 kB │ gzip:  15.14 kB
+dist/assets/ChatView-DVIWhYHg.js                                                           46.17 kB │ gzip:  17.47 kB
+dist/assets/MarkdownRenderer.vue_vue_type_style_index_0_scoped_02617002_lang-B2B39Euy.js   73.01 kB │ gzip:  24.42 kB
+dist/assets/ClassStatsView-WFUfV4bd.js                                                     89.82 kB │ gzip:  30.82 kB
+dist/assets/installCanvasRenderer-BYjFOiW7.js                                             447.44 kB │ gzip: 150.42 kB
+dist/assets/index-BDasKNvK.js                                                             608.01 kB │ gzip: 206.34 kB
+✓ built in 11.60s
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+Build Completed in /vercel/output [15s]
+Deploying outputs...
+[2K[1A[2K[G  Production      https://yanxintong-kobofbsc6-yuuumcs-projects.vercel.app
+Completing…
+▲ Aliased         https://yanxintong.vercel.app
+
+✓ Ready in 50s

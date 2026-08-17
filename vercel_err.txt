@@ -1,0 +1,9 @@
+Vercel CLI 58.4.4 (Node.js 24.16.0)
+Retrieving project…
+Deploying yuuumcs-projects/yanxintong
+Uploading [--------------------] (0.0B/1.7MB)
+Uploading [=====---------------] (436.9KB/1.7MB)
+Uploading [==========----------] (866.9KB/1.7MB)
+Uploading [===============-----] (1.3MB/1.7MB)
+Uploading [====================] (1.7MB/1.7MB)
+Error: fetch failed

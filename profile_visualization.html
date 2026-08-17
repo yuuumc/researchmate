@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>研芯通 - 学情画像概念原型</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0e1a; font-family: -apple-system, 'Segoe UI', sans-serif; color: #e0e6f0; overflow: hidden; }
+
+/* 顶部导航 */
+.top-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; justify-content: center; gap: 12px; padding: 12px;
+  background: linear-gradient(180deg, rgba(10,14,26,0.95), transparent);
+}
+.view-btn {
+  padding: 8px 20px; border: 1px solid rgba(100,180,255,0.3); border-radius: 20px;
+  background: rgba(20,30,50,0.8); color: #8899bb; cursor: pointer; font-size: 13px;
+  transition: all 0.3s; backdrop-filter: blur(10px);
+}
+.view-btn.active { background: rgba(64,158,255,0.2); border-color: #409eff; color: #409eff; box-shadow: 0 0 20px rgba(64,158,255,0.3); }
+.view-btn:hover { border-color: #409eff; color: #fff; }
+
+/* 视图容器 */
+.view { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; }
+.view.active { display: block; }
+
+/* ============ 视图1: 晶圆地图 ============ */
+#wafer-map { background: radial-gradient(ellipse at center, #0d1525 0%, #060a14 100%); }
+.wafer-container { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+.wafer-ring { fill: none; stroke: rgba(64,158,255,0.08); stroke-width: 1; }
+.wafer-ring-outer { fill: none; stroke: rgba(64,158,255,0.15); stroke-width: 2; }
+.node-group { cursor: pointer; }
+.node-die { transition: all 0.4s; }
+.node-die:hover { filter: brightness(1.5); }
+.node-label { font-size: 10px; fill: #8899bb; text-anchor: middle; pointer-events: none; font-family: monospace; }
+.node-pulse { animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+.flow-line { stroke-dasharray: 4 4; animation: flow 1s linear infinite; }
+@keyframes flow { to { stroke-dashoffset: -8; } }
+
+.wafer-info {
+  position: fixed; right: 30px; top: 50%; transform: translateY(-50%);
+  width: 300px; background: rgba(15,22,40,0.9); border: 1px solid rgba(64,158,255,0.2);
+  border-radius: 16px; padding: 24px; backdrop-filter: blur(20px);
+}
+.wafer-info h3 { color: #409eff; font-size: 14px; margin-bottom: 16px; letter-spacing: 2px; }
+.info-row { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; font-size: 13px; }
+.info-label { color: #667799; }
+.info-value { color: #e0e6f0; font-weight: 600; }
+.mastery-bar { width: 100%; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+.mastery-fill { height: 100%; border-radius: 2px; transition: width 1s; }
+.wafer-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+.stat-card { background: rgba(64,158,255,0.05); border-radius: 10px; padding: 12px; text-align: center; }
+.stat-num { font-size: 24px; font-weight: 700; }
+.stat-label { font-size: 10px; color: #667799; margin-top: 4px; }
+
+/* ============ 视图2: 知识星系 ============ */
+#galaxy { background: radial-gradient(ellipse at 50% 50%, #0d1020 0%, #03050c 100%); }
+#star-canvas { position: absolute; width: 100%; height: 100%; }
+.planet { cursor: pointer; transition: all 0.3s; }
+.planet:hover { filter: brightness(1.8) drop-shadow(0 0 20px currentColor); }
+.orbit-ring { fill: none; stroke: rgba(100,150,255,0.06); stroke-width: 1; }
+.galaxy-center {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  text-align: center; pointer-events: none;
+}
+.galaxy-core {
+  width: 120px; height: 120px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(64,158,255,0.3) 0%, rgba(64,158,255,0.05) 60%, transparent 70%);
+  animation: coreGlow 3s ease-in-out infinite; margin: 0 auto;
+}
+@keyframes coreGlow { 0%,100%{transform:scale(1);opacity:0.8} 50%{transform:scale(1.15);opacity:1} }
+.galaxy-label { color: #409eff; font-size: 13px; letter-spacing: 3px; margin-top: -75px; position: relative; z-index: 2; }
+
+.galaxy-info {
+  position: fixed; left: 30px; top: 50%; transform: translateY(-50%);
+  width: 280px; background: rgba(10,15,30,0.9); border: 1px solid rgba(100,180,255,0.15);
+  border-radius: 16px; padding: 20px; backdrop-filter: blur(20px);
+}
+.galaxy-info h3 { color: #a78bfa; font-size: 13px; letter-spacing: 2px; margin-bottom: 14px; }
+.trajectory-item { display: flex; align-items: center; gap: 10px; margin: 8px 0; font-size: 12px; color: #8899bb; }
+.traj-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.traj-line { flex: 1; height: 1px; background: linear-gradient(90deg, currentColor, transparent); opacity: 0.3; }
+
+/* ============ 视图3: 能力波形 ============ */
+#waveform { background: #080c16; }
+.scope-container { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 90%; max-width: 1000px; }
+.scope-screen {
+  background: #0a0f0a; border: 2px solid #1a2a1a; border-radius: 12px;
+  padding: 30px; box-shadow: 0 0 60px rgba(0,255,100,0.05), inset 0 0 80px rgba(0,255,100,0.02);
+  position: relative;
+}
+.scope-screen::before {
+  content: ''; position: absolute; inset: 0; border-radius: 12px;
+  background: repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(0,255,100,0.03) 40px),
+              repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(0,255,100,0.03) 40px);
+  pointer-events: none;
+}
+.scope-title { color: #00ff64; font-family: 'Courier New', monospace; font-size: 12px; letter-spacing: 2px; margin-bottom: 20px; opacity: 0.7; }
+.wave-row { display: flex; align-items: center; margin: 16px 0; gap: 16px; }
+.wave-label { width: 140px; color: #00ff64; font-family: 'Courier New', monospace; font-size: 11px; opacity: 0.8; text-align: right; }
+.wave-svg { flex: 1; height: 50px; }
+.wave-path { fill: none; stroke-width: 1.5; }
+.wave-path.animated { stroke-dasharray: 2000; stroke-dashoffset: 2000; animation: drawWave 2s ease forwards; }
+@keyframes drawWave { to { stroke-dashoffset: 0; } }
+.wave-value { width: 50px; color: #00ff64; font-family: 'Courier New', monospace; font-size: 14px; font-weight: bold; }
+
+.scope-readout {
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-top: 24px;
+  padding-top: 20px; border-top: 1px solid rgba(0,255,100,0.1);
+}
+.readout-item { text-align: center; }
+.readout-val { font-family: 'Courier New', monospace; font-size: 28px; font-weight: bold; }
+.readout-label { font-family: 'Courier New', monospace; font-size: 10px; opacity: 0.5; margin-top: 4px; letter-spacing: 1px; }
+
+/* ============ 视图4: 芯片花园 ============ */
+#garden { background: linear-gradient(180deg, #0a1020 0%, #0d1a14 50%, #0a1510 100%); }
+#garden-canvas { position: absolute; width: 100%; height: 100%; }
+.garden-ground {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 30%;
+  background: linear-gradient(0deg, rgba(20,40,25,0.6), transparent);
+}
+.plant { position: absolute; bottom: 25%; transform: translateX(-50%); cursor: pointer; text-align: center; transition: all 0.3s; }
+.plant:hover { transform: translateX(-50%) scale(1.1); }
+.plant-name { font-size: 10px; color: #88aa88; margin-top: 4px; white-space: nowrap; }
+.garden-sky { position: absolute; top: 40px; left: 40px; right: 40px; }
+.garden-title { color: #66aa66; font-size: 14px; letter-spacing: 3px; opacity: 0.6; }
+.weather-badges { display: flex; gap: 10px; margin-top: 12px; }
+.weather-badge {
+  padding: 6px 14px; border-radius: 20px; font-size: 11px;
+  background: rgba(100,200,100,0.1); border: 1px solid rgba(100,200,100,0.2); color: #88cc88;
+}
+
+/* 通用tooltip */
+.tooltip {
+  position: fixed; background: rgba(15,22,40,0.95); border: 1px solid rgba(64,158,255,0.3);
+  border-radius: 12px; padding: 16px; font-size: 12px; max-width: 260px; z-index: 200;
+  pointer-events: none; opacity: 0; transition: opacity 0.2s; backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+.tooltip.show { opacity: 1; }
+.tooltip h4 { font-size: 14px; margin-bottom: 8px; }
+.tooltip p { color: #8899bb; line-height: 1.6; }
+.tooltip .tip-stat { display: flex; justify-content: space-between; margin: 4px 0; }
+
+/* 底部状态栏 */
+.bottom-bar {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 20px; padding: 10px 24px;
+  background: rgba(15,22,40,0.8); border: 1px solid rgba(64,158,255,0.15);
+  border-radius: 30px; backdrop-filter: blur(20px); font-size: 11px; color: #667799; z-index: 100;
+}
+.bottom-bar span { color: #aabbdd; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <button class="view-btn active" onclick="switchView('wafer-map')">🔲 晶圆地图</button>
+  <button class="view-btn" onclick="switchView('galaxy')">🌌 知识星系</button>
+  <button class="view-btn" onclick="switchView('waveform')">📊 能力波形</button>
+  <button class="view-btn" onclick="switchView('garden')">🌱 芯片花园</button>
+</div>
+
+<!-- 视图1: 晶圆地图 -->
+<div id="wafer-map" class="view active">
+  <div class="wafer-container">
+    <svg width="600" height="600" viewBox="-300 -300 600 600" id="wafer-svg"></svg>
+  </div>
+  <div class="wafer-info">
+    <h3>◈ WAFER MAP · 晶圆图</h3>
+    <div id="wafer-detail">
+      <p style="color:#667799;font-size:12px;line-height:1.8;">点击晶圆上的晶粒查看<br>知识点掌握状态</p>
+    </div>
+    <div class="wafer-stats">
+      <div class="stat-card"><div class="stat-num" style="color:#00ff88" id="stat-good">0</div><div class="stat-label">已掌握</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:#ffaa00" id="stat-mid">0</div><div class="stat-label">学习中</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:#ff4466" id="stat-bad">0</div><div class="stat-label">薄弱点</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:#409eff" id="stat-avg">0</div><div class="stat-label">平均分</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 视图2: 知识星系 -->
+<div id="galaxy" class="view">
+  <canvas id="star-canvas"></canvas>
+  <div class="galaxy-center">
+    <div class="galaxy-core"></div>
+    <div class="galaxy-label">考研上岸</div>
+  </div>
+  <svg id="galaxy-svg" style="position:absolute;width:100%;height:100%;pointer-events:none;"></svg>
+  <div class="galaxy-info">
+    <h3>✦ KNOWLEDGE GALAXY</h3>
+    <p style="color:#667799;font-size:11px;margin-bottom:14px;line-height:1.7;">每个星球是一个知识点<br>亮度代表掌握度 · 连线是前置依赖</p>
+    <div id="trajectory-list"></div>
+  </div>
+</div>
+
+<!-- 视图3: 能力波形 -->
+<div id="waveform" class="view">
+  <div class="scope-container">
+    <div class="scope-screen">
+      <div class="scope-title">◉ RESEARCHMATE OSCILLOSCOPE · ABILITY ANALYSIS v2.0</div>
+      <div id="wave-channels"></div>
+      <div class="scope-readout">
+        <div class="readout-item"><div class="readout-val" style="color:#00ff64" id="r-score">0</div><div class="readout-label">DIAG SCORE</div></div>
+        <div class="readout-item"><div class="readout-val" style="color:#00ff64" id="r-mastery">0%</div><div class="readout-label">MASTERY</div></div>
+        <div class="readout-item"><div class="readout-val" style="color:#ffaa00" id="r-weak">0</div><div class="readout-label">WEAK POINTS</div></div>
+        <div class="readout-item"><div class="readout-val" style="color:#00ff64" id="r-streak">0</div><div class="readout-label">STREAK DAYS</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 视图4: 芯片花园 -->
+<div id="garden" class="view">
+  <canvas id="garden-canvas"></canvas>
+  <div class="garden-sky">
+    <div class="garden-title">🌿 KNOWLEDGE GARDEN · 知识花园</div>
+    <div class="weather-badges">
+      <span class="weather-badge">☀️ 学习动力 充足</span>
+      <span class="weather-badge">📈 连续打卡 7天</span>
+      <span class="weather-badge">🎯 本周目标 3/5</span>
+    </div>
+  </div>
+  <div class="garden-ground"></div>
+  <div id="plants-container"></div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<div class="bottom-bar">
+  <span>陈磊</span> · <span>微电子学与固体电子学</span> · <span>目标：复旦大学</span> · <span>距考研 126 天</span>
+</div>
+
+<script>
+// ============ 数据 ============
+const knowledgeData = [
+  { name:'半导体基础', score:80, errors:0, attempts:8 },
+  { name:'能带理论', score:75, errors:1, attempts:6 },
+  { name:'载流子统计', score:60, errors:2, attempts:5 },
+  { name:'杂质半导体', score:85, errors:0, attempts:7 },
+  { name:'费米能级', score:55, errors:3, attempts:6 },
+  { name:'PN结', score:90, errors:0, attempts:10 },
+  { name:'MOS结构', score:70, errors:2, attempts:7 },
+  { name:'MOSFET I-V', score:80, errors:1, attempts:9 },
+  { name:'CMOS反相器', score:40, errors:4, attempts:5 },
+  { name:'单级放大器', score:65, errors:2, attempts:6 },
+  { name:'电流镜', score:30, errors:5, attempts:4 },
+  { name:'频率响应', score:25, errors:6, attempts:3 },
+  { name:'反馈放大器', score:50, errors:3, attempts:4 },
+  { name:'运算放大器', score:45, errors:4, attempts:5 },
+  { name:'CMOS时序逻辑', score:70, errors:2, attempts:6 },
+  { name:'BCS超导理论', score:35, errors:4, attempts:3 },
+  { name:'晶体学基础', score:85, errors:0, attempts:6 },
+  { name:'光学性质', score:80, errors:1, attempts:5 },
+  { name:'JFET', score:20, errors:5, attempts:3 },
+  { name:'低功耗设计', score:40, errors:3, attempts:4 },
+];
+
+const abilities = [
+  { name:'概念理解', value:72, color:'#00ff64' },
+  { name:'数学推导', value:45, color:'#ffaa00' },
+  { name:'电路分析', value:58, color:'#409eff' },
+  { name:'综合应用', value:35, color:'#ff4466' },
+  { name:'物理直觉', value:60, color:'#a78bfa' },
+];
+
+function getColor(score) {
+  if (score >= 70) return { fill:'rgba(0,255,136,0.15)', stroke:'#00ff88', glow:'rgba(0,255,136,0.4)', text:'#00ff88' };
+  if (score >= 50) return { fill:'rgba(255,170,0,0.15)', stroke:'#ffaa00', glow:'rgba(255,170,0,0.4)', text:'#ffaa00' };
+  return { fill:'rgba(255,68,102,0.15)', stroke:'#ff4466', glow:'rgba(255,68,102,0.4)', text:'#ff4466' };
+}
+
+// ============ 视图切换 ============
+function switchView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+  if (id === 'galaxy') initGalaxy();
+  if (id === 'garden') initGarden();
+  if (id === 'waveform') initWaveform();
+}
+
+// ============ 视图1: 晶圆地图 ============
+function initWafer() {
+  const svg = document.getElementById('wafer-svg');
+  const cx=0, cy=0, R=280;
+  let html = '';
+  // 外环
+  html += `<circle class="wafer-ring-outer" cx="${cx}" cy="${cy}" r="${R}"/>`;
+  html += `<circle class="wafer-ring" cx="${cx}" cy="${cy}" r="${R*0.75}"/>`;
+  html += `<circle class="wafer-ring" cx="${cx}" cy="${cy}" r="${R*0.5}"/>`;
+  html += `<circle class="wafer-ring" cx="${cx}" cy="${cy}" r="${R*0.25}"/>`;
+  
+  // 晶粒布局（六边形网格）
+  const dieW=52, dieH=38;
+  const cols = Math.ceil(R*2/dieW);
+  const rows = Math.ceil(R*2/dieH);
+  let good=0, mid=0, bad=0, total=0, sum=0;
+  let nodeIdx = 0;
+  
+  for (let row=-rows; row<=rows; row++) {
+    for (let col=-cols; col<=cols; col++) {
+      const x = col*dieW + (row%2?dieW/2:0);
+      const y = row*dieH*0.85;
+      if (x*x+y*y > (R-25)*(R-25)) continue;
+      
+      const d = knowledgeData[nodeIdx % knowledgeData.length];
+      nodeIdx++;
+      const c = getColor(d.score);
+      total++; sum+=d.score;
+      if (d.score>=70) good++; else if (d.score>=50) mid++; else bad++;
+      
+      const opacity = 0.5 + (d.score/200);
+      html += `<g class="node-group" transform="translate(${x},${y})" onclick="showDieInfo('${d.name}',${d.score},${d.errors},${d.attempts})">
+        <rect class="node-die" x="${-dieW/2+2}" y="${-dieH/2+2}" width="${dieW-4}" height="${dieH-4}" rx="3"
+          fill="${c.fill}" stroke="${c.stroke}" stroke-width="1" opacity="${opacity}"/>
+        <text class="node-label" y="2" fill="${c.text}">${d.name.slice(0,4)}</text>
+      </g>`;
+    }
+  }
+  svg.innerHTML = html;
+  document.getElementById('stat-good').textContent = good;
+  document.getElementById('stat-mid').textContent = mid;
+  document.getElementById('stat-bad').textContent = bad;
+  document.getElementById('stat-avg').textContent = Math.round(sum/total);
+}
+
+function showDieInfo(name, score, errors, attempts) {
+  const c = getColor(score);
+  const status = score>=70?'✅ 已掌握':score>=50?'📖 学习中':'⚠️ 薄弱点';
+  document.getElementById('wafer-detail').innerHTML = `
+    <div class="info-row"><span class="info-label">知识点</span><span class="info-value" style="color:${c.text}">${name}</span></div>
+    <div class="info-row"><span class="info-label">掌握度</span><span class="info-value" style="color:${c.text}">${score}分</span></div>
+    <div class="mastery-bar"><div class="mastery-fill" style="width:${score}%;background:${c.stroke}"></div></div>
+    <div class="info-row" style="margin-top:14px"><span class="info-label">练习次数</span><span class="info-value">${attempts}次</span></div>
+    <div class="info-row"><span class="info-label">错误次数</span><span class="info-value">${errors}次</span></div>
+    <div class="info-row"><span class="info-label">状态</span><span class="info-value">${status}</span></div>
+  `;
+}
+
+// ============ 视图2: 知识星系 ============
+let galaxyInited = false;
+let stars = [];
+let planets = [];
+
+function initGalaxy() {
+  if (galaxyInited) return; galaxyInited = true;
+  const canvas = document.getElementById('star-canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  
+  // 背景星星
+  for (let i=0; i<300; i++) {
+    stars.push({ x:Math.random()*canvas.width, y:Math.random()*canvas.height, r:Math.random()*1.2, a:Math.random() });
+  }
+  
+  // 行星（知识点）
+  const cx = canvas.width/2, cy = canvas.height/2;
+  const svg = document.getElementById('galaxy-svg');
+  svg.innerHTML = '';
+  let html = '';
+  
+  knowledgeData.forEach((d, i) => {
+    const ring = 2 + Math.floor(i/5); // 轨道层
+    const radius = 80 + ring*55;
+    const angle = (i % 5) * (Math.PI*2/5) + ring*0.4;
+    const x = cx + Math.cos(angle)*radius;
+    const y = cy + Math.sin(angle)*radius;
+    const c = getColor(d.score);
+    const size = 4 + d.score/15;
+    
+    planets.push({ x, y, size, color:c.stroke, name:d.name, score:d.score, angle, radius, speed:0.0002+Math.random()*0.0003 });
+    
+    // 轨道
+    if (i % 5 === 0) html += `<circle class="orbit-ring" cx="${cx}" cy="${cy}" r="${radius}"/>`;
+  });
+  
+  // 连线（前置依赖简化）
+  for (let i=5; i<planets.length; i++) {
+    const prev = planets[i-5];
+    const curr = planets[i];
+    html += `<line x1="${prev.x}" y1="${prev.y}" x2="${curr.x}" y2="${curr.y}" stroke="rgba(100,150,255,0.08)" stroke-width="1"/>`;
+  }
+  
+  svg.innerHTML = html;
+  
+  // 行星DOM
+  planets.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'planet';
+    div.style.cssText = `position:absolute;left:${p.x}px;top:${p.y}px;width:${p.size*2}px;height:${p.size*2}px;border-radius:50%;background:radial-gradient(circle at 30% 30%, ${p.color}, ${p.color}44);border:1px solid ${p.color};transform:translate(-50%,-50%);color:${p.color};box-shadow:0 0 ${p.size*2}px ${p.color}44;`;
+    div.onmouseenter = (e) => showTooltip(e, p.name, p.score);
+    div.onmouseleave = hideTooltip;
+    document.getElementById('galaxy').appendChild(div);
+    p.el = div;
+  });
+  
+  // 学习轨迹
+  const trajList = document.getElementById('trajectory-list');
+  const weakPoints = knowledgeData.filter(d=>d.score<50).sort((a,b)=>a.score-b.score).slice(0,4);
+  trajList.innerHTML = '<div style="color:#a78bfa;font-size:11px;margin-bottom:8px;">🚀 推荐征服路线</div>' +
+    weakPoints.map((d,i) => {
+      const c = getColor(d.score);
+      return `<div class="trajectory-item"><span class="traj-dot" style="background:${c.stroke}"></span><span>${d.name}</span><div class="traj-line" style="color:${c.stroke}"></div><span style="color:${c.text}">${d.score}</span></div>`;
+    }).join('');
+  
+  function animate() {
+    ctx.fillStyle = 'rgba(3,5,12,0.15)';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    stars.forEach(s => { ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,7); ctx.fillStyle=`rgba(200,220,255,${s.a*0.5+0.2})`; ctx.fill(); });
+    planets.forEach(p => {
+      p.angle += p.speed;
+      p.x = cx + Math.cos(p.angle)*p.radius;
+      p.y = cy + Math.sin(p.angle)*p.radius;
+      if (p.el) p.el.style.left = p.x+'px', p.el.style.top = p.y+'px';
+    });
+    requestAnimationFrame(animate);
+  }
+  animate();
+}
+
+// ============ 视图3: 能力波形 ============
+function initWaveform() {
+  const container = document.getElementById('wave-channels');
+  container.innerHTML = '';
+  abilities.forEach((a, i) => {
+    const row = document.createElement('div');
+    row.className = 'wave-row';
+    const points = [];
+    for (let x=0; x<=100; x+=2) {
+      const noise = (Math.sin(x*0.3+i)*8 + Math.sin(x*0.7+i*2)*5 + Math.sin(x*0.1+i*3)*12);
+      const y = 25 - (a.value/100*20) + noise*(1-a.value/100);
+      points.push(`${x},${y}`);
+    }
+    const pathD = 'M' + points.join(' L');
+    row.innerHTML = `
+      <div class="wave-label">CH${i+1} · ${a.name}</div>
+      <svg class="wave-svg" viewBox="0 0 100 50" preserveAspectRatio="none">
+        <path class="wave-path animated" d="${pathD}" stroke="${a.color}" style="animation-delay:${i*0.2}s"/>
+      </svg>
+      <div class="wave-value" style="color:${a.color}">${a.value}</div>
+    `;
+    container.appendChild(row);
+  });
+  
+  const avg = Math.round(knowledgeData.reduce((s,d)=>s+d.score,0)/knowledgeData.length);
+  const weak = knowledgeData.filter(d=>d.score<50).length;
+  animateNumber('r-score', avg, '#00ff64');
+  animateNumber('r-mastery', Math.round(knowledgeData.filter(d=>d.score>=70).length/knowledgeData.length*100), '#00ff64', '%');
+  animateNumber('r-weak', weak, '#ffaa00');
+  animateNumber('r-streak', 7, '#00ff64');
+}
+
+function animateNumber(id, target, color, suffix='') {
+  const el = document.getElementById(id);
+  let cur = 0;
+  const step = target/30;
+  const timer = setInterval(() => {
+    cur += step;
+    if (cur >= target) { cur = target; clearInterval(timer); }
+    el.textContent = Math.round(cur) + suffix;
+  }, 30);
+}
+
+// ============ 视图4: 芯片花园 ============
+let gardenInited = false;
+function initGarden() {
+  if (gardenInited) return; gardenInited = true;
+  const canvas = document.getElementById('garden-canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  
+  // 萤火虫粒子
+  const fireflies = [];
+  for (let i=0; i<40; i++) {
+    fireflies.push({ x:Math.random()*canvas.width, y:canvas.height*0.3+Math.random()*canvas.height*0.5, vx:(Math.random()-0.5)*0.3, vy:(Math.random()-0.5)*0.3, r:Math.random()*2+1, a:Math.random() });
+  }
+  
+  function animateGarden() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    fireflies.forEach(f => {
+      f.x += f.vx; f.y += f.vy; f.a += 0.02;
+      if (f.x<0||f.x>canvas.width) f.vx*=-1;
+      if (f.y<canvas.height*0.3||f.y>canvas.height*0.85) f.vy*=-1;
+      ctx.beginPath(); ctx.arc(f.x,f.y,f.r,0,7);
+      ctx.fillStyle=`rgba(100,255,150,${0.3+Math.sin(f.a)*0.3})`; ctx.fill();
+    });
+    requestAnimationFrame(animateGarden);
+  }
+  animateGarden();
+  
+  // 植物
+  const container = document.getElementById('plants-container');
+  const sorted = [...knowledgeData].sort((a,b)=>b.score-a.score);
+  sorted.forEach((d, i) => {
+    const x = 8 + (i%10)*9 + '%';
+    const plant = document.createElement('div');
+    plant.className = 'plant';
+    plant.style.left = x;
+    const h = 30 + d.score*0.8;
+    const c = getColor(d.score);
+    const stage = d.score>=70?'🌸':d.score>=50?'🌿':'🌱';
+    plant.innerHTML = `
+      <svg width="30" height="${h}" viewBox="0 0 30 ${h}">
+        <line x1="15" y1="${h}" x2="15" y2="${h*0.3}" stroke="${c.stroke}" stroke-width="2" opacity="0.6"/>
+        ${d.score>=50?`<ellipse cx="10" cy="${h*0.5}" rx="6" ry="3" fill="${c.stroke}" opacity="0.4"/>
+        <ellipse cx="20" cy="${h*0.35}" rx="6" ry="3" fill="${c.stroke}" opacity="0.4"/>`:''}
+        ${d.score>=70?`<circle cx="15" cy="${h*0.2}" r="5" fill="${c.stroke}" opacity="0.6"/>
+        <text x="15" y="${h*0.22}" text-anchor="middle" font-size="8">${stage}</text>`:`<text x="15" y="${h*0.25}" text-anchor="middle" font-size="10">${stage}</text>`}
+      </svg>
+      <div class="plant-name" style="color:${c.text}">${d.name.slice(0,5)}</div>
+    `;
+    plant.onmouseenter = (e) => showTooltip(e, d.name, d.score);
+    plant.onmouseleave = hideTooltip;
+    container.appendChild(plant);
+  });
+}
+
+// ============ Tooltip ============
+function showTooltip(e, name, score) {
+  const tip = document.getElementById('tooltip');
+  const c = getColor(score);
+  const status = score>=70?'已掌握':score>=50?'学习中':'薄弱点';
+  tip.innerHTML = `<h4 style="color:${c.text}">${name}</h4>
+    <div class="tip-stat"><span>掌握度</span><span style="color:${c.text}">${score}分</span></div>
+    <div class="tip-stat"><span>状态</span><span>${status}</span></div>`;
+  tip.style.left = (e.clientX+15)+'px';
+  tip.style.top = (e.clientY-10)+'px';
+  tip.classList.add('show');
+}
+function hideTooltip() { document.getElementById('tooltip').classList.remove('show'); }
+
+// 初始化
+initWafer();
+</script>
+</body>
+</html>

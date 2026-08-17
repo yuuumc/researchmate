@@ -1,0 +1,29 @@
+{
+  "test_time": "2026-08-14T13:15:58.123354",
+  "results": [
+    {
+      "account": "学霸",
+      "email": "xueba@yanxintong-test.com",
+      "expected": "75-90",
+      "score": 63,
+      "screenshot": "C:\\Users\\Administrator\\Desktop\\yanxintong\\screenshots\\tier_学霸.png",
+      "has_object_object": false
+    },
+    {
+      "account": "中等",
+      "email": "zhongdeng@yanxintong-test.com",
+      "expected": "45-65",
+      "score": 52,
+      "screenshot": "C:\\Users\\Administrator\\Desktop\\yanxintong\\screenshots\\tier_中等.png",
+      "has_object_object": false
+    },
+    {
+      "account": "差生",
+      "email": "chasheng@yanxintong-test.com",
+      "expected": "25-45",
+      "score": 49,
+      "screenshot": "C:\\Users\\Administrator\\Desktop\\yanxintong\\screenshots\\tier_差生.png",
+      "has_object_object": false
+    }
+  ]
+}

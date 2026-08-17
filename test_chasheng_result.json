@@ -1,0 +1,280 @@
+{
+  "name": "chasheng",
+  "content": "# 复习计划说明\n\nchasheng 同学，你好！根据你的诊断结果（总分 35 分），系统判定你当前处于**基础巩固阶段（foundation）**。诊断显示你的薄弱点集中在**能带理论**（根因链深达 4 层：能带结构→价带/导带→禁带宽度→有效质量）和 **MOS 结构**（根因链 3 层：理想MOS结构→表面势→能带弯曲）。这两个知识点都是半导体物理的核心基础，且均与后续的 PN 结、MOSFET 等内容强相关，因此被标记为 **P0 最高优先级**，需要在计划中 100% 覆盖。\n\n本计划为期 4 周，严格遵循\"从根因链最底层逐层向上补强\"的策略：**第 1-2 周**集中攻克能带理论（从能带结构、价带/导带概念，到禁带宽度计算，再到有效质量），**第 3-4 周**转向 MOS 结构（从理想 MOS 结构、表面势，到能带弯曲），并在第 4 周安排跨章节综合练习，将两部分知识串联。每周任务均与根因链节点显式绑定，确保每一步都可追溯、可验证。请按每日 2 小时的节奏执行，遇到卡壳的概念（如\"有效质量\"的物理意义）建议回看教材对应章节，标记疑问并在下次复习时重点突破。\n\n---\n\n```json\n{\n  \"target_stage\": \"foundation\",\n  \"stage_entry_criteria\": \"诊断分 35；备考剩余约 18 周；已完成 0 个冲刺周期\",\n  \"stage_timeline\": [\n    {\"id\": \"foundation\", \"name\": \"基础巩固\", \"en\": \"Foundation\", \"status\": \"active\", \"index\": 0, \"milestone\": \"基础知识点系统梳理，薄弱根因链底层逐层补齐\", \"entry\": \"诊断分 < 50 或首次备考\"},\n    {\"id\": \"intensive\", \"name\": \"专题强化\", \"en\": \"Intensive\", \"status\": \"upcoming\", \"index\": 1, \"milestone\": \"P0 薄弱点全面覆盖，能独立完成中等难度综合题\", \"entry\": \"诊断分 50–74，基础已过一遍\"},\n    {\"id\": \"sprint\", \"name\": \"真题冲刺\", \"en\": \"Sprint\", \"status\": \"upcoming\", \"index\": 2, \"milestone\": \"真题套卷训练，时间管理与高频考点突破\", \"entry\": \"诊断分 ≥ 75 或备考剩余 ≤ 8 周\"},\n    {\"id\": \"mock\", \"name\": \"模拟模考\", \"en\": \"Mock\", \"status\": \"upcoming\", \"index\": 3, \"milestone\": \"全真模拟考试，查漏补缺与心态调整\", \"entry\": \"备考剩余 ≤ 3 周\"}\n  ],\n  \"exam_date\": \"2026-12-21\",\n  \"total_weeks\": 4,\n  \"weak_point_coverage\": [\n    {\n      \"wp_id\": \"wp_01\",\n      \"knowledge_point\": \"能带理论\",\n      \"root_cause_chain\": [\"能带结构\", \"价带/导带\", \"禁带宽度\", \"有效质量\"],\n      \"chain_depth\": 4,\n      \"priority\": \"P0\",\n      \"covered_in_weeks\": [1, 2],\n      \"task_count\": 7,\n      \"coverage_status\": \"covered\"\n    },\n    {\n      \"wp_id\": \"wp_02\",\n      \"knowledge_point\": \"MOS结构\",\n      \"root_cause_chain\": [\"理想MOS结构\", \"表面势\", \"能带弯曲\"],\n      \"chain_depth\": 3,\n      \"priority\": \"P0\",\n      \"covered_in_weeks\": [3, 4],\n      \"task_count\": 6,\n      \"coverage_status\": \"covered\"\n    }\n  ],\n  \"weeks\": [\n    {\n      \"week\": 1,\n      \"stage\": \"foundation\",\n      \"theme\": \"能带理论根因链底层补强（能带结构→价带/导带）\",\n      \"source_weak_point_ids\": [\"wp_01\"],\n      \"tasks\": [\n        \"刘恩科《半导体物理学》第 1 章 1.1-1.2 节：晶体结构与能带形成机制精读\",\n        \"手绘金刚石/闪锌矿结构示意图，并标注共价键与电子共有化运动方向\",\n        \"推导一维周期势场中电子波函数形式，理解布拉格反射与能隙成因\",\n        \"完成第 1 章习题 1.1-1.4（能带结构相关）\"\n      ],\n      \"task_bindings\": [\n        {\"task_index\": 0, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"},\n        {\"task_index\": 1, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"},\n        {\"task_index\": 2, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"},\n        {\"task_index\": 3, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"}\n      ],\n      \"daily\": [\"19:00-21:00 教材精读\", \"21:00-23:00 习题巩固\"],\n      \"estimated_hours\": 14,\n      \"exercise_count\": 4\n    },\n    {\n      \"week\": 2,\n      \"stage\": \"foundation\",\n      \"theme\": \"能带理论根因链上层补强（禁带宽度→有效质量）\",\n      \"source_weak_point_ids\": [\"wp_01\"],\n      \"tasks\": [\n        \"刘恩科 1.3-1.4 节：禁带宽度与温度、掺杂关系复习\",\n        \"绘图比较 Si、Ge、GaAs 的禁带宽度及对应的价带/导带位置\",\n        \"推导有效质量与 E-k 曲线曲率的关系，并解释各向异性\",\n        \"完成第 1 章习题 1.5-1.8（禁带宽度与有效质量）\"\n      ],\n      \"task_bindings\": [\n        {\"task_index\": 0, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"},\n        {\"task_index\": 1, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"},\n        {\"task_index\": 2, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"},\n        {\"task_index\": 3, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"}\n      ],\n      \"daily\": [\"19:00-21:00 概念深化\", \"21:00-23:00 习题训练\"],\n      \"estimated_hours\": 12,\n      \"exercise_count\": 4\n    },\n    {\n      \"week\": 3,\n      \"stage\": \"foundation\",\n      \"theme\": \"MOS 结构根因链底层补强（理想MOS结构→表面势）\",\n      \"source_weak_point_ids\": [\"wp_02\"],\n      \"tasks\": [\n        \"刘恩科 8.1-8.2 节：理想 MOS 结构能带图与电荷分布精读\",\n        \"推导表面势与外加栅压的关系（耗尽近似下）\",\n        \"手绘不同栅压下的能带弯曲示意图（积累/耗尽/反型）\",\n        \"完成第 8 章习题 8.1-8.3\"\n      ],\n      \"task_bindings\": [\n        {\"task_index\": 0, \"source_weak_point_id\": \"wp_02\", \"priority\": \"P0\"},\n        {\"task_index\": 1, \"source_weak_point_id\": \"wp_02\", \"priority\": \"P0\"},\n        {\"task_index\": 2, \"source_weak_point_id\": \"wp_02\", \"priority\": \"P0\"},\n        {\"task_index\": 3, \"source_weak_point_id\": \"wp_02\", \"priority\": \"P0\"}\n      ],\n      \"daily\": [\"19:00-21:00 概念推导\", \"21:00-23:00 习题巩固\"],\n      \"estimated_hours\": 12,\n      \"exercise_count\": 4\n    },\n    {\n      \"week\": 4,\n      \"stage\": \"foundation\",\n      \"theme\": \"MOS 结构根因链上层补强（能带弯曲）+ 跨章节综合复习\",\n      \"source_weak_point_ids\": [\"wp_02\", \"wp_01\"],\n      \"tasks\": [\n        \"深入理解表面能带弯曲对载流子浓度的影响，完成第 8 章习题 8.4-8.6\",\n        \"跨章节综合：将能带理论（wp_01）与 MOS 结构（wp_02）关联，绘制从金属-氧化物-半导体到能带弯曲的完整示意图\",\n        \"回顾前 3 周错题，归纳易错点并形成笔记\",\n        \"完成 1 套基础自测卷（第 1、8 章为主，限时 90 分钟）\"\n      ],\n      \"task_bindings\": [\n        {\"task_index\": 0, \"source_weak_point_id\": \"wp_02\", \"priority\": \"P0\"},\n        {\"task_index\": 1, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"},\n        {\"task_index\": 2, \"source_weak_point_id\": \"wp_02\", \"priority\": \"P0\"},\n        {\"task_index\": 3, \"source_weak_point_id\": \"wp_01\", \"priority\": \"P0\"}\n      ],\n      \"daily\": [\"19:00-21:00 综合复习\", \"21:00-23:00 自测与复盘\"],\n      \"estimated_hours\": 10,\n      \"exercise_count\": 4\n    }\n  ],\n  \"adjustments\": {\n    \"keep\": [\"每日 19:00-21:00 教材复习\", \"每周日 14:00-16:00 综合自测\"],\n    \"strengthen\": [\"能带理论专题（第 1 章）\", \"MOS 结构专题（第 8 章）\"],\n    \"drop\": [\"非考研重点章节（如超导、倒格矢计算）\"]\n  },\n  \"audience\": \"student\",\n  \"student_id_hash\": \"sha256:7f8a9b...\",\n  \"version\": \"2.2.0\"\n}\n```",
+  "structured": {
+    "target_stage": "foundation",
+    "stage_entry_criteria": "诊断分 35；备考剩余约 18 周；已完成 0 个冲刺周期",
+    "stage_timeline": [
+      {
+        "id": "foundation",
+        "name": "基础巩固",
+        "en": "Foundation",
+        "status": "active",
+        "index": 0,
+        "milestone": "基础知识点系统梳理，薄弱根因链底层逐层补齐",
+        "entry": "诊断分 < 50 或首次备考"
+      },
+      {
+        "id": "intensive",
+        "name": "专题强化",
+        "en": "Intensive",
+        "status": "upcoming",
+        "index": 1,
+        "milestone": "P0 薄弱点全面覆盖，能独立完成中等难度综合题",
+        "entry": "诊断分 50–74，基础已过一遍"
+      },
+      {
+        "id": "sprint",
+        "name": "真题冲刺",
+        "en": "Sprint",
+        "status": "upcoming",
+        "index": 2,
+        "milestone": "真题套卷训练，时间管理与高频考点突破",
+        "entry": "诊断分 ≥ 75 或备考剩余 ≤ 8 周"
+      },
+      {
+        "id": "mock",
+        "name": "模拟模考",
+        "en": "Mock",
+        "status": "upcoming",
+        "index": 3,
+        "milestone": "全真模拟考试，查漏补缺与心态调整",
+        "entry": "备考剩余 ≤ 3 周"
+      }
+    ],
+    "exam_date": "2026-12-21",
+    "total_weeks": 4,
+    "weak_point_coverage": [
+      {
+        "wp_id": "wp_01",
+        "knowledge_point": "能带理论",
+        "root_cause_chain": [
+          "能带结构",
+          "价带/导带",
+          "禁带宽度",
+          "有效质量"
+        ],
+        "chain_depth": 4,
+        "priority": "P0",
+        "covered_in_weeks": [
+          1,
+          2
+        ],
+        "task_count": 7,
+        "coverage_status": "covered"
+      },
+      {
+        "wp_id": "wp_02",
+        "knowledge_point": "MOS结构",
+        "root_cause_chain": [
+          "理想MOS结构",
+          "表面势",
+          "能带弯曲"
+        ],
+        "chain_depth": 3,
+        "priority": "P0",
+        "covered_in_weeks": [
+          3,
+          4
+        ],
+        "task_count": 6,
+        "coverage_status": "covered"
+      }
+    ],
+    "weeks": [
+      {
+        "week": 1,
+        "stage": "foundation",
+        "theme": "能带理论根因链底层补强（能带结构→价带/导带）",
+        "source_weak_point_ids": [
+          "wp_01"
+        ],
+        "tasks": [
+          "刘恩科《半导体物理学》第 1 章 1.1-1.2 节：晶体结构与能带形成机制精读",
+          "手绘金刚石/闪锌矿结构示意图，并标注共价键与电子共有化运动方向",
+          "推导一维周期势场中电子波函数形式，理解布拉格反射与能隙成因",
+          "完成第 1 章习题 1.1-1.4（能带结构相关）"
+        ],
+        "task_bindings": [
+          {
+            "task_index": 0,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          },
+          {
+            "task_index": 1,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          },
+          {
+            "task_index": 2,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          },
+          {
+            "task_index": 3,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          }
+        ],
+        "daily": [
+          "19:00-21:00 教材精读",
+          "21:00-23:00 习题巩固"
+        ],
+        "estimated_hours": 14,
+        "exercise_count": 4
+      },
+      {
+        "week": 2,
+        "stage": "foundation",
+        "theme": "能带理论根因链上层补强（禁带宽度→有效质量）",
+        "source_weak_point_ids": [
+          "wp_01"
+        ],
+        "tasks": [
+          "刘恩科 1.3-1.4 节：禁带宽度与温度、掺杂关系复习",
+          "绘图比较 Si、Ge、GaAs 的禁带宽度及对应的价带/导带位置",
+          "推导有效质量与 E-k 曲线曲率的关系，并解释各向异性",
+          "完成第 1 章习题 1.5-1.8（禁带宽度与有效质量）"
+        ],
+        "task_bindings": [
+          {
+            "task_index": 0,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          },
+          {
+            "task_index": 1,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          },
+          {
+            "task_index": 2,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          },
+          {
+            "task_index": 3,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          }
+        ],
+        "daily": [
+          "19:00-21:00 概念深化",
+          "21:00-23:00 习题训练"
+        ],
+        "estimated_hours": 12,
+        "exercise_count": 4
+      },
+      {
+        "week": 3,
+        "stage": "foundation",
+        "theme": "MOS 结构根因链底层补强（理想MOS结构→表面势）",
+        "source_weak_point_ids": [
+          "wp_02"
+        ],
+        "tasks": [
+          "刘恩科 8.1-8.2 节：理想 MOS 结构能带图与电荷分布精读",
+          "推导表面势与外加栅压的关系（耗尽近似下）",
+          "手绘不同栅压下的能带弯曲示意图（积累/耗尽/反型）",
+          "完成第 8 章习题 8.1-8.3"
+        ],
+        "task_bindings": [
+          {
+            "task_index": 0,
+            "source_weak_point_id": "wp_02",
+            "priority": "P0"
+          },
+          {
+            "task_index": 1,
+            "source_weak_point_id": "wp_02",
+            "priority": "P0"
+          },
+          {
+            "task_index": 2,
+            "source_weak_point_id": "wp_02",
+            "priority": "P0"
+          },
+          {
+            "task_index": 3,
+            "source_weak_point_id": "wp_02",
+            "priority": "P0"
+          }
+        ],
+        "daily": [
+          "19:00-21:00 概念推导",
+          "21:00-23:00 习题巩固"
+        ],
+        "estimated_hours": 12,
+        "exercise_count": 4
+      },
+      {
+        "week": 4,
+        "stage": "foundation",
+        "theme": "MOS 结构根因链上层补强（能带弯曲）+ 跨章节综合复习",
+        "source_weak_point_ids": [
+          "wp_02",
+          "wp_01"
+        ],
+        "tasks": [
+          "深入理解表面能带弯曲对载流子浓度的影响，完成第 8 章习题 8.4-8.6",
+          "跨章节综合：将能带理论（wp_01）与 MOS 结构（wp_02）关联，绘制从金属-氧化物-半导体到能带弯曲的完整示意图",
+          "回顾前 3 周错题，归纳易错点并形成笔记",
+          "完成 1 套基础自测卷（第 1、8 章为主，限时 90 分钟）"
+        ],
+        "task_bindings": [
+          {
+            "task_index": 0,
+            "source_weak_point_id": "wp_02",
+            "priority": "P0"
+          },
+          {
+            "task_index": 1,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          },
+          {
+            "task_index": 2,
+            "source_weak_point_id": "wp_02",
+            "priority": "P0"
+          },
+          {
+            "task_index": 3,
+            "source_weak_point_id": "wp_01",
+            "priority": "P0"
+          }
+        ],
+        "daily": [
+          "19:00-21:00 综合复习",
+          "21:00-23:00 自测与复盘"
+        ],
+        "estimated_hours": 10,
+        "exercise_count": 4
+      }
+    ],
+    "adjustments": {
+      "keep": [
+        "每日 19:00-21:00 教材复习",
+        "每周日 14:00-16:00 综合自测"
+      ],
+      "strengthen": [
+        "能带理论专题（第 1 章）",
+        "MOS 结构专题（第 8 章）"
+      ],
+      "drop": [
+        "非考研重点章节（如超导、倒格矢计算）"
+      ]
+    },
+    "audience": "student",
+    "student_id_hash": "sha256:7f8a9b...",
+    "version": "2.2.0"
+  },
+  "finish_reason": "stop",
+  "usage": {
+    "completion_tokens": 2328,
+    "prompt_tokens": 6881,
+    "total_tokens": 9209
+  },
+  "model": "xopdeepseekv4flash0731",
+  "elapsed_ms": 14688
+}

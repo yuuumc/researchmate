@@ -69,6 +69,9 @@ app.component('ElDialog', ElDialog)
 app.component('ElConfigProvider', ElConfigProvider)
 app.mount('#app')
 
+// F1: 注册画像事件总线（幂等，app 启动一次）——pinia 已 install，可安全实例化 store
+import('./stores/profile').then(({ useProfileStore }) => useProfileStore().initProfileBus()).catch((e) => console.warn('[main] profileBus init failed:', e))
+
 async function bootstrap() {
   const auth = useAuthStore()  // fix: auth 在 bootstrap() 作用域内定义（原仅 bootstrapAuth 内部定义，导致 injectSeedData 判空抛 ReferenceError）
   // Phase 2 rename: 异步迁移 IndexedDB 聊天历史（非阻塞，聊天记录读取时已完成）

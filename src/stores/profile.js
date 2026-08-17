@@ -24,8 +24,18 @@
 
 import { defineStore } from 'pinia'
 import { storage } from '@/utils/storage'
+import { profileBus, EVT } from '@/core/profileBus'
+import {
+  applyLearningEvent,
+  applySnapshot,
+  decayAll,
+  masteryToStars,
+  starsToMastery,
+} from '@/core/masteryEngine'
 
 const STORAGE_KEY = 'profile'
+
+let _busWired = false  // F1: profileBus 订阅幂等守卫
 
 // 默认考研日期（次年 12 月倒数第二个周末，简化为 12-21）
 function defaultExamDate() {
@@ -45,6 +55,7 @@ function createDefaultProfile() {
     major: null,                   // 专业（如"微电子"）
     target_direction: null,        // 目标方向（如"AI芯片"/"集成电路"/"通信"）
     ability_stars: {},             // { [知识点]: 1-5 星 }
+    knowledge_state: {},           // F1: { [知识点]: {mastery,confidence,lastStudied,attempts,correctRate,errorTypes} }
     learning_style: 'mixed',       // theoretical / practical / mixed
     exam_date: defaultExamDate(),  // 考研日期
 
@@ -67,6 +78,7 @@ function migrateProfile(p) {
     ...def,
     ...p,
     ability_stars: p.ability_stars || {},
+    knowledge_state: p.knowledge_state || {},
     learning_style: p.learning_style || 'mixed',
     exam_date: p.exam_date || def.exam_date
   }
@@ -212,7 +224,15 @@ export const useProfileStore = defineStore('profile', {
       if (!topic) return
       const s = Math.max(0, Math.min(5, parseInt(stars, 10) || 0))
       const next = { ...this.profile.ability_stars, [topic]: s }
-      this.updateProfile({ ability_stars: next })
+      // F1: 同步 knowledge_state mastery（诊断/练习的绝对星级写入也经规则引擎快照）
+      const ksNext = {
+        ...this.profile.knowledge_state,
+        [topic]: applySnapshot(this.profile.knowledge_state[topic], {
+          mastery: starsToMastery(s),
+          timestamp: new Date().toISOString(),
+        }),
+      }
+      this.updateProfile({ ability_stars: next, knowledge_state: ksNext })
 
       // 联动 weak/mastered：≤2 星入 weak，=5 星入 mastered
       if (s > 0 && s <= 2 && !this.profile.weak_topics.includes(topic)) {
@@ -237,6 +257,68 @@ export const useProfileStore = defineStore('profile', {
 
     setExamDate(date) {
       this.updateProfile({ exam_date: date })
+    },
+
+    // === F1 画像引擎地基：事件总线 + 规则引擎 ===
+
+    /**
+     * 处理增量学习事件（由 profileBus 'learning-event' 触发）
+     * 更新 knowledge_state[topic]，同步 ability_stars，持久化并广播 profile-updated。
+     * 所有写画像操作的统一入口——F2/F3/F4 答题/推导/复述一律经此。
+     */
+    recordLearningEvent(event) {
+      const topic = event.topic
+      if (!topic) return
+      const prevKS = this.profile.knowledge_state?.[topic] || null
+      const newKS = applyLearningEvent(prevKS, event)
+      const ksNext = { ...this.profile.knowledge_state, [topic]: newKS }
+      const starsNext = { ...this.profile.ability_stars, [topic]: masteryToStars(newKS.mastery) }
+      this.updateProfile({ knowledge_state: ksNext, ability_stars: starsNext })
+      profileBus.emit(EVT.PROFILE_UPDATED, { source: 'learning-event', topics: [topic] })
+      return newKS
+    },
+
+    /**
+     * 处理掌握度快照（由 profileBus 'mastery-snapshot' 触发，诊断完成批量设定）
+     * @param {object} payload { items: [{ topic, mastery, source }], timestamp }
+     */
+    applyMasterySnapshot(payload) {
+      const items = payload?.items || []
+      if (items.length === 0) return
+      const now = payload.timestamp || new Date().toISOString()
+      const ksNext = { ...this.profile.knowledge_state }
+      const starsNext = { ...this.profile.ability_stars }
+      const topics = []
+      for (const it of items) {
+        if (!it.topic) continue
+        ksNext[it.topic] = applySnapshot(ksNext[it.topic], { mastery: it.mastery, timestamp: now })
+        starsNext[it.topic] = masteryToStars(ksNext[it.topic].mastery)
+        topics.push(it.topic)
+      }
+      this.updateProfile({ knowledge_state: ksNext, ability_stars: starsNext })
+      profileBus.emit(EVT.PROFILE_UPDATED, { source: 'mastery-snapshot', topics })
+    },
+
+    /**
+     * 遗忘衰减：画像页打开时调用，按 lastStudied 衰减全部 knowledge_state
+     */
+    decayStaleMastery() {
+      const now = new Date().toISOString()
+      const { map, changed } = decayAll(this.profile.knowledge_state, now)
+      if (!changed) return false
+      this.updateProfile({ knowledge_state: map })
+      profileBus.emit(EVT.PROFILE_UPDATED, { source: 'decay', topics: Object.keys(map) })
+      return true
+    },
+
+    /**
+     * 注册 profileBus 事件监听（幂等，app 启动时调用一次）
+     */
+    initProfileBus() {
+      if (_busWired) return
+      _busWired = true
+      profileBus.on(EVT.LEARNING_EVENT, (ev) => this.recordLearningEvent(ev))
+      profileBus.on(EVT.MASTERY_SNAPSHOT, (snap) => this.applyMasterySnapshot(snap))
     },
 
     // === v2.0 新增（多用户 SaaS · 数据层）===
