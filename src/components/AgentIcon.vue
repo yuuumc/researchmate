@@ -51,6 +51,13 @@
         <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" />
         <circle cx="18" cy="5" r="3" />
       </template>
+      
+      <template v-else-if="type === 'feynman'">
+      <!-- 费曼模式图标：对话气泡 + 灯泡 -->
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" :stroke="agentColor" :stroke-width="strokeWidth" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1-.5 1.5-1 2s-1 1-1 1.5" :stroke="agentColor" :stroke-width="strokeWidth" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="12" cy="15" r="0.5" :fill="agentColor"/>
+    </template>
       <!-- fallback：圆点 -->
       <template v-else>
         <circle cx="12" cy="12" r="4" fill="currentColor" />

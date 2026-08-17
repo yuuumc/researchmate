@@ -24,7 +24,8 @@ const AGENT_ROUTES = {
   career: { path: '/career', query: 'boot' },
   practice: { path: '/practice', query: 'boot' },
   'tutor-photo': { path: '/tutor-photo', query: null },
-  'exam': { path: '/exam', query: null }
+  'exam': { path: '/exam', query: null },
+    'feynman': { path: '/feynman', query: null }
   // T0-3: research/admission 入口已移除（赛事展示范围裁剪）
 }
 const coreAgents = [
@@ -40,6 +41,7 @@ const moreAgents = [
   { key: 'practice', label: '练习', en: 'Practice', color: '#e74c3c', desc: '针对性出题' },
   { key: 'tutor-photo', label: '拍题', en: 'Photo', color: '#00d4aa', desc: '拍照识别讲解' },
   { key: 'exam', label: '模考', en: 'Exam', color: '#e67e22', desc: '智能组卷+AI阅卷' },
+    { key: 'feynman', label: '费曼', en: 'Feynman', color: '#9b59b6', desc: '讲给AI听·深度理解' },
   // { key: 'peer', label: '同伴', en: 'Peer', color: '#3498db', desc: '互助匹配' },  // 赛事展示范围裁剪，已移除
 
   // T0-3: admission 已移除
