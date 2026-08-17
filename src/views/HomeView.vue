@@ -5,6 +5,7 @@ import { useProfileStore } from '@/stores/profile'
 import { useDiagnosisStore } from '@/stores/diagnosis'
 import { useMasteryData } from '@/composables/useMasteryData'
 import { usePlanStore } from '@/stores/plan'
+import { useDailyPathStore } from '@/stores/dailyPath'
 import { useJourneyStore } from '@/stores/journey'
 import { useWrongBookStore } from '@/stores/wrongBook'
 import KnowledgeGraph from '@/components/KnowledgeGraph.vue'
@@ -18,6 +19,7 @@ const mastery = useMasteryData()
 // 解构为顶层 ref，模板自动解包（避免 mastery.x 在模板中不解包）
 const { latestScore, weakPointCount, biggestWeakness } = mastery
 const planStore = usePlanStore()
+const dailyPathStore = useDailyPathStore()
 const journeyStore = useJourneyStore()
 const wrongBookStore = useWrongBookStore()
 
@@ -67,23 +69,17 @@ const stageLabel = computed(() => {
   return '冲刺拔高期'
 })
 
-// 今日任务（从 plan store 读取本周任务，取今日 3 条）
-const todayTasks = computed(() => {
-  // 从最新 plan 的本周任务取前 3 条作为今日任务
-  const latestPlan = planStore.current
-  if (!latestPlan || !Array.isArray(latestPlan.weeks) || latestPlan.weeks.length === 0) {
-    return []
-  }
-  const week1 = latestPlan.weeks[0]
-  const tasks = Array.isArray(week1.tasks) ? week1.tasks : []
-  return tasks.slice(0, 3)
-})
+// B6: 今日学习路径（从 dailyPathStore 取，个性化生成）
+const dailyPathItems = computed(() => dailyPathStore.pathItems)
+const pathCompletionRate = computed(() => dailyPathStore.completionRate)
 
-// 任务完成状态（本地 ref，演示用）
-const taskDone = ref({})
+// B6: 完成路径项（持久化 + 刷新学情）
+async function completePathItem(itemId) {
+  await dailyPathStore.completeItem(itemId)
+}
 
-function toggleTask(i) {
-  taskDone.value[i] = !taskDone.value[i]
+async function uncompletePathItem(itemId) {
+  dailyPathStore.uncompleteItem(itemId)
 }
 
 // 快捷提问建议（V2：AI芯片科研路线图首位）
@@ -136,6 +132,8 @@ const wrongBookExpanded = ref(true)
 onMounted(async () => {
   try { await diagnosisStore.loadFromDB() } catch (e) { /* silent */ }
   try { await wrongBookStore.loadFromDB() } catch (e) { /* silent */ }
+  // B6: 确保今日学习路径已生成
+  try { await dailyPathStore.ensureGenerated() } catch (e) { /* silent */ }
 })
 </script>
 
@@ -264,30 +262,50 @@ onMounted(async () => {
         </div>
       </section>
 
-      <!-- === 今日任务 === -->
+      <!-- === B6: 每日学习路径 === -->
       <section class="card tasks-card">
         <div class="card-head">
           <div>
-            <div class="card-title">今日任务</div>
-            <div class="card-en">Today's Tasks</div>
+            <div class="card-title">今日学习路径</div>
+            <div class="card-en">Daily Learning Path</div>
           </div>
-          <span class="task-count">{{ todayTasks.length }}</span>
+          <span class="task-count">{{ dailyPathItems.length }}</span>
         </div>
-        <div v-if="todayTasks.length > 0" class="task-list">
+        <!-- 路径完成进度条 -->
+        <div v-if="dailyPathItems.length > 0" class="path-progress-bar">
+          <div class="path-progress-track">
+            <div class="path-progress-fill" :style="{ width: pathCompletionRate + '%' }"></div>
+          </div>
+          <span class="path-progress-text">{{ pathCompletionRate }}%</span>
+        </div>
+        <div v-if="dailyPathItems.length > 0" class="task-list">
           <label
-            v-for="(t, i) in todayTasks"
-            :key="i"
-            class="task-item"
-            :class="{ done: taskDone[i] }"
+            v-for="item in dailyPathItems"
+            :key="item.id"
+            class="task-item path-item"
+            :class="{ done: item.completed, [`priority-${item.priority}`]: true }"
           >
-            <input type="checkbox" :checked="!!taskDone[i]" @change="toggleTask(i)" />
+            <input
+              type="checkbox"
+              :checked="item.completed"
+              @change="item.completed ? uncompletePathItem(item.id) : completePathItem(item.id)"
+            />
             <span class="task-check"></span>
-            <span class="task-text">{{ t }}</span>
+            <span class="path-icon">{{ item.icon }}</span>
+            <div class="path-content">
+              <span class="task-text">{{ item.title }}</span>
+              <span v-if="item.description" class="path-desc">{{ item.description }}</span>
+            </div>
+            <button
+              v-if="!item.completed"
+              class="path-go-btn"
+              @click.prevent="router.push({ path: item.route, query: item.query })"
+            >前往 →</button>
           </label>
         </div>
         <div v-else class="empty-body">
-          <span class="empty-text">暂无今日任务</span>
-          <button class="empty-cta" @click="goPlan">去生成计划</button>
+          <span class="empty-text">暂无今日路径</span>
+          <button class="empty-cta" @click="dailyPathStore.generateDailyPath()">生成路径</button>
         </div>
       </section>
 
@@ -1174,5 +1192,92 @@ onMounted(async () => {
   .status-grid { grid-template-columns: 1fr; }
   .quick-grid { grid-template-columns: 1fr; }
   .recent-body { flex-direction: column; align-items: flex-start; gap: 16px; }
+}
+
+/* B6: 每日学习路径 */
+.path-progress-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+.path-progress-track {
+  flex: 1;
+  height: 6px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.path-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00d4aa, #4d9de0);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+.path-progress-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary, #8892a6);
+  min-width: 36px;
+  text-align: right;
+}
+.path-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.path-item.priority-high {
+  border-left: 3px solid #ff6b6b;
+  padding-left: 9px;
+}
+.path-item.priority-medium {
+  border-left: 3px solid #ffd166;
+  padding-left: 9px;
+}
+.path-item.priority-low {
+  border-left: 3px solid #4d9de0;
+  padding-left: 9px;
+}
+.path-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: rgba(0,212,170,0.12);
+  font-size: 14px;
+  font-weight: 700;
+  color: #00d4aa;
+  flex-shrink: 0;
+}
+.path-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.path-desc {
+  font-size: 12px;
+  color: var(--text-tertiary, #6b7280);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.path-go-btn {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(0,212,170,0.3);
+  background: rgba(0,212,170,0.08);
+  color: #00d4aa;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+.path-go-btn:hover {
+  background: rgba(0,212,170,0.15);
 }
 </style>

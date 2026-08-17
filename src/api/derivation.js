@@ -3,7 +3,10 @@
 // ============================================================
 // 调用 /api/derivation 同源代理，解析 SSE 流
 // 与 deepseek.js 的 callDeepSeekStream 模式一致
+// B5: 完成后写 agent_traces（fire-and-forget）
 // ============================================================
+
+import { recordAgentTrace } from '@/services/agentTrace'
 
 /**
  * 流式推导
@@ -74,6 +77,7 @@ export async function streamDerivation(knowledgePoint, options = {}) {
           if (!trimmed || !trimmed.startsWith('data:')) continue
           const payload = trimmed.slice(5).trim()
           if (payload === '[DONE]') {
+            recordAgentTrace({ agent_role: 'tutor', action: 'derivation', input: { knowledge_point: knowledgePoint }, output: { content: totalContent.slice(0, 800) }, status: 'done' })
             return totalContent
           }
           try {
@@ -106,6 +110,7 @@ export async function streamDerivation(knowledgePoint, options = {}) {
         }
       }
     }
+    recordAgentTrace({ agent_role: 'tutor', action: 'derivation', input: { knowledge_point: knowledgePoint }, output: { content: totalContent.slice(0, 800) }, status: 'done' })
     return totalContent
   } catch (e) {
     if (e.name === 'AbortError') {

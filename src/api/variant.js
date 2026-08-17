@@ -1,6 +1,9 @@
 // ============================================================
 // 变式题生成 - 前端 API 客户端（B3）
+// B5: 完成后写 agent_traces（fire-and-forget）
 // ============================================================
+
+import { recordAgentTrace } from '@/services/agentTrace'
 
 import { extractVariants, validateVariant, normalizeVariant, generateVariantId } from '@/utils/variantNormalize'
 
@@ -67,5 +70,12 @@ export async function generateVariant(params) {
     }
   })
 
+  recordAgentTrace({
+    agent_role: 'practice',
+    action: 'variant',
+    input: { knowledge_point, question_type, variant_count },
+    output: { content: `Generated ${variants.length} variants for ${knowledge_point}` },
+    status: 'done'
+  })
   return variants
 }
