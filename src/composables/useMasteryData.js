@@ -59,9 +59,12 @@ export function useMasteryData() {
     const d = latestDiagnosis.value
     if (!d) return []
     const wps = Array.isArray(d.weak_points) ? d.weak_points : []
-    return wps
+    const raw = wps
       .map((w) => (typeof w === 'string' ? w : (w?.knowledge_point || w?.reason || '')))
       .filter(Boolean)
+    // T1-7: 过滤已掌握项（>=4 星），防止旧诊断数据中优势项混入薄弱点
+    const mastered = new Set(masteredSkills.value)
+    return raw.filter((w) => !mastered.has(w))
   })
 
   // 弱弱点数量（从诊断报告，不读 profileStore.weak_topics）
@@ -86,7 +89,22 @@ export function useMasteryData() {
     const liveStructured = diagnosisStore.lastReport?.structured
 
     const s = persistedStructured || liveStructured
-    if (!s) return null
+    if (!s) {
+      // T1-7: 旧数据兼容 — 旧诊断记录无 structured 字段时，从基本字段构造最小根因链
+      if (d && (d.weak_points?.length || d.root_causes?.length || typeof d.score === 'number')) {
+        return {
+          score: typeof d.score === 'number' ? d.score : '—',
+          subject: d.subject || '—',
+          weak_points: (d.weak_points || [])
+            .map((p) => (typeof p === 'object' ? p.knowledge_point || p.reason || JSON.stringify(p) : p)),
+          direct_causes: [],
+          middle_causes: [],
+          root_causes: d.root_causes || [],
+          remediation: ''
+        }
+      }
+      return null
+    }
 
     return {
       score: typeof s.score === 'number' ? s.score : (d?.score ?? '—'),

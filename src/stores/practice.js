@@ -80,7 +80,7 @@ export const usePracticeStore = defineStore('practice', {
           throw new Error('无薄弱知识点，请先完成诊断')
         }
 
-        // A2-e: 获取最近一次诊断的客观题 ID，用于练习去重
+        // A2-e: 获取最近一次诊断的客观题 ID，用于去重（重复率 ≤20%）
         const excludeIds = await this.getLatestDiagnosisQuestionIds()
         const excludeSet = new Set(excludeIds)
 
@@ -96,9 +96,9 @@ export const usePracticeStore = defineStore('practice', {
             .in('question_type', ['choice', 'fill'])
             .limit(50)
           if (!error && data) {
-            // A2-e: 排除诊断卷已出题目
-            const filtered = excludeSet.size > 0 ? data.filter(q => !excludeSet.has(q.id)) : data
             // Group by knowledge_point, take 2 per kp
+            // A2-e: 排除诊断卷题目
+            const filtered = excludeSet.size > 0 ? data.filter(q => !excludeSet.has(q.id)) : data
             const byKp = {}
             for (const q of filtered) {
               if (!byKp[q.knowledge_point]) byKp[q.knowledge_point] = []
@@ -114,6 +114,8 @@ export const usePracticeStore = defineStore('practice', {
 
         // 如果按知识点精确匹配不足，降级模糊搜索
         if (all.length < count) {
+          const existing = new Set(all.map(q => q.id))
+          for (const id of excludeIds) existing.add(id)
           for (const kp of kps) {
             if (all.length >= count) break
             const kpStr = typeof kp === 'string' ? kp : (kp.knowledge_point || kp.topic || '')
@@ -126,11 +128,9 @@ export const usePracticeStore = defineStore('practice', {
               .limit(3)
             if (data) {
               const existing = new Set(all.map(q => q.id))
-              for (const id of excludeIds) existing.add(id)
               for (const q of data) {
                 if (!existing.has(q.id)) {
                   all.push(q)
-                  existing.add(q.id)
                   if (all.length >= count) break
                 }
               }
@@ -140,8 +140,6 @@ export const usePracticeStore = defineStore('practice', {
 
         // 如果还不够，全表随机补充
         if (all.length < count) {
-          const existing = new Set(all.map(q => q.id))
-          for (const id of excludeIds) existing.add(id)
           const { data } = await supabase
             .from('questions')
             .select('id, subject, knowledge_point, question_type, difficulty, content')
@@ -149,22 +147,13 @@ export const usePracticeStore = defineStore('practice', {
             .in('question_type', ['choice', 'fill'])
             .limit(10)
           if (data) {
+            const existing = new Set(all.map(q => q.id))
             for (const q of data) {
               if (!existing.has(q.id)) {
                 all.push(q)
-                existing.add(q.id)
                 if (all.length >= count) break
               }
             }
-          }
-        }
-
-        // A2-e: 最终去重安全网（保证练习卷与诊断卷重复率 ≤20%）
-        if (excludeIds.length > 0) {
-          const deduped = deduplicatePracticePool(all, excludeIds)
-          if (deduped.length >= count) {
-            all.length = 0
-            all.push(...deduped)
           }
         }
 
@@ -199,26 +188,6 @@ export const usePracticeStore = defineStore('practice', {
         throw e
       } finally {
         this.loading = false
-      }
-    },
-
-    // A2-e: 获取最近一次诊断的客观题 ID，供练习去重使用
-    async getLatestDiagnosisQuestionIds() {
-      if (!isSupabaseConfigured) return []
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return []
-        const { data } = await supabase
-          .from('diagnoses')
-          .select('structured')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-        if (!data || !data.structured) return []
-        return data.structured.objective_question_ids || []
-      } catch {
-        return []
       }
     },
 

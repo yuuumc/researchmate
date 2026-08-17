@@ -17,21 +17,43 @@ const DEFAULT_MAX_DURATION_MS = 58000
 const STREAM_FIRST_TOKEN_TIMEOUT_MS = 30000
 const RETRY_MAX_TOKENS_RATIO = 0.5
 
-// 知识点白名单（与 prompt 一致，服务端校验）
+// 知识点白名单（B2 扩展：覆盖考纲全部知识点 + 宽泛匹配 + 中文兜底）
 const KNOWLEDGE_WHITELIST = [
-  '载流子统计', '载流子输运', 'PN结', 'MOS结构', 'MOSFET',
-  '本征载流子浓度', '掺杂载流子浓度', '费米能级',
-  '漂移', '扩散', '迁移率', '电导率',
-  '内建电势', '耗尽层', '伏安特性', '电容',
-  '能带', '阈值电压', 'C-V特性',
-  'I-V特性', '跨导', '亚阈值特性',
+  // 半导体物理基础
+  '半导体', '载流子', '本征', '掺杂', '杂质', '费米', '能带',
+  '漂移', '扩散', '迁移率', '电导率', '连续性', '泊松',
+  '玻尔兹曼', '统计', '分布', '平衡',
+  // PN结 & 二极管
+  'PN结', 'PN', '耗尽', '内建电势', '整流', '击穿', '雪崩', '齐纳', '隧穿',
+  // MOS结构 & MOSFET
+  'MOS', 'MOSFET', '阈值电压', 'C-V', 'I-V',
+  '跨导', '亚阈值', '短沟道', '沟道', '夹断', '氧化层', '电容',
+  // CMOS & 数字电路
+  'CMOS', '反相器', '时序', '逻辑', '组合', '触发器',
+  // 双极型晶体管
+  '双极型', 'BJT', '晶体管', '微电子',
+  // JFET & 其他器件
+  'JFET', '结型', '场效应',
+  // 放大器 & 模拟电路
+  '放大器', '放大', '差分', '运算放大', '频率响应', '反馈', '稳定性', '噪声',
+  // 功耗 & 设计
+  '低功耗', '功耗', '版图', '工艺', '设计',
+  // 制造工艺
+  '制造', '光刻', '刻蚀', '氧化', '沉积', '金属化', '互连', '封装',
+  // 可靠性
+  'ESD', '可靠性', '寄生', '闩锁', 'latch',
+  // 异质结 & 其他
+  '异质结', '半导体物理', '微电子器件', '半导体器件', '器件',
 ]
 
 function isKnowledgeAllowed(kp) {
   if (!kp || typeof kp !== 'string') return false
+  if (kp.length > 100) return false
   const lower = kp.toLowerCase()
-  // 精确匹配或包含白名单关键词
-  return KNOWLEDGE_WHITELIST.some(w => lower.includes(w.toLowerCase()))
+  if (KNOWLEDGE_WHITELIST.some(w => lower.includes(w.toLowerCase()))) return true
+  // 兜底：包含中文字符且长度合理（覆盖白名单未穷举的考纲知识点）
+  if (/[\u4e00-\u9fa5]/.test(kp) && kp.length >= 2 && kp.length <= 50) return true
+  return false
 }
 
 export default async function handler(req, res) {

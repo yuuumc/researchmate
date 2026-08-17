@@ -48,7 +48,25 @@ async function submit() {
   // T1-7 统一学情数据层将从数据源侧正式隔离 career 与 diagnosis 的薄弱点来源
 }
 
-const careerPaths = computed(() => careerStore.careerPaths)
+// T1-7: 过滤已掌握项（分数 >=80 / >=4 星）不出现在技能缺口中
+const careerPaths = computed(() => {
+  const paths = careerStore.careerPaths
+  const mastered = mastery.masteredSkills.value
+  if (!mastered.length) return paths
+  return paths.map(path => ({
+    ...path,
+    target_roles: path.target_roles?.map(role => ({
+      ...role,
+      skill_gaps: (role.skill_gaps || []).filter(g => {
+        const gapStr = cleanGap(g).toLowerCase()
+        return !mastered.some(m => {
+          const ml = m.toLowerCase()
+          return gapStr === ml || gapStr.includes(ml) || ml.includes(gapStr)
+        })
+      })
+    }))
+  }))
+})
 const result = computed(() => careerStore.result)
 const loading = computed(() => careerStore.loading)
 const error = computed(() => careerStore.error)
