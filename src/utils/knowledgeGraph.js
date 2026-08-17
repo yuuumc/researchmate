@@ -305,6 +305,32 @@ export function getNodeMastery(node, profile) {
     return { status: 'learning', stars }
   }
 
+  // 模糊匹配：节点名/关键词与 ability_stars 键做子串匹配
+  // 解决图谱节点名（如"MOSFET基础"）与诊断能力星图键名（如"MOSFET I-V特性"）不一致
+  if (profile.ability_stars) {
+    const nodeKeywords = [
+      ...(Array.isArray(node.keywords) ? node.keywords : []),
+      topic
+    ].filter((k) => k && k.length >= 2)
+
+    let matchedStars = null
+    for (const [starTopic, starVal] of Object.entries(profile.ability_stars)) {
+      const s = parseInt(starVal, 10) || 0
+      for (const kw of nodeKeywords) {
+        if (starTopic.includes(kw) || kw.includes(starTopic)) {
+          // 取最低分（保守：任一相关知识点薄弱则标薄弱）
+          if (matchedStars === null || s < matchedStars) matchedStars = s
+          break
+        }
+      }
+    }
+    if (matchedStars !== null) {
+      if (matchedStars >= 4) return { status: 'mastered', stars: matchedStars }
+      if (matchedStars <= 2) return { status: 'weak', stars: matchedStars }
+      return { status: 'learning', stars: matchedStars }
+    }
+  }
+
   // P2-1 修复：科目级 fallback —— 向导自评按科目打分（如"半导体物理"=3星），
   // 图谱节点是科目下的具体知识点（如"半导体基础"），名称不匹配导致全部 unknown。
   // 当节点有 subject 字段时，用科目的 ability_stars / self_assessment 做降级判定。

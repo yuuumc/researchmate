@@ -64,7 +64,15 @@ export function useMasteryData() {
       .filter(Boolean)
     // T1-7: 过滤已掌握项（>=4 星），防止旧诊断数据中优势项混入薄弱点
     const mastered = new Set(masteredSkills.value)
-    return raw.filter((w) => !mastered.has(w))
+    let result = raw.filter((w) => !mastered.has(w))
+    // T1-7 deep fallback: 旧诊断记录无 weak_points 时，从 ability_stars 反推薄弱点
+    if (result.length === 0 && abilityStars.value.length > 0) {
+      const weakFromStars = abilityStars.value
+        .filter((a) => a.type === 'weak')
+        .map((a) => a.topic)
+      result = weakFromStars.filter((w) => !mastered.has(w))
+    }
+    return result
   })
 
   // 弱弱点数量（从诊断报告，不读 profileStore.weak_topics）
@@ -100,6 +108,22 @@ export function useMasteryData() {
           direct_causes: [],
           middle_causes: [],
           root_causes: d.root_causes || [],
+          remediation: ''
+        }
+      }
+      // T1-7 deep fallback: 旧诊断记录连基本字段都缺失时，从 ability_stars 反推
+      if (d && abilityStars.value.length > 0) {
+        const weakTopics = abilityStars.value.filter((a) => a.type === 'weak').map((a) => a.topic)
+        const avgScore = Math.round(
+          abilityStars.value.reduce((sum, a) => sum + a.score, 0) / abilityStars.value.length
+        )
+        return {
+          score: avgScore,
+          subject: d.subject || '—',
+          weak_points: weakTopics,
+          direct_causes: [],
+          middle_causes: [],
+          root_causes: weakTopics.map((t) => t + '基础薄弱'),
           remediation: ''
         }
       }

@@ -448,6 +448,27 @@ export const usePracticeStore = defineStore('practice', {
       return this.dbQuestions
     },
 
+    // ---- A2-e: 获取最近一次诊断的客观题 ID，用于练习去重 ----
+    async getLatestDiagnosisQuestionIds() {
+      try {
+        const { useDiagnosisStore } = await import('@/stores/diagnosis')
+        const diagnosisStore = useDiagnosisStore()
+        const latest = diagnosisStore.latest
+        if (!latest) return []
+        // 从 structured.questions 提取题目 ID
+        const structured = latest.structured
+        if (structured?.questions && Array.isArray(structured.questions)) {
+          return structured.questions
+            .map((q) => q.id || q.question_id)
+            .filter(Boolean)
+        }
+        return []
+      } catch (e) {
+        console.warn('[practice] getLatestDiagnosisQuestionIds failed:', e)
+        return []
+      }
+    },
+
     clear() {
       this.result = null
       this.error = null
