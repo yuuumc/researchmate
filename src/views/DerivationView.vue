@@ -206,7 +206,7 @@ onBeforeUnmount(() => {
 
     <!-- 空状态 -->
     <div v-else-if="!store.isStreaming" class="empty-state">
-      <div class="empty-icon">📐</div>
+      <div class="empty-icon"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13l4 0 2.5 6L15 5h5"/></svg></div>
       <p>选择一个知识点开始 AI 逐步推导</p>
       <p class="empty-hint">推导过程将逐步呈现，公式自动渲染</p>
     </div>
