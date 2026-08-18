@@ -113,7 +113,7 @@ export function buildAdaptationBlock(profile) {
 ## 学生适配上下文（系统注入，请勿向学生展示）
 - 学生当前水平档：${level}
 - 学生当前薄弱知识点：${weakTopicsStr}
-（讲解涉及以上薄弱点时，请主动加强铺垫与关联巩固。）
+（讲解涉及以上薄弱点时，请主动加强铺垫与关联巩固，并明确点出该薄弱知识点的名称。）
 
 ${tierBlock}
 ---`
@@ -167,7 +167,7 @@ export function injectDifficultyAdaptation(tutorPrompt, profile, history = []) {
 ## 学生适配上下文（系统注入，请勿向学生展示）
 - 学生当前水平档：${tier.level}
 - 学生当前薄弱知识点：${tier.weakTopicsStr}
-（讲解涉及以上薄弱点时，请主动加强铺垫与关联巩固。）
+（讲解涉及以上薄弱点时，请主动加强铺垫与关联巩固，并明确点出该薄弱知识点的名称。）
 
 ${tier.tierBlock}
 ---`
