@@ -139,6 +139,21 @@ function masteryText(type: string) {
   return type === 'strength' ? '已掌握' : type === 'weak' ? '薄弱' : '学习中'
 }
 
+// ===== 晶粒 die 视觉变体（芯片架构风格：形状/尺寸有差异）=====
+// 按 index 确定性分配 6 种 die 变体，打散等大方框的网格感，贴合晶圆/芯片主题。
+interface DieVariant { cls: string; radius: string; clip: string; inset: string }
+function dieVariant(i: number): DieVariant {
+  const v = ((i * 7) % 6 + 6) % 6 // 质数步长打散，避免行/列条纹
+  switch (v) {
+    case 0: return { cls: 'shape-die',   radius: '2px',              clip: 'none',                                                        inset: '2px' }
+    case 1: return { cls: 'shape-block', radius: '10px',             clip: 'none',                                                        inset: '3px' }
+    case 2: return { cls: 'shape-notch', radius: '2px',              clip: 'polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 0 100%)', inset: '2px' }
+    case 3: return { cls: 'shape-pill',  radius: '14px',             clip: 'none',                                                        inset: '4px' }
+    case 4: return { cls: 'shape-die',   radius: '2px 2px 12px 2px', clip: 'none',                                                        inset: '3px' }
+    default: return { cls: 'shape-pad',  radius: '50%',              clip: 'none',                                                        inset: '6px' }
+  }
+}
+
 function onTileClick(tile: { topic: string }) {
   // 仅键盘路径（Enter/Space）走这里；鼠标点击经 pointer capture 重定向到 main，
   // 由 onPointerUp 的位移阈值 + elementFromPoint 命中处理，不会重复触发。
@@ -193,7 +208,7 @@ function applyRootVars() {
   root.style.setProperty('--tile-radius', '10px')
 }
 
-// ===== 拖拽 + 惯性（原生 pointer events，1:1 移植 onDragStart/Move/End + startInertia）=====
+// ===== 拖拽 + 惯性��原生 pointer events，1:1 移植 onDragStart/Move/End + startInertia）=====
 function onPointerDown(e: PointerEvent) {
   if (draggingRef) return
   stopInertia()
@@ -347,7 +362,7 @@ onUnmounted(() => {
         <div class="sphere-stage">
           <div ref="sphereRef" class="sphere">
             <div
-              v-for="tile in tiles"
+              v-for="(tile, i) in tiles"
               :key="tile.key"
               class="item"
               :class="{ 'is-empty': !tile.topic }"
@@ -365,6 +380,7 @@ onUnmounted(() => {
             >
               <div
                 class="item__tile"
+                :class="dieVariant(i).cls"
                 role="button"
                 tabindex="0"
                 :aria-label="tile.topic || '空晶粒'"
@@ -372,7 +388,10 @@ onUnmounted(() => {
                   borderColor: tileColors(tile.type).bd,
                   background: tileColors(tile.type).bg,
                   color: tileColors(tile.type).text,
-                  boxShadow: `0 0 10px ${tileColors(tile.type).glow}`,
+                  boxShadow: `0 0 10px ${tileColors(tile.type).glow}, inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -1px 0 rgba(0,0,0,0.06)`,
+                  borderRadius: dieVariant(i).radius,
+                  clipPath: dieVariant(i).clip,
+                  inset: dieVariant(i).inset,
                 }"
                 @click.stop="onTileClick(tile)"
                 @keydown.enter.stop="onTileClick(tile)"
@@ -520,10 +539,9 @@ onUnmounted(() => {
   border: 1px solid;
   border-radius: var(--tile-radius, 10px);
   background: transparent;
-  overflow: visible;
+  overflow: hidden;
   backface-visibility: hidden;
-  transition: transform 300ms, box-shadow 0.2s, opacity 0.2s;
-  cursor: pointer;
+  transition: box-shadow 0.2s, opacity 0.2s;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   pointer-events: auto;
@@ -537,7 +555,7 @@ onUnmounted(() => {
 .item:not(.is-empty) .item__tile:hover {
   opacity: 1;
   z-index: 10;
-  transform: scale(1.1);
+  filter: brightness(1.18);
 }
 .tile-label {
   font-family: var(--font-mono, monospace);
@@ -549,6 +567,24 @@ onUnmounted(() => {
   text-align: center;
   line-height: 1.1;
 }
+
+/* 芯片 die 视觉变体：走线纹理 + 形状差异 */
+.item__tile::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+.shape-die::after {
+  top: 22%; left: 1px; width: 2px; height: 56%;
+  background: currentColor; opacity: 0.20;
+}
+.shape-notch::after {
+  bottom: 1px; left: 22%; height: 2px; width: 56%;
+  background: currentColor; opacity: 0.20;
+}
+.shape-block::after,
+.shape-pill::after,
+.shape-pad::after { display: none; }
 
 /* 径向渐隐遮罩（颜色 = 面板底色 --bg-base，双主题融合） */
 .overlay,
