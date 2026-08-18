@@ -180,6 +180,9 @@ function computeRadius() {
   const viewerPad = Math.max(8, Math.round(minDim * PAD_FACTOR))
   root.style.setProperty('--radius', `${radius}px`)
   root.style.setProperty('--viewer-pad', `${viewerPad}px`)
+  // FIX: Set perspective directly on .sphere-stage (Chrome/Edge bug: CSS calc perspective does not re-evaluate when --radius changes via inline style)
+  const _stage = root.querySelector('.sphere-stage') as HTMLElement | null
+  if (_stage) _stage.style.perspective = (radius * 2) + 'px'
   applyTransform(rotationRef.x, rotationRef.y)
 }
 
@@ -287,10 +290,16 @@ onMounted(() => {
   const main = mainRef.value
   if (!root || !main) return
   applyRootVars()
+  computeRadius()
   applyTransform(rotationRef.x, rotationRef.y)
   resizeObserver = new ResizeObserver(computeRadius)
   resizeObserver.observe(root)
   autoRAF = requestAnimationFrame(autoRotate)
+  requestAnimationFrame(() => {
+    // Force reflow to ensure 3D rendering context is initialized
+    if (rootRef.value) void rootRef.value.offsetWidth
+    applyTransform(rotationRef.x, rotationRef.y)
+  })
 })
 onUnmounted(() => {
   stopInertia()
@@ -321,7 +330,6 @@ onUnmounted(() => {
       :style="{
         '--segments-x': SEGMENTS,
         '--segments-y': SEGMENTS,
-        '--radius': '400px',
       }"
     >
       <div class="wafer-glow"></div>
@@ -482,12 +490,12 @@ onUnmounted(() => {
   display: grid; place-items: center;
   perspective: calc(var(--radius) * 2);
   perspective-origin: 50% 45%;
-  contain: layout paint size;
 }
 .sphere,
 .item,
 .item__tile { transform-style: preserve-3d; }
 .sphere {
+  position: relative;
   transform: translateZ(calc(var(--radius) * -1));
   will-change: transform;
 }
@@ -501,7 +509,6 @@ onUnmounted(() => {
   margin: auto;
   transform-origin: 50% 50%;
   backface-visibility: hidden;
-  transition: transform 300ms;
   transform:
     rotateY(calc(var(--rot-y) * (var(--offset-x) + ((var(--item-size-x) - 1) / 2)) + var(--rot-y-delta, 0deg)))
     rotateX(calc(var(--rot-x) * (var(--offset-y) - ((var(--item-size-y) - 1) / 2)) + var(--rot-x-delta, 0deg)))
