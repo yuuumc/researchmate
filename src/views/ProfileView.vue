@@ -4,16 +4,38 @@
 // 两列布局：左列 320px 基础信息卡 + AI 评价卡
 //          右列知识图谱路径 + 成长时间线
 // ============================================================
-import { computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProfileStore } from '@/stores/profile'
+import { useDiagnosisStore } from '@/stores/diagnosis'
+import { useExamStore } from '@/stores/exam'
+import { useMasteryData } from '@/composables/useMasteryData'
+import { profileBus, EVT } from '@/core/profileBus'
 import { isSupabaseConfigured } from '@/services/supabase'
 import WaferDome from '@/components/WaferDome.vue'
 import AbilityWaveform from '@/components/AbilityWaveform.vue'
+// ECharts 树摇（与 HistoryView 一致：核心 + LineChart + 必要组件）
+import * as echarts from 'echarts/core'
+import { LineChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent, MarkPointComponent } from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
+
+echarts.use([LineChart, GridComponent, TooltipComponent, MarkPointComponent, CanvasRenderer])
 
 const router = useRouter()
 const profileStore = useProfileStore()
+const diagStore = useDiagnosisStore()
+const examStore = useExamStore()
+const mastery = useMasteryData()
 const profile = computed(() => profileStore.profile)
+
+// GWT#1: profileBus 事件驱动刷新证据（useMasteryData 已是响应式统一读口，
+// 此处监听 PROFILE_UPDATED 显式记录实时刷新 + 兜底触发重算）
+const profileVersion = ref(0)
+function onProfileUpdated(payload) {
+  profileVersion.value++
+  console.log('[ProfileView] profile-updated received:', payload?.source, payload?.topics)
+}
 
 // 基础信息
 const avatarInitial = computed(() => {
@@ -53,8 +75,14 @@ const connectorStates = computed(() => {
   return states
 })
 
-const strengths = computed(() => profile.value.mastered_topics || [])
-const weaknesses = computed(() => profile.value.weak_topics || profile.value.weak_points || [])
+// GWT#1: 知识掌握区走 F1 统一读口 useMasteryData（ability_stars 活态镜像），
+// 任意学习事件（答题/模考/费曼/拍题）后 updateProfile 即触发响应式重算，即时反映最新 mastery
+const strengths = computed(() =>
+  mastery.abilityStars.value.filter((a) => a.type === 'strength').map((a) => a.topic)
+)
+const weaknesses = computed(() =>
+  mastery.abilityStars.value.filter((a) => a.type === 'weak').map((a) => a.topic)
+)
 
 const timeline = [
   { date: '2026.08', status: 'done', text: '完成半导体物理基础学习' },
@@ -62,6 +90,127 @@ const timeline = [
   { date: '2027.01', status: 'future', text: '完成 FPGA 项目实战' },
   { date: '2027.06', status: 'future', text: '复现 AI 芯片顶会论文' }
 ]
+
+// GWT#3: 薄弱/优势知识点点击跳转 /practice?topic=xxx（沿用 WaferDome click/drag 阈值同款跳转口）
+function goPractice(topic) {
+  if (!topic) return
+  router.push({ path: '/practice', query: { topic } })
+}
+
+// GWT#2: 进步轨迹折线图 — 数据源 diagnoses 表历史（loadFromDB 拉真实记录）+ 模考历史，非 mock
+const progressPoints = computed(() => {
+  void profileVersion.value
+  const diag = (diagStore.history || [])
+    .filter((h) => typeof h.score === 'number' && h.timestamp)
+    .map((h) => ({ time: h.timestamp, score: h.score, type: '诊断' }))
+  const exam = (examStore.getHistory() || [])
+    .filter((e) => typeof e.score_percent === 'number' && e.date)
+    .map((e) => ({ time: e.date, score: e.score_percent, type: '模考' }))
+  return [...diag, ...exam].sort((a, b) => new Date(a.time) - new Date(b.time))
+})
+const hasProgress = computed(() => progressPoints.value.length >= 2)
+
+const themeKey = ref(0)
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || undefined
+}
+function onThemeChanged() {
+  themeKey.value++
+  nextTick(initProgressChart)
+}
+
+const progressOption = computed(() => {
+  void themeKey.value
+  if (!hasProgress.value) return null
+  const pts = progressPoints.value
+  const x = pts.map((d) => new Date(d.time).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' }))
+  const y = pts.map((d) => d.score)
+  return {
+    grid: { top: 28, right: 20, bottom: 28, left: 40 },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: cssVar('--bg-elevated') || 'rgba(15,30,51,0.95)',
+      borderColor: 'transparent',
+      textStyle: { color: cssVar('--text-primary') || '#f1f5f9', fontSize: 12 },
+      formatter: (params) => {
+        if (!params?.length) return ''
+        const i = params[0].dataIndex
+        const d = pts[i]
+        return `${x[i]}<br/>${params[0].marker} ${d.type} · ${d.score} 分`
+      }
+    },
+    xAxis: {
+      type: 'category',
+      data: x,
+      axisLine: { lineStyle: { color: cssVar('--border-subtle') || 'rgba(255,255,255,0.08)' } },
+      axisLabel: { color: cssVar('--text-muted') || '#64748b', fontSize: 11, fontFamily: 'var(--font-mono)' }
+    },
+    yAxis: {
+      type: 'value', min: 0, max: 100,
+      axisLine: { show: false },
+      splitLine: { lineStyle: { color: cssVar('--border-subtle') || 'rgba(255,255,255,0.08)', type: 'dashed' } },
+      axisLabel: { color: cssVar('--text-muted') || '#64748b', fontSize: 11, fontFamily: 'var(--font-mono)' }
+    },
+    series: [{
+      name: '分数',
+      type: 'line',
+      data: y,
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 8,
+      itemStyle: { color: cssVar('--primary') || '#22d3ee' },
+      lineStyle: { width: 2.5, color: cssVar('--primary') || '#22d3ee' },
+      areaStyle: {
+        color: {
+          type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [
+            { offset: 0, color: 'rgba(34,211,238,0.25)' },
+            { offset: 1, color: 'rgba(34,211,238,0)' }
+          ]
+        }
+      },
+      markPoint: {
+        symbol: 'pin', symbolSize: 36,
+        data: [{ type: 'max', name: '最高' }],
+        itemStyle: { color: cssVar('--primary') || '#22d3ee' },
+        label: { fontSize: 10, color: '#fff', fontWeight: 700 }
+      }
+    }]
+  }
+})
+
+const progressChartRef = ref(null)
+let progressChart = null
+let progressResizeObserver = null
+function initProgressChart() {
+  if (!progressChartRef.value) return
+  if (!progressChart) progressChart = echarts.init(progressChartRef.value, null, { renderer: 'canvas' })
+  if (progressOption.value) progressChart.setOption(progressOption.value, true)
+  else progressChart.clear()
+}
+function handleProgressResize() {
+  if (progressChart) progressChart.resize()
+}
+
+onMounted(async () => {
+  // GWT#2: 拉真实 diagnoses 表历史（非 mock）
+  try { await diagStore.loadFromDB() } catch (e) { console.warn('[ProfileView] loadFromDB failed:', e) }
+  nextTick(initProgressChart)
+  progressResizeObserver = new ResizeObserver(handleProgressResize)
+  if (progressChartRef.value) progressResizeObserver.observe(progressChartRef.value)
+  window.addEventListener('resize', handleProgressResize)
+  window.addEventListener('theme-changed', onThemeChanged)
+  // GWT#1: 订阅 profileBus 实时刷新
+  profileBus.on(EVT.PROFILE_UPDATED, onProfileUpdated)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleProgressResize)
+  window.removeEventListener('theme-changed', onThemeChanged)
+  profileBus.off(EVT.PROFILE_UPDATED, onProfileUpdated)
+  if (progressResizeObserver) { progressResizeObserver.disconnect(); progressResizeObserver = null }
+  if (progressChart) { progressChart.dispose(); progressChart = null }
+})
+watch(progressOption, () => nextTick(initProgressChart))
 
 // v2.0: 编辑画像入口（仅 Supabase 配置后显示）
 function goEdit() {
@@ -137,13 +286,13 @@ function goEdit() {
               <div v-if="strengths.length" class="ai-section">
                 <span class="ai-tag ai-tag--good">优势</span>
                 <div class="ai-tags">
-                  <span v-for="s in strengths" :key="s" class="topic-tag topic-tag--good">{{ s }}</span>
+                  <button v-for="s in strengths" :key="s" type="button" class="topic-tag topic-tag--good topic-tag--clickable" :title="`跳转练习：${s}`" @click="goPractice(s)">{{ s }}</button>
                 </div>
               </div>
               <div v-if="weaknesses.length" class="ai-section">
                 <span class="ai-tag ai-tag--weak">薄弱</span>
                 <div class="ai-tags">
-                  <span v-for="w in weaknesses" :key="w" class="topic-tag topic-tag--weak">{{ w }}</span>
+                  <button v-for="w in weaknesses" :key="w" type="button" class="topic-tag topic-tag--weak topic-tag--clickable" :title="`跳转练习：${w}`" @click="goPractice(w)">{{ w }}</button>
                 </div>
               </div>
               <div v-if="!strengths.length && !weaknesses.length" class="ai-empty">
@@ -170,6 +319,20 @@ function goEdit() {
                 <div v-if="i < knowledgePath.length - 1" class="path-connector" :class="'connector--' + (connectorStates[i] || 'future')"></div>
               </div>
             </div>
+          </div>
+
+          <!-- 进步轨迹折线图（GWT#2） -->
+          <div class="progress-card">
+            <h3 class="card-title">
+              <svg class="card-title-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="3 17 9 11 13 15 21 7" />
+                <polyline points="14 7 21 7 21 14" />
+              </svg>
+              <span>进步轨迹</span>
+              <span v-if="hasProgress" class="card-title-count">{{ progressPoints.length }} 次记录</span>
+            </h3>
+            <div v-if="hasProgress" ref="progressChartRef" class="progress-chart"></div>
+            <div v-else class="progress-empty">完成至少 2 次诊断或模考后，这里将展示你的分数变化轨迹</div>
           </div>
 
           <!-- 成长时间线 -->
@@ -550,5 +713,60 @@ function goEdit() {
 .timeline-text {
   font-size: var(--text-sm, 14px);
   color: var(--text-primary, #f1f5f9);
+}
+
+/* === F5: 进步轨迹折线图 + 可点击知识点标签 === */
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+.card-title-icon {
+  color: var(--primary, #22d3ee);
+  flex-shrink: 0;
+}
+.card-title-count {
+  margin-left: auto;
+  font-size: var(--text-xs, 12px);
+  font-family: var(--font-mono, monospace);
+  color: var(--text-muted, #64748b);
+  font-weight: 400;
+}
+.progress-card {
+  background: var(--bg-surface, #12141d);
+  border-radius: var(--radius-lg, 16px);
+  padding: var(--space-6, 24px);
+  box-shadow: var(--shadow-card, 0 0 0 1px rgba(255,255,255,0.08));
+  margin-bottom: var(--space-6, 24px);
+}
+.progress-chart {
+  width: 100%;
+  height: 200px;
+}
+.progress-empty {
+  font-size: var(--text-sm, 14px);
+  color: var(--text-muted, #64748b);
+  text-align: center;
+  padding: var(--space-8, 32px) var(--space-4, 16px);
+}
+/* 可点击知识点标签：点击跳转 /practice?topic=xxx */
+.topic-tag--clickable {
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.topic-tag--clickable:hover {
+  transform: translateY(-1px);
+}
+.topic-tag--clickable.topic-tag--good:hover {
+  background: rgba(52, 211, 153, 0.22);
+}
+.topic-tag--clickable.topic-tag--weak:hover {
+  background: rgba(248, 113, 113, 0.22);
+}
+.topic-tag--clickable:focus-visible {
+  outline: 2px solid var(--primary, #22d3ee);
+  outline-offset: 2px;
 }
 </style>

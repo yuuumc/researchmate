@@ -1,11 +1,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { usePracticeStore } from '@/stores/practice'
 import { useProfileStore } from '@/stores/profile'
 import { useMasteryData } from '@/composables/useMasteryData'
 import { useWrongBookStore } from '@/stores/wrongBook'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
-import { useRoute } from 'vue-router'
 import { SEED_QUESTIONS } from '@/data/seedDemo'
 import { useAuthStore } from '@/stores/auth'
 import AiGeneratedBadge from '@/components/AiGeneratedBadge.vue'
@@ -35,10 +35,10 @@ const questionTypes = ['选择题', '填空题', '简答题', '计算题']
 const weakPoints = computed(() => mastery.weakPoints.value)
 
 onMounted(async () => {
-  // 晶圆穹顶点击跳转：?topic=xxx 预填知识点并切到 LLM 模式
-  const topicParam = route.query.topic
-  if (topicParam && typeof topicParam === 'string') {
-    form.value.knowledge_point = topicParam
+  // F5/GWT#3: 支持从 /practice?topic=xxx 预填知识点（画像页薄弱/优势知识点跳转入口）
+  const topicFromRoute = route.query.topic
+  if (typeof topicFromRoute === 'string' && topicFromRoute.trim()) {
+    form.value.knowledge_point = topicFromRoute.trim()
     activeTab.value = 'llm'
   } else if (!form.value.knowledge_point && weakPoints.value.length > 0) {
     const first = weakPoints.value[0]
