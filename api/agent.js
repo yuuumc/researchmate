@@ -22,7 +22,7 @@
 // ============================================================
 
 import { getProviderConfig, validateProviderConfig, buildHeaders, buildMessages } from './llm-provider.js'
-import { loadPrompt, substitute, getSchoolProfile, getCareerPaths, shouldUseCompact, extractStructured } from './prompt-loader.js'
+import { loadPrompt, substitute, getSchoolProfile, getCareerPaths, shouldUseCompact, extractStructured } from '../lib/prompt-loader.js'
 import { applyCors, getClientIp, checkRateLimit, RATE_LIMIT_WINDOW_MS } from './_middleware.js'
 
 // P1: Sanitize user input to prevent prompt injection

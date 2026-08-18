@@ -7,9 +7,9 @@
 // ============================================================
 
 import { getProviderConfig, validateProviderConfig, buildHeaders } from './llm-provider.js'
-import { loadPrompt, substitute, shouldUseCompact, extractStructured } from './prompt-loader.js'
+import { loadPrompt, substitute, shouldUseCompact, extractStructured } from '../lib/prompt-loader.js'
 import { applyCors, getClientIp, checkRateLimit, RATE_LIMIT_WINDOW_MS } from './_middleware.js'
-import { TOOL_DEFINITIONS, executeTool } from './tools.js'
+import { TOOL_DEFINITIONS, executeTool } from '../lib/tools.js'
 
 const AGENT_TIMEOUT_MS = 55000
 const MAX_TOOL_ITERATIONS = 3

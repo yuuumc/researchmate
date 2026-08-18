@@ -10,7 +10,7 @@
 // ============================================================
 
 import { getProviderConfig, validateProviderConfig } from './llm-provider.js'
-import { loadPrompt, substitute } from './prompt-loader.js'
+import { loadPrompt, substitute } from '../lib/prompt-loader.js'
 import { applyCors, getClientIp, checkRateLimit, RATE_LIMIT_WINDOW_MS } from './_middleware.js'
 
 const DEFAULT_MAX_DURATION_MS = 58000
