@@ -1,11 +1,19 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { installSanitizeHooks, sanitizeHtml, SANITIZE_CONFIG } from '@/utils/sanitize'
-import { extractMath, injectMath, extractSvg, injectSvg } from '@/utils/renderMath'
-// KaTeX 样式（Vite 自动从 node_modules 解析）
-import 'katex/dist/katex.min.css'
+import {
+  extractMath,
+  injectMath,
+  extractSvg,
+  injectSvg,
+  extractSvgSpec,
+  injectSvgSpec,
+  ensureKatex,
+  isKatexReady
+} from '@/utils/renderMath'
+import { renderSvgSpec } from '@/utils/svgSpecRenderer'
 
 const props = defineProps({
   content: {
@@ -29,45 +37,86 @@ marked.setOptions({
 // 幂等：重复 install 会先 remove 旧 hook 再装新的
 installSanitizeHooks(DOMPurify)
 
-// DOMPurify SVG profile 配置（安全内联 SVG：电路/示意图）
+// DOMPurify SVG profile 配置（安全内联 SVG：电路/能带/结构/波形图件）
 const SVG_SANITIZE_CONFIG = Object.freeze({
   USE_PROFILES: { svg: true, svgFilters: true },
-  ADD_TAGS: ['foreignObject'],
-  ADD_ATTR: ['xmlns', 'viewBox', 'preserveAspectRatio', 'fill', 'stroke', 'stroke-width', 'd', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'width', 'height', 'transform', 'points', 'text-anchor', 'font-size', 'font-family']
+  ADD_TAGS: ['foreignObject', 'marker', 'defs'],
+  ADD_ATTR: ['xmlns', 'viewBox', 'preserveAspectRatio', 'role', 'fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-opacity', 'fill-opacity', 'd', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'width', 'height', 'transform', 'points', 'text-anchor', 'font-size', 'font-family', 'font-weight', 'marker-end', 'markerWidth', 'markerHeight', 'refX', 'refY', 'orient']
 })
+
+// ---- KaTeX 按需加载（PM 裁定：首次命中公式标记时才拉取，不进首屏 chunk）----
+// CSS 与 JS 同步动态 import（renderMath.ensureKatex 内完成）。
+const katexReady = ref(isKatexReady())
+// 公式标记探测：$ 后跟非空白非 $（覆盖行内 $x$ 与块级 $$x$$）
+const hasMathMarker = (s) => /\$[^\s$]|\$\$/.test(s || '')
+watch(
+  () => props.content,
+  (c) => {
+    if (c && hasMathMarker(c) && !isKatexReady()) {
+      ensureKatex().then(() => { katexReady.value = true }).catch(() => {})
+    }
+  },
+  { immediate: true }
+)
 
 /**
  * 完整渲染管线：
- *   1. 提取 SVG → 占位符
- *   2. 提取 math ($...$ / $$...$$) → 占位符
- *   3. marked.parse（markdown → HTML）
- *   4. DOMPurify sanitize（基础配置，禁 svg/math/style）
- *   5. 回填 KaTeX HTML（可信库输出，绕过 sanitize 不丢 inline style）
- *   6. 回填 DOMPurify SVG-profile sanitize 后的 SVG
+ *   1. 提取 svg-spec 围栏（```svg-spec JSON```）→ 占位符
+ *   2. 提取内联 SVG → 占位符
+ *   3. 提取 math ($...$ / $$...$$) → 占位符 + KaTeX HTML
+ *   4. marked.parse（markdown → HTML）
+ *   5. DOMPurify sanitize（基础配置，禁 svg/math/style）
+ *   6. 回填 KaTeX HTML（可信库输出，绕过 sanitize 不丢 inline style）
+ *   7. 回填 DOMPurify SVG-profile sanitize 后的内联 SVG
+ *   8. 回填 svg-spec：renderSvgSpec → DOMPurify SVG-profile sanitize；渲染失败回退原文代码块
+ *
+ * 解析顺序符合 B1 规范 §集成要点：svg-spec 块 → $$ 块 → $ 行内（先大后小）。
+ * katexReady.value 在此读取以建立响应式依赖——KaTeX 异步加载完成后 computed 重算，
+ * 公式占位符的回填 HTML 从「未加载原文兜底」更新为真实 KaTeX 渲染。
  */
 const html = computed(() => {
+  // eslint-disable-next-line no-unused-expressions
+  katexReady.value // 响应式依赖：KaTeX 加载完成后触发重算
   if (!props.content) return ''
 
-  // 1+2: 提取 SVG 与 math（SVG 先于 math，避免 SVG 内可能的 $ 被误识别）
-  const { text: t1, svgs } = extractSvg(props.content)
+  // 1: svg-spec 围栏（先于内联 SVG 与 math，避免 JSON 内 $ 被误识别）
+  const { text: t0, specs } = extractSvgSpec(props.content)
+  // 2: 内联 SVG（先于 math，避免 SVG 内 $ 被误识别）
+  const { text: t1, svgs } = extractSvg(t0)
+  // 3: math
   const { text: t2, tokens: mathTokens } = extractMath(t1)
 
-  // 3: marked
+  // 4: marked
   const rawHtml = marked.parse(t2)
 
-  // 4: DOMPurify 基础 sanitize（4 道防御，见 sanitize.js）
+  // 5: DOMPurify 基础 sanitize
   let safeHtml = sanitizeHtml(DOMPurify, rawHtml)
 
-  // 5: 回填 KaTeX HTML（KaTeX 输出来自可信库，不经 DOMPurify）
+  // 6: 回填 KaTeX HTML（KaTeX 输出来自可信库，不经 DOMPurify）
   safeHtml = injectMath(safeHtml, mathTokens)
 
-  // 6: 回填 SVG（每个 SVG 经 DOMPurify SVG profile sanitize）
+  // 7: 回填内联 SVG（每个 SVG 经 DOMPurify SVG profile sanitize）
   if (svgs.length > 0) {
     const svgTokens = svgs.map(({ placeholder, raw }) => ({
       placeholder,
       sanitized: DOMPurify.sanitize(raw, SVG_SANITIZE_CONFIG)
     }))
     safeHtml = injectSvg(safeHtml, svgTokens)
+  }
+
+  // 8: 回填 svg-spec 图件
+  if (specs.length > 0) {
+    const specTokens = specs.map(({ placeholder, spec, raw }) => {
+      const svg = spec ? renderSvgSpec(spec) : null
+      if (svg) {
+        // 渲染成功 → DOMPurify SVG profile sanitize
+        return { placeholder, sanitized: DOMPurify.sanitize(svg, SVG_SANITIZE_CONFIG) }
+      }
+      // 渲染失败（非法 JSON / 白名单外 template / 未知 type）→ 原文代码块兜底，不白屏
+      const fallbackHtml = sanitizeHtml(DOMPurify, marked.parse(raw))
+      return { placeholder, sanitized: fallbackHtml }
+    })
+    safeHtml = injectSvgSpec(safeHtml, specTokens)
   }
 
   return safeHtml
@@ -347,7 +396,7 @@ const html = computed(() => {
   white-space: nowrap;
 }
 
-/* 内联 SVG 电路/示意图 */
+/* svg-spec 图件容器（图件 SVG 经 sanitize 后内联在此）*/
 .markdown-renderer :deep(svg) {
   max-width: 100%;
   height: auto;

@@ -5,13 +5,33 @@
 //   1. computeMasteryLevel(profile) — 纯函数，按 §1 确定性优先级判定学生水平档
 //   2. buildAdaptationBlock(profile) — 拼装 §3 学生适配上下文注入块（含 tier_block + 通用约束）
 //   3. injectDifficultyAdaptation(tutorPrompt, profile, history) — 在导师角色定义之后、
-//      任务指令之前注入适配块（TUTOR_PROMPT 按首个「# 核心原则」边界切分，两半逐字保留）
+//      任务指令之前注入适配块（TUTOR_PROMPT 按首个「# 核心原则」边界切分，两半逐字保留）；
+//      其后追加 B1《公式与图件输出规范》静态注入段（位置：学生适配上下文 + tier_block 之后、
+//      任务指令之前，首轮拼装注入一次）
 //   4. 会话级档位缓存：会话首轮（history 为空）取一次值并随会话固定，
 //      会话进行中 store 变化不重算不重新注入（满足 B2：单轮内 mastery 跨档当轮不变、新会话生效）
 //
 // 设计原则：纯函数 + 零 store 依赖（store getter 与 tutor 调用链共用同一判定逻辑，
 //   单一事实源在此模块），无 @/ 别名依赖，可被 node 直跑单测覆盖。
 // ============================================================
+
+// ---- B1《公式与图件输出规范》静态注入段（规范 §3 逐字）----
+// 位置：学生适配上下文 + tier_block 注入层之后、任务指令之前；静态文本，首轮拼装注入一次。
+const B1_SPEC_BLOCK = `---
+## 公式与图件输出规范（系统注入，请勿向学生展示，仅约束你的输出格式）
+
+【公式】
+- 凡涉及变量、公式、数值计算关系，一律使用 LaTeX：行内用 $...$，独立成段的公式用 $$...$$（前后各空一行）。
+- 只可使用 LaTeX 子集：上下标（多字符加花括号，如 $V_{GS}$）、\\frac、\\sqrt、\\int、\\sum、希腊字母、pmatrix/bmatrix 矩阵、\\exp/\\ln/\\log/三角函数、\\bar/\\vec/\\overline、\\left(\\right) 系列括号、\\mathrm{} 写单位、\\, 微调空格。
+- 禁止：\\(...\\) 与 \\[...\\] 分隔符；align/aligned/equation 多行环境（多行推导拆成多个 $$...$$）；\\newcommand 自定义宏；中文塞进公式（中文写在公式外正文）；裸文本公式（如 Vgs>Vth、sqrt(Nc*Nv)）。
+
+【图件】
+- 内容涉及以下四类且图比文字直观时，输出一个图件标记：电路连接关系（circuit）、信号随时间/偏压变化（waveform）、能带与费米能级（band）、器件/工艺结构剖面（structure）。
+- 图件标记是围栏为 \`\`\`svg-spec 的代码块，内容为符合规范的 JSON，独占段落；一次回答最多 2 个图件。
+- 图件不能孤立出现：先用一句话引出，图后再接一句解读。
+- 严禁用 ASCII 字符手绘电路图/波形图/结构图；严禁输出 mermaid、Graphviz、TikZ 代码。
+- circuit 仅可使用模板白名单：diode-rectifier / bridge-rectifier / rc-lowpass / voltage-divider / common-source / cmos-inverter / opamp-inverting / opamp-noninverting；名单外电路改用文字+公式说明。
+---`
 
 // ---- §2 三档 tier_block 模板块（逐字） ----
 const TIER_BLOCKS = {
@@ -152,9 +172,13 @@ function getSessionTier(profile, history) {
 const TASK_SECTION_BOUNDARY = '\n# 核心原则'
 
 /**
- * 在导师角色定义之后、任务指令之前注入学生适配上下文块。
+ * 在导师角色定义之后、任务指令之前注入学生适配上下文块，其后追加 B1 公式与图件输出规范段。
  * TUTOR_PROMPT 按首个「# 核心原则」切分：前半=角色定义、后半=任务指令，
- * 两半逐字保留，仅在中间插入注入层。不动导师现有角色定义、任务指令、功能逻辑。
+ * 两半逐字保留，仅在中间依次插入：学生适配上下文块 → B1 规范段，再接任务指令。
+ * 不动导师现有角色定义、任务指令、功能逻辑。
+ *
+ * 注入顺序（PM 裁定）：学生适配上下文 + tier_block → B1 规范段 → 任务指令。
+ * B1 规范段为静态文本，随适配块在首轮拼装时一并注入（getSessionTier 首轮缓存）。
  *
  * @param {string} tutorPrompt - TUTOR_PROMPT 原文（src/prompts/tutor.md?raw）
  * @param {object} profile
@@ -175,13 +199,14 @@ ${tier.tierBlock}
   const idx = tutorPrompt ? tutorPrompt.indexOf(TASK_SECTION_BOUNDARY) : -1
   if (idx === -1) {
     // 边界防御：TUTOR_PROMPT 结构变化找不到「# 核心原则」时，
-    // 退化为在 TUTOR_PROMPT 之后整体追加（仍注入适配块，不阻断主流程）
+    // 退化为在 TUTOR_PROMPT 之后整体追加（仍注入适配块 + B1 规范段，不阻断主流程）
     console.warn('[difficultyAdapt] TUTOR_PROMPT 未找到「# 核心原则」边界，适配块降级为整体追加')
-    return `${tutorPrompt}\n\n${adaptation}`
+    return `${tutorPrompt}\n\n${adaptation}\n\n${B1_SPEC_BLOCK}`
   }
   const roleDef = tutorPrompt.slice(0, idx)
   const taskInstr = tutorPrompt.slice(idx)
-  return `${roleDef}\n${adaptation}\n\n${taskInstr}`
+  // 注入顺序：角色定义 → 学生适配上下文块 → B1 公式与图件规范段 → 任务指令
+  return `${roleDef}\n${adaptation}\n\n${B1_SPEC_BLOCK}\n\n${taskInstr}`
 }
 
 export const LEVELS = Object.freeze({
