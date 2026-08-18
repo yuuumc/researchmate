@@ -146,11 +146,11 @@ function dieVariant(i: number): DieVariant {
   const v = ((i * 7) % 6 + 6) % 6 // 质数步长打散，避免行/列条纹
   switch (v) {
     case 0: return { cls: 'shape-die',   radius: '2px',              clip: 'none',                                                        inset: '2px' }
-    case 1: return { cls: 'shape-block', radius: '10px',             clip: 'none',                                                        inset: '3px' }
+    case 1: return { cls: 'shape-block', radius: '3px',              clip: 'none',                                                        inset: '3px' }
     case 2: return { cls: 'shape-notch', radius: '2px',              clip: 'polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 0 100%)', inset: '2px' }
-    case 3: return { cls: 'shape-pill',  radius: '14px',             clip: 'none',                                                        inset: '4px' }
-    case 4: return { cls: 'shape-die',   radius: '2px 2px 12px 2px', clip: 'none',                                                        inset: '3px' }
-    default: return { cls: 'shape-pad',  radius: '50%',              clip: 'none',                                                        inset: '6px' }
+    case 3: return { cls: 'shape-strip', radius: '3px',              clip: 'none',                                                        inset: '4px' }
+    case 4: return { cls: 'shape-die',   radius: '2px 2px 4px 2px',  clip: 'none',                                                        inset: '3px' }
+    default: return { cls: 'shape-pin',  radius: '2px',              clip: 'polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%)', inset: '5px' }
   }
 }
 
@@ -582,9 +582,21 @@ onUnmounted(() => {
   bottom: 1px; left: 22%; height: 2px; width: 56%;
   background: currentColor; opacity: 0.20;
 }
-.shape-block::after,
-.shape-pill::after,
-.shape-pad::after { display: none; }
+.shape-block::after {
+  top: 28%; bottom: 28%; left: 25%; right: 25%;
+  background: repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px 4px);
+  opacity: 0.16;
+}
+.shape-strip::after {
+  bottom: 2px; left: 18%; right: 18%; height: 2px;
+  background: repeating-linear-gradient(90deg, currentColor 0 2px, transparent 2px 5px);
+  opacity: 0.26;
+}
+.shape-pin::after {
+  top: 26%; bottom: 26%; left: 2px; width: 2px;
+  background: repeating-linear-gradient(180deg, currentColor 0 2px, transparent 2px 5px);
+  opacity: 0.26;
+}
 
 /* 径向渐隐遮罩（颜色 = 面板底色 --bg-base，双主题融合） */
 .overlay,
