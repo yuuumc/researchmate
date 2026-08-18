@@ -176,7 +176,7 @@ function switchTab(tab) {
         <div v-if="!practiceStore.hasDbQuestions && !loading" class="db-intro">
           <div class="db-intro-card">
             <h3>薄弱点练习</h3>
-            <p>从题库按你的薄弱知识点抽取选择/填空题，做题后自动判分，错题自动进错题本。</p>
+            <p>以下为诊断识别的薄弱知识点，从题库按此抽取选择/填空题，做题后自动判分，错题自动进错题本。</p>
             <div v-if="weakPoints.length" class="weak-tags">
               <span v-for="(wp, i) in weakPoints.slice(0, 8)" :key="i" class="weak-tag">
                 {{ typeof wp === 'string' ? wp : (wp.knowledge_point || wp.topic || JSON.stringify(wp)) }}

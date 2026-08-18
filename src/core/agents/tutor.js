@@ -19,6 +19,7 @@ import {
   buildLearningPathContext
 } from '@/utils/knowledgeGraph'
 import { traceAgent, runLLM, callLLM } from './BaseAgent'
+import { injectDifficultyAdaptation } from '@/core/difficultyAdapt'
 
 let knowledgeBase = [] // 启动时由 main.js 注入
 let knowledgeGraph = null // v1 正式版：知识图谱（可选）
@@ -110,7 +111,10 @@ ${ragContext || '（无相关切片）'}`
   const pathSection = pathContext ? `# 知识图谱路径分析（GraphRAG 双路融合）
 ${pathContext}
 ` : ''
-  const prompt = `${TUTOR_PROMPT}
+  // 难度自适应注入：在 TUTOR_PROMPT 角色定义之后、任务指令之前插入学生适配上下文块
+  // 会话首轮取值并随会话固定（B2：单轮不中途切档）
+  const tutorPromptAdapted = injectDifficultyAdaptation(TUTOR_PROMPT, profile, history)
+  const prompt = `${tutorPromptAdapted}
 
 # 学生画像
 ${profileToContext(profile)}

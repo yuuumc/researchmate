@@ -32,6 +32,7 @@ import {
   masteryToStars,
   starsToMastery,
 } from '@/core/masteryEngine'
+import { computeMasteryLevel } from '@/core/difficultyAdapt'
 
 const STORAGE_KEY = 'profile'
 
@@ -130,7 +131,11 @@ export const useProfileStore = defineStore('profile', {
     learningStyleLabel: (state) => {
       const map = { theoretical: '理论型', practical: '实践型', mixed: '混合型' }
       return map[state.profile.learning_style] || '混合型'
-    }
+    },
+
+    // 难度自适应：学生水平档（foundational/intermediate/advanced）
+    // 判定逻辑见 @/core/difficultyAdapt.js computeMasteryLevel（单一事实源）
+    studentMasteryLevel: (state) => computeMasteryLevel(state.profile)
   },
 
   actions: {
