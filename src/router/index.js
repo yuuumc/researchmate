@@ -138,6 +138,13 @@ const routes = [
     component: () => import('@/views/FeynmanView.vue'),
     meta: { title: '费曼复述', agent: 'tutor' }
   },
+  // F6: 语音辅导
+  {
+    path: '/voice-tutor',
+    name: 'voice-tutor',
+    component: () => import('@/views/VoiceTutorView.vue'),
+    meta: { title: '语音辅导', agent: 'tutor' }
+  },
   // 同伴学习模块：赛事展示范围裁剪（2026-08-16），入口移除、代码保留待赛后迭代启用
   // 直接访问 /peer 重定向回首页；PeerView.vue / stores/peer.js / api peer action 均未删除
   { path: '/peer', alias: '/peers', redirect: '/' },
