@@ -13,6 +13,7 @@ import {
   injectDifficultyAdaptation,
   resetDifficultySession,
 } from '../src/core/difficultyAdapt.js'
+import { migrateMasteryScale } from '../src/core/masteryEngine.js'
 
 let pass = 0, fail = 0
 function ok(name, cond) {
@@ -120,28 +121,31 @@ ok('空 ks + meanStar=4 → advanced（边界：≥4）', computeMasteryLevel({
   last_diagnosis_score: 70,
 }) === 'advanced')
 
-// ① 防御归一化：setAbilityStar 写 0-100 mastery → >1 时 /100 归一到 0-1
-console.log('\n=== ① 防御归一化：0-100 mastery → /100 归一 ===')
-ok('mastery=80 (0-100) → 归一 0.8 → advanced（≥0.8）', computeMasteryLevel({
+// ① 刻度统一：mastery 全仓 0-1，_normMastery 防御归一化已移除；
+//   0-100 残留由 migrateMasteryScale（profile.migrateProfile 加载时调用）一次性迁移。
+console.log('\n=== ① 刻度统一：_normMastery 移除 + migrateMasteryScale 迁移 ===')
+// _normMastery 已移除：未迁移的 0-100 残留值不再被归一（暴露而非掩盖）
+ok('_normMastery 已移除：mastery=30 (0-100 残留) 直接读 → 30≥0.8 → advanced（不再 /100）', computeMasteryLevel({
   ability_stars: { a: 3, b: 3 }, // mean=3.0（intermediate 范围，隔离 mastery 条件）
-  knowledge_state: { a: { mastery: 80 } }, // 0-100 → 0.8 ≥ 0.8 → advanced
-  last_diagnosis_score: 60,
-}) === 'advanced')
-ok('mastery=30 (0-100) → 归一 0.3 → foundational（<0.5）', computeMasteryLevel({
-  ability_stars: { a: 3, b: 3 }, // mean=3.0
-  knowledge_state: { a: { mastery: 30 } }, // 0-100 → 0.3 < 0.5 → foundational
+  knowledge_state: { a: { mastery: 30 } }, // 0-100 残留 → 不再归一 → 30 ≥ 0.8 → advanced
   last_diagnosis_score: 40,
-}) === 'foundational')
-ok('mastery=60 (0-100) → 归一 0.6 → intermediate（0.5≤m<0.8）', computeMasteryLevel({
-  ability_stars: { a: 3, b: 3 }, // mean=3.0
-  knowledge_state: { a: { mastery: 60 } }, // 0-100 → 0.6 → intermediate
-  last_diagnosis_score: 50,
-}) === 'intermediate')
-ok('mastery=0.92 (0-1) 不归一（≤1 不动）', computeMasteryLevel({
-  ability_stars: { a: 3, b: 3 }, // mean=3.0
-  knowledge_state: { a: { mastery: 0.92 } }, // 0-1 ≤1 → 不归一 → 0.92 ≥ 0.8 → advanced
-  last_diagnosis_score: 70,
 }) === 'advanced')
+// migrateMasteryScale：0-100 → 0-1 一次性迁移（幂等）
+const legacyKS = {
+  'MOSFET': { mastery: 80, attempts: 3, confidence: 0.5 },
+  'PN结': { mastery: 30, attempts: 1 },
+  '放大电路': { mastery: 0.6, attempts: 2 },
+}
+const migrated = migrateMasteryScale(legacyKS)
+ok('migrate: 80 → 0.8', migrated['MOSFET'].mastery === 0.8)
+ok('migrate: 30 → 0.3', migrated['PN结'].mastery === 0.3)
+ok('migrate: 0.6 不动（已 0-1）', migrated['放大电路'].mastery === 0.6)
+ok('migrate: 保留 attempts/confidence 等字段', migrated['MOSFET'].attempts === 3 && migrated['MOSFET'].confidence === 0.5)
+ok('migrate: 迁移后 0.3 → foundational（computeMasteryLevel 正确判定）', computeMasteryLevel({
+  ability_stars: { a: 3, b: 3 }, knowledge_state: { 'PN结': migrated['PN结'] }, last_diagnosis_score: 40,
+}) === 'foundational')
+ok('migrate: 幂等（再迁移 0.8 不变）', migrateMasteryScale(migrated)['MOSFET'].mastery === 0.8)
+ok('migrate: 空对象/null 兜底', Object.keys(migrateMasteryScale({})).length === 0 && JSON.stringify(migrateMasteryScale(null)) === '{}')
 
 // ② mastery=star/5 写入验证：persistToDB 写的 0-1 mastery 被 computeMasteryLevel 正确读取
 console.log('\n=== ② mastery=star/5 写入 → 正确读取 ===')

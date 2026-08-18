@@ -31,6 +31,7 @@ import {
   decayAll,
   masteryToStars,
   starsToMastery,
+  migrateMasteryScale,
 } from '@/core/masteryEngine'
 import { computeMasteryLevel } from '@/core/difficultyAdapt'
 
@@ -79,7 +80,7 @@ function migrateProfile(p) {
     ...def,
     ...p,
     ability_stars: p.ability_stars || {},
-    knowledge_state: p.knowledge_state || {},
+    knowledge_state: migrateMasteryScale(p.knowledge_state || {}), // F1: 0-100→0-1 一次性迁移
     learning_style: p.learning_style || 'mixed',
     exam_date: p.exam_date || def.exam_date
   }

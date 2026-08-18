@@ -30,6 +30,7 @@ const TIER_BLOCKS = {
   advanced: `【讲解策略 · 进阶档】
 - 深度优先：跳过概念铺垫，直奔推导、边界条件与设计权衡。
 - 术语密集：直接使用器件级/系统级表述（如跨导、沟道长度调制、噪声裕量），不做释义。
+- 禁用释义标记词：全程（含追问轮）不使用「也就是说」「也就是」「即」「可以理解为」「相当于」「类似于」做同义改写或降维解释；推理衔接改用推导连接词（「因此」「于是」「代入得」「可得」「进而」）。
 - 示例取向：优先给边缘 case、反例与工程引申，不给入门示例。
 - 前置知识：默认已掌握，不回溯。
 - 互动节奏：一次性给出完整结论与推导，不中途确认。`,
@@ -72,12 +73,11 @@ export function computeMasteryLevel(profile) {
   const meanStar = starTopics.length > 0
     ? Object.values(stars).reduce((s, v) => s + (Number(v) || 0), 0) / starTopics.length
     : 0
-  // ① 防御兜底：空 ks → mastery = undefined（NaN 比较 → 仅 meanStar 生效）
-  //   防御性归一化：setAbilityStar 写 0-100 mastery，persistToDB 写 0-1 mastery，
-  //   混合存在时 >1 的值 /100 归一到 0-1，不改变 §1 阈值
-  const _normMastery = (m) => { const n = Number(m) || 0; return n > 1 ? n / 100 : n }
+  // ① 刻度统一：mastery 全仓 0-1（setAbilityStar / persistToDB / applyLearningEvent / feynman 统一），
+  //   0-100 残留由 profile.migrateProfile 加载时经 migrateMasteryScale 一次性迁移。
+  //   空 ks → mastery = undefined（NaN 比较 → 仅 meanStar 生效）
   const mastery = ksTopics.length > 0
-    ? ksTopics.reduce((s, t) => s + _normMastery(ks[t] && ks[t].mastery), 0) / ksTopics.length
+    ? ksTopics.reduce((s, t) => s + (Number(ks[t] && ks[t].mastery) || 0), 0) / ksTopics.length
     : undefined
 
   if (mastery < 0.5 || meanStar < 2.5) return 'foundational'

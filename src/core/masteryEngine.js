@@ -14,7 +14,7 @@
 
 // --- 可调常量（集中声明，契约测试断言依赖这些语义） ---
 export const DECAY_RATE = 0.05          // /天；7天≈0.705、30天≈0.223
-export const MASTERY_IMPACT = 40        // 零置信度时单次最大影响幅度（×题型权重）
+export const MASTERY_IMPACT = 0.4        // 零置信度时单次最大影响幅度（×题型权重）
 export const WRONG_PENALTY = 1.2        // 答错比答对影响更大（惩罚系数）
 
 // 题型权重：推导 > 主观题(essay) > 填空(fill) > 客观题/练习(choice/practice)
@@ -64,7 +64,7 @@ export function applyDecay(ks, now) {
   const days = daysBetween(now, base.lastStudied)
   if (days <= 0) return base
   const factor = Math.exp(-DECAY_RATE * days)
-  return { ...base, mastery: clamp(base.mastery * factor, 0, 100) }
+  return { ...base, mastery: clamp(base.mastery * factor, 0, 1) }
 }
 
 /**
@@ -113,7 +113,7 @@ export function applyLearningEvent(prevKS, event) {
   } else {
     delta = -impactScale * WRONG_PENALTY
   }
-  const mastery = clamp(decayed.mastery + delta, 0, 100)
+  const mastery = clamp(decayed.mastery + delta, 0, 1)
 
   // 6. 错误类型计数（仅答错时累加）
   const errorTypes = { ...prev.errorTypes }
@@ -142,7 +142,7 @@ export function applySnapshot(prevKS, snap) {
   const now = snap.timestamp || new Date().toISOString()
   return {
     ...prev,
-    mastery: clamp(snap.mastery ?? prev.mastery, 0, 100),
+    mastery: clamp(snap.mastery ?? prev.mastery, 0, 1),
     lastStudied: now,
   }
 }
@@ -170,10 +170,10 @@ export function decayAll(ksMap, now) {
  */
 export function masteryToStars(mastery) {
   if (mastery <= 0) return 0
-  if (mastery <= 20) return 1
-  if (mastery <= 40) return 2
-  if (mastery <= 60) return 3
-  if (mastery <= 80) return 4
+  if (mastery <= 0.2) return 1
+  if (mastery <= 0.4) return 2
+  if (mastery <= 0.6) return 3
+  if (mastery <= 0.8) return 4
   return 5
 }
 
@@ -181,5 +181,25 @@ export function masteryToStars(mastery) {
  * 星级(0-5) → mastery(0-100)，诊断 ability_stars 快照写入时用
  */
 export function starsToMastery(stars) {
-  return clamp((stars | 0) * 20, 0, 100)
+  return clamp((stars | 0) / 5, 0, 1)
+}
+
+/**
+ * 一次性刻度迁移：将旧版 0-100 mastery 归一到 0-1（>1 的值 /100）。
+ * 幂等：已是 0-1 的值不动。供 profile.migrateProfile 在加载时调用，
+ *   使既有 0-100 历史数据一次性对齐到统一 0-1 刻度（与 persistToDB/setAbilityStar 写入一致）。
+ * @param {object} ksMap - knowledge_state map
+ * @returns {object} 迁移后的新 map（仅 mastery>1 的项被替换）
+ */
+export function migrateMasteryScale(ksMap) {
+  if (!ksMap || typeof ksMap !== 'object') return ksMap || {}
+  const out = {}
+  for (const [topic, ks] of Object.entries(ksMap)) {
+    if (!ks || typeof ks !== 'object') { out[topic] = ks; continue }
+    const m = Number(ks.mastery)
+    out[topic] = (Number.isFinite(m) && m > 1)
+      ? { ...ks, mastery: m / 100 }
+      : ks
+  }
+  return out
 }

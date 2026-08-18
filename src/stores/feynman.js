@@ -169,7 +169,7 @@ export const useFeynmanStore = defineStore('feynman', {
 
         // === F1 写画像：理解深度评分作为绝对掌握度快照写回 knowledge_state ===
         profileBus.emit(EVT.MASTERY_SNAPSHOT, {
-          items: [{ topic: this.topic, mastery: result.score, source: 'feynman' }],
+          items: [{ topic: this.topic, mastery: result.score / 100, source: 'feynman' }],
           timestamp: new Date().toISOString(),
         })
 
