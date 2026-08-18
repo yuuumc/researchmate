@@ -26,7 +26,7 @@ function readLastSync() {
 export const useSyncStore = defineStore('sync', {
   state: () => ({
     /** idle | syncing | success | conflict | offline | error */
-    status: 'idle',
+    status: readLastSync() ? 'success' : 'idle',  // P0-fix①: lastSyncAt 存在则恢复已同步态（持久化跨全页刷新，E2E 手动刷新后不再回退待同步）
     lastSyncAt: readLastSync(),
     /** { local, remote, diffs } | null */
     conflict: null,
