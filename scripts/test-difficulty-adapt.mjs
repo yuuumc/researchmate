@@ -91,6 +91,86 @@ ok('边界 mastery=0.8 meanStar=4 → advanced（>=）', computeMasteryLevel({
   last_diagnosis_score: 80,
 }) === 'advanced')
 
+// ① 防御兜底：空 ks → mastery = undefined（NaN 比较 → 仅 meanStar 生效）
+//   覆盖从未诊断的老账号（ks 为空但 ability_stars 可能有值）
+console.log('\n=== ① 防御兜底：空 ks → mastery 跳过，仅 meanStar 判定 ===')
+ok('空 ks + meanStar=5 → advanced（仅 meanStar≥4）', computeMasteryLevel({
+  ability_stars: { 'MOSFET I-V': 5, 'PN结': 5 },
+  knowledge_state: {},
+  last_diagnosis_score: 80,
+}) === 'advanced')
+ok('空 ks + meanStar=1.5 → foundational（仅 meanStar<2.5）', computeMasteryLevel({
+  ability_stars: { 'MOSFET I-V': 1, 'PN结': 2 },
+  knowledge_state: {},
+  last_diagnosis_score: 25,
+}) === 'foundational')
+ok('空 ks + meanStar=3.0 → intermediate（仅 meanStar）', computeMasteryLevel({
+  ability_stars: { 'MOSFET I-V': 3, 'PN结': 3 },
+  knowledge_state: {},
+  last_diagnosis_score: 50,
+}) === 'intermediate')
+ok('空 ks + meanStar=2.5 → intermediate（边界：不<2.5 不≥4）', computeMasteryLevel({
+  ability_stars: { 'MOSFET I-V': 2, 'PN结': 3 },
+  knowledge_state: {},
+  last_diagnosis_score: 50,
+}) === 'intermediate')
+ok('空 ks + meanStar=4 → advanced（边界：≥4）', computeMasteryLevel({
+  ability_stars: { 'MOSFET I-V': 4, 'PN结': 4 },
+  knowledge_state: {},
+  last_diagnosis_score: 70,
+}) === 'advanced')
+
+// ① 防御归一化：setAbilityStar 写 0-100 mastery → >1 时 /100 归一到 0-1
+console.log('\n=== ① 防御归一化：0-100 mastery → /100 归一 ===')
+ok('mastery=80 (0-100) → 归一 0.8 → advanced（≥0.8）', computeMasteryLevel({
+  ability_stars: { a: 3, b: 3 }, // mean=3.0（intermediate 范围，隔离 mastery 条件）
+  knowledge_state: { a: { mastery: 80 } }, // 0-100 → 0.8 ≥ 0.8 → advanced
+  last_diagnosis_score: 60,
+}) === 'advanced')
+ok('mastery=30 (0-100) → 归一 0.3 → foundational（<0.5）', computeMasteryLevel({
+  ability_stars: { a: 3, b: 3 }, // mean=3.0
+  knowledge_state: { a: { mastery: 30 } }, // 0-100 → 0.3 < 0.5 → foundational
+  last_diagnosis_score: 40,
+}) === 'foundational')
+ok('mastery=60 (0-100) → 归一 0.6 → intermediate（0.5≤m<0.8）', computeMasteryLevel({
+  ability_stars: { a: 3, b: 3 }, // mean=3.0
+  knowledge_state: { a: { mastery: 60 } }, // 0-100 → 0.6 → intermediate
+  last_diagnosis_score: 50,
+}) === 'intermediate')
+ok('mastery=0.92 (0-1) 不归一（≤1 不动）', computeMasteryLevel({
+  ability_stars: { a: 3, b: 3 }, // mean=3.0
+  knowledge_state: { a: { mastery: 0.92 } }, // 0-1 ≤1 → 不归一 → 0.92 ≥ 0.8 → advanced
+  last_diagnosis_score: 70,
+}) === 'advanced')
+
+// ② mastery=star/5 写入验证：persistToDB 写的 0-1 mastery 被 computeMasteryLevel 正确读取
+console.log('\n=== ② mastery=star/5 写入 → 正确读取 ===')
+ok('star/5: star=4 → mastery=0.8 → advanced（mastery≥0.8 单独命中）', computeMasteryLevel({
+  ability_stars: { a: 3, b: 3 }, // mean=3.0（intermediate 范围，隔离 mastery 条件）
+  knowledge_state: { a: { mastery: 0.8 } }, // 4/5=0.8 ≥ 0.8 → advanced
+  last_diagnosis_score: 70,
+}) === 'advanced')
+ok('star/5: star=2 → mastery=0.4 → foundational（mastery<0.5 单独命中）', computeMasteryLevel({
+  ability_stars: { a: 3, b: 3 }, // mean=3.0
+  knowledge_state: { a: { mastery: 0.4 } }, // 2/5=0.4 < 0.5 → foundational
+  last_diagnosis_score: 40,
+}) === 'foundational')
+ok('star/5: star=3 → mastery=0.6 → intermediate（0.5≤m<0.8）', computeMasteryLevel({
+  ability_stars: { a: 3, b: 3 }, // mean=3.0
+  knowledge_state: { a: { mastery: 0.6 } }, // 3/5=0.6 → intermediate
+  last_diagnosis_score: 55,
+}) === 'intermediate')
+ok('star/5: star=5 → mastery=1.0 → advanced（≥0.8）', computeMasteryLevel({
+  ability_stars: { a: 3, b: 3 }, // mean=3.0
+  knowledge_state: { a: { mastery: 1.0 } }, // 5/5=1.0 ≥ 0.8 → advanced
+  last_diagnosis_score: 90,
+}) === 'advanced')
+ok('star/5: star=1 → mastery=0.2 → foundational（<0.5）', computeMasteryLevel({
+  ability_stars: { a: 3, b: 3 }, // mean=3.0
+  knowledge_state: { a: { mastery: 0.2 } }, // 1/5=0.2 < 0.5 → foundational
+  last_diagnosis_score: 30,
+}) === 'foundational')
+
 console.log('\n=== 三档账号映射（集成验收口径）===')
 const xuebaProfile = {
   ability_stars: { 'MOSFET I-V': 5, 'PN结': 5, '放大电路': 5, 'CMOS反相器': 5, '光学性质': 4, '超导BCS': 5, '晶体学': 5, '单级放大器': 5, 'CMOS时序逻辑': 4 },

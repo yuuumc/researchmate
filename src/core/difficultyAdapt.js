@@ -72,9 +72,13 @@ export function computeMasteryLevel(profile) {
   const meanStar = starTopics.length > 0
     ? Object.values(stars).reduce((s, v) => s + (Number(v) || 0), 0) / starTopics.length
     : 0
+  // ① 防御兜底：空 ks → mastery = undefined（NaN 比较 → 仅 meanStar 生效）
+  //   防御性归一化：setAbilityStar 写 0-100 mastery，persistToDB 写 0-1 mastery，
+  //   混合存在时 >1 的值 /100 归一到 0-1，不改变 §1 阈值
+  const _normMastery = (m) => { const n = Number(m) || 0; return n > 1 ? n / 100 : n }
   const mastery = ksTopics.length > 0
-    ? ksTopics.reduce((s, t) => s + (Number(ks[t] && ks[t].mastery) || 0), 0) / ksTopics.length
-    : 0
+    ? ksTopics.reduce((s, t) => s + _normMastery(ks[t] && ks[t].mastery), 0) / ksTopics.length
+    : undefined
 
   if (mastery < 0.5 || meanStar < 2.5) return 'foundational'
   if (mastery >= 0.8 || meanStar >= 4) return 'advanced'

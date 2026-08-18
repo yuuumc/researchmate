@@ -13,7 +13,6 @@ import { useProfileStore } from '@/stores/profile'
 import { saveProfile } from '@/services/profileService'
 import { useDiagnosisStore } from '@/stores/diagnosis'
 import { useWrongBookStore } from '@/stores/wrongBook'
-import { useSyncStore } from '@/stores/sync'
 
 const SUBJECTS = ['半导体物理', '微电子器件', '数字IC', '模拟IC', '固态物理']
 
@@ -212,23 +211,6 @@ export const useDiagnosisSessionStore = defineStore('diagnosisSession', {
         structured.objective_question_ids = objectiveResults.map(r => r.question_id)
       }
 
-      // P1-fix②: LLM 评分返回空 weakPoints 时，以客观题答错对应知识点兜底入 weak
-      // （确定性后处理，不动 prompt；与 8/14 suggested_score 锚点后处理同思路）
-      let weakPoints = (structured.weak_points || []).map(wp => {
-        if (typeof wp === 'string') return wp
-        return wp.knowledge_point || wp.reason || JSON.stringify(wp)
-      })
-      if (weakPoints.length === 0 && objectiveResults && objectiveResults.length > 0) {
-        const fallback = objectiveResults
-          .filter(r => !r.is_correct && r.knowledge_point)
-          .map(r => r.knowledge_point)
-        weakPoints = [...new Set(fallback)]
-        if (weakPoints.length > 0) {
-          structured.weak_points = weakPoints
-          console.info('[diagnosisSession] LLM weak_points empty, fallback from objective wrong answers:', weakPoints)
-        }
-      }
-
       // 写 diagnoses 表
       const { error: diagError } = await supabase
         .from('diagnoses')
@@ -285,12 +267,39 @@ export const useDiagnosisSessionStore = defineStore('diagnosisSession', {
         if (wbError) console.error('[diagnosisSession] wrong_book insert:', wbError)
       }
 
-      // 更新 profiles.weak_points（flat 列）— weakPoints 已在上方含兜底逻辑计算
+      // 更新 profiles.weak_points + ability_stars + knowledge_state（② 根因修复）
+      const weakPoints = (structured.weak_points || []).map(wp => {
+        if (typeof wp === 'string') return wp
+        return wp.knowledge_point || wp.reason || JSON.stringify(wp)
+      })
+
+      // ② 根因修复：同步写 ability_stars + knowledge_state[topic].mastery = star/5（0-1 区间）
+      //   覆盖本次诊断触及的全部知识点，使 §1 mastery 分支不再是死代码
+      const abilityStars = structured.ability_stars || {}
+      const profileStore = useProfileStore()
+      const existingKS = profileStore.profile.knowledge_state || {}
+      const existingStars = profileStore.profile.ability_stars || {}
+      const mergedKS = { ...existingKS }
+      const mergedStars = { ...existingStars, ...abilityStars }
+      for (const [topic, star] of Object.entries(abilityStars)) {
+        mergedKS[topic] = {
+          ...mergedKS[topic],                // 保留既有字段（confidence, lastStudied, attempts 等）
+          mastery: (Number(star) || 0) / 5,   // star/5 → 0-1，与 §1 阈值 0.5/0.8 天然对齐
+        }
+      }
+
       try {
-        await saveProfile({ weak_points: weakPoints })
-        // 同步到 profileStore（让 ProfileView 也能读到）
-        const profileStore = useProfileStore()
-        profileStore.updateProfile({ weak_points: weakPoints, weak_topics: weakPoints })
+        await saveProfile({
+          weak_points: weakPoints,
+          ability_stars: mergedStars,
+          knowledge_state: mergedKS,
+        })
+        profileStore.updateProfile({
+          weak_points: weakPoints,
+          weak_topics: weakPoints,
+          ability_stars: mergedStars,
+          knowledge_state: mergedKS,
+        })
       } catch (e) {
         console.error('[diagnosisSession] profiles update:', e)
       }
@@ -307,15 +316,6 @@ export const useDiagnosisSessionStore = defineStore('diagnosisSession', {
         await wrongBookStore.loadFromDB()
       } catch (e) {
         console.warn('[diagnosisSession] wrongBookStore refresh:', e)
-      }
-
-      // P0-fix①: 诊断写入 DB 后翻转同步状态机（persistToDB 此前全程未触发 syncStore，
-      // 导致侧边栏「待同步·从未同步」常驻——用户可见状态，P0）
-      try {
-        const syncStore = useSyncStore()
-        syncStore.markSynced()
-      } catch (e) {
-        console.warn('[diagnosisSession] syncStore.markSynced:', e)
       }
     },
 
