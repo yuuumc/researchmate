@@ -289,7 +289,7 @@ onUnmounted(() => {
 .exam-card {
   text-align: center;
   padding: 32px 24px;
-  background: var(--bg-card, #fff);
+  background: var(--bg-elevated);
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
@@ -329,7 +329,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   padding: 8px 12px;
-  background: var(--bg-hover, #f5f5f5);
+  background: var(--color-bg-sunken);
   border-radius: 8px;
   font-size: 0.85rem;
 }
@@ -362,7 +362,7 @@ onUnmounted(() => {
 .progress-bar {
   width: 200px;
   height: 8px;
-  background: var(--bg-hover, #e0e0e0);
+  background: var(--color-bg-sunken);
   border-radius: 4px;
   overflow: hidden;
   margin: 0 auto 8px;
@@ -380,7 +380,7 @@ onUnmounted(() => {
   align-items: center;
   margin-bottom: 16px;
   padding: 12px 16px;
-  background: var(--bg-card, #fff);
+  background: var(--bg-elevated);
   border-radius: 8px;
   position: sticky;
   top: 0;
@@ -403,7 +403,7 @@ onUnmounted(() => {
 .question-block {
   margin-bottom: 24px;
   padding: 16px;
-  background: var(--bg-card, #fff);
+  background: var(--bg-elevated);
   border-radius: 10px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
@@ -450,15 +450,15 @@ onUnmounted(() => {
   transition: background 0.15s;
 }
 .option-item:hover {
-  background: var(--bg-hover, #f5f5f5);
+  background: var(--color-bg-sunken);
 }
 .fill-input, .essay-input {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid var(--border, #ddd);
+  border: 1px solid var(--border-subtle);
   border-radius: 6px;
   font-size: 0.9rem;
-  background: var(--bg-input, #fff);
+  background: var(--input-bg);
   color: var(--text-primary, #333);
 }
 .essay-input {
@@ -475,7 +475,7 @@ onUnmounted(() => {
 /* Done */
 .result-card {
   padding: 24px;
-  background: var(--bg-card, #fff);
+  background: var(--bg-elevated);
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
@@ -511,7 +511,7 @@ onUnmounted(() => {
 .breakdown-item {
   text-align: center;
   padding: 8px 16px;
-  background: var(--bg-hover, #f5f5f5);
+  background: var(--color-bg-sunken);
   border-radius: 8px;
 }
 .bd-label {
@@ -530,12 +530,12 @@ onUnmounted(() => {
   font-size: 1rem;
   margin: 0 0 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--border, #eee);
+  border-bottom: 1px solid var(--border-subtle);
 }
 .result-item {
   padding: 12px;
   margin-bottom: 12px;
-  background: var(--bg-hover, #fafafa);
+  background: var(--color-bg-sunken);
   border-radius: 8px;
 }
 .ri-header {
@@ -607,7 +607,7 @@ onUnmounted(() => {
   color: #fff;
 }
 .btn-secondary {
-  background: var(--bg-hover, #e0e0e0);
+  background: var(--color-bg-sunken);
   color: var(--text-primary, #333);
 }
 .btn-primary:disabled {

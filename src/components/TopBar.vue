@@ -142,8 +142,8 @@ function handleToggleTheme() {
       <div class="brand" @click="goHome" title="返回首页">
         <div class="brand-mark">
           <svg viewBox="0 0 40 40" class="brand-svg">
-            <circle cx="20" cy="20" r="4" fill="#0f1e33" />
-            <circle cx="20" cy="20" r="10" fill="none" stroke="#0f1e33" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.5">
+            <circle cx="20" cy="20" r="4" fill="currentColor" />
+            <circle cx="20" cy="20" r="10" fill="none" stroke="currentColor" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.5">
               <animateTransform attributeName="transform" type="rotate" from="0 20 20" to="360 20 20" dur="20s" repeatCount="indefinite" />
             </circle>
             <circle cx="20" cy="6" r="1.5" fill="#00d4aa" />
@@ -151,11 +151,11 @@ function handleToggleTheme() {
             <circle cx="28.2" cy="31.3" r="1.5" fill="#ffd166" />
             <circle cx="11.8" cy="31.3" r="1.5" fill="#ff6b6b" />
             <circle cx="6.7" cy="15.5" r="1.5" fill="#e67e22" />
-            <line x1="20" y1="20" x2="20" y2="6" stroke="#0f1e33" stroke-width="0.5" opacity="0.3" />
-            <line x1="20" y1="20" x2="33.3" y2="15.5" stroke="#0f1e33" stroke-width="0.5" opacity="0.3" />
-            <line x1="20" y1="20" x2="28.2" y2="31.3" stroke="#0f1e33" stroke-width="0.5" opacity="0.3" />
-            <line x1="20" y1="20" x2="11.8" y2="31.3" stroke="#0f1e33" stroke-width="0.5" opacity="0.3" />
-            <line x1="20" y1="20" x2="6.7" y2="15.5" stroke="#0f1e33" stroke-width="0.5" opacity="0.3" />
+            <line x1="20" y1="20" x2="20" y2="6" stroke="currentColor" stroke-width="0.5" opacity="0.3" />
+            <line x1="20" y1="20" x2="33.3" y2="15.5" stroke="currentColor" stroke-width="0.5" opacity="0.3" />
+            <line x1="20" y1="20" x2="28.2" y2="31.3" stroke="currentColor" stroke-width="0.5" opacity="0.3" />
+            <line x1="20" y1="20" x2="11.8" y2="31.3" stroke="currentColor" stroke-width="0.5" opacity="0.3" />
+            <line x1="20" y1="20" x2="6.7" y2="15.5" stroke="currentColor" stroke-width="0.5" opacity="0.3" />
           </svg>
         </div>
         <div class="brand-text">
@@ -281,7 +281,7 @@ function handleToggleTheme() {
 .top-bar {
   height: 72px;
   padding: 0 32px;
-  background: rgba(244, 246, 250, 0.85);
+  background: var(--glass-bg);
   backdrop-filter: saturate(180%) blur(12px);
   -webkit-backdrop-filter: saturate(180%) blur(12px);
   border-bottom: 1px solid var(--color-border-subtle);
@@ -320,7 +320,7 @@ function handleToggleTheme() {
   justify-content: center;
 }
 
-.brand-svg { width: 100%; height: 100%; }
+.brand-svg { width: 100%; height: 100%; color: var(--text-primary); }
 
 .brand-text {
   display: flex;

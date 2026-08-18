@@ -9,7 +9,7 @@
 import { ref, onUnmounted } from 'vue'
 
 export function useVoiceChat(options = {}) {
-  const { lang = 'zh-CN', rate = 1.0, pitch = 1.0 } = options
+  const { lang = 'zh-CN', rate = 0.95, pitch = 1.05 } = options
 
   // === 浏览器支持检测 ===
   const SpeechRecognitionAPI =
@@ -34,12 +34,25 @@ export function useVoiceChat(options = {}) {
   const isSpeaking = ref(false)
   const error = ref('')
 
+// === TTS 语音预加载 ===
+  let _voicesReady = false
+  if (isTTSSupported) {
+    const _checkVoices = () => {
+      const vs = speechSynthesis.getVoices()
+      if (vs.length > 0) _voicesReady = true
+    }
+    _checkVoices()
+    if (!_voicesReady) {
+      speechSynthesis.addEventListener('voiceschanged', _checkVoices, { once: true })
+    }
+  }
+
   // === ASR 实例 ===
   let recognition = null
   if (isASRSupported) {
     recognition = new SpeechRecognitionAPI()
     recognition.lang = lang
-    recognition.continuous = false
+    recognition.continuous = true
     recognition.interimResults = true
     recognition.maxAlternatives = 1
   }
@@ -64,7 +77,7 @@ export function useVoiceChat(options = {}) {
           interim += result[0].transcript
         }
       }
-      if (final) transcript.value = final
+      if (final) transcript.value += final
       interimTranscript.value = interim
     }
 
@@ -130,9 +143,18 @@ export function useVoiceChat(options = {}) {
 
     // 尝试选择中文语音
     const voices = speechSynthesis.getVoices()
-    const zhVoice = voices.find(
+    const zhVoices = voices.filter(
       (v) => v.lang.startsWith('zh') || v.lang.startsWith('cmn')
     )
+    let zhVoice = null
+    if (zhVoices.length > 0) {
+      const preferred = ['Xiaoxiao', 'Yunxi', 'Yaoyao', 'Huihui', 'Xiaoyi', 'Female', 'female']
+      for (const pref of preferred) {
+        zhVoice = zhVoices.find(v => v.name.includes(pref))
+        if (zhVoice) break
+      }
+      if (!zhVoice) zhVoice = zhVoices[0]
+    }
     if (zhVoice) utterance.voice = zhVoice
 
     utterance.onstart = () => {

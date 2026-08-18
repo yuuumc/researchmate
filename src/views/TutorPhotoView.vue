@@ -122,7 +122,41 @@ async function recognize(image) {
       const err = await r.json().catch(() => ({}))
       throw new Error(err.message || `识别失败 (HTTP ${r.status})`)
     }
-    const data = await r.json()
+    let data = await r.json()
+
+    // OCR 兜底：视觉模型不可用时，用 Tesseract.js 做文字识别再分析
+    if (!data.is_valid && data.need_ocr) {
+      errorMsg.value = ''
+      try {
+        const { createWorker } = await import('tesseract.js')
+        const worker = await createWorker(['chi_sim', 'eng'])
+        const { data: { text } } = await worker.recognize(image)
+        await worker.terminate()
+
+        if (text && text.trim().length > 5) {
+          const r2 = await fetch('/api/tutor-photo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stage: 'analyze_text', ocr_text: text }),
+          })
+          if (r2.ok) {
+            data = await r2.json()
+          }
+        }
+
+        if (!data.is_valid) {
+          phase.value = 'idle'
+          errorMsg.value = data.message || '无法从照片中识别题目文字，请确保照片清晰、光线充足'
+          return
+        }
+      } catch (ocrErr) {
+        console.warn('[tutor-photo] OCR fallback failed:', ocrErr)
+        phase.value = 'idle'
+        errorMsg.value = '文字识别失败，请重新拍摄清晰的考题照片'
+        return
+      }
+    }
+
     recognizeResult.value = data
     if (!data.is_valid) {
       phase.value = 'idle'

@@ -1019,7 +1019,7 @@ onMounted(async () => {
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: var(--color-ink-900);
+  background: var(--primary);
   color: white;
   border: none;
   border-radius: var(--radius-full);
@@ -1030,7 +1030,7 @@ onMounted(async () => {
 }
 
 .chat-entry:hover {
-  background: var(--color-brand-700, #1a3a5c);
+  opacity: 0.85;
   transform: translateX(2px);
 }
 

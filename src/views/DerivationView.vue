@@ -227,13 +227,13 @@ onBeforeUnmount(() => {
 .page-title {
   font-size: 1.6rem;
   font-weight: 700;
-  color: var(--text-primary, #1a1a2e);
+  color: var(--text-primary);
   margin: 0 0 8px;
 }
 
 .page-desc {
   font-size: 0.9rem;
-  color: var(--text-secondary, #6b7280);
+  color: var(--text-secondary);
   margin: 0 0 20px;
 }
 
@@ -252,39 +252,39 @@ onBeforeUnmount(() => {
 .kp-tag {
   padding: 6px 14px;
   border-radius: 20px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  background: var(--bg-secondary, #f9fafb);
-  color: var(--text-secondary, #6b7280);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
   font-size: 0.85rem;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .kp-tag:hover {
-  border-color: var(--primary, #6366f1);
-  color: var(--primary, #6366f1);
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .kp-tag.active {
-  background: var(--primary, #6366f1);
+  background: var(--primary);
   color: #fff;
-  border-color: var(--primary, #6366f1);
+  border-color: var(--primary);
 }
 
 .kp-input {
   width: 100%;
   padding: 10px 14px;
   border-radius: 8px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  background: var(--bg-primary, #fff);
-  color: var(--text-primary, #1a1a2e);
+  border: 1px solid var(--border-subtle);
+  background: var(--input-bg);
+  color: var(--text-primary);
   font-size: 0.9rem;
   outline: none;
   transition: border-color 0.2s;
 }
 
 .kp-input:focus {
-  border-color: var(--primary, #6366f1);
+  border-color: var(--primary);
 }
 
 .kp-actions {
@@ -297,7 +297,7 @@ onBeforeUnmount(() => {
   padding: 10px 24px;
   border-radius: 8px;
   border: none;
-  background: var(--primary, #6366f1);
+  background: var(--primary);
   color: #fff;
   font-size: 0.9rem;
   font-weight: 600;
@@ -317,9 +317,9 @@ onBeforeUnmount(() => {
 .btn-secondary {
   padding: 10px 16px;
   border-radius: 8px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  background: var(--bg-primary, #fff);
-  color: var(--text-primary, #1a1a2e);
+  border: 1px solid var(--border-subtle);
+  background: var(--input-bg);
+  color: var(--text-primary);
   font-size: 0.9rem;
   cursor: pointer;
 }
@@ -329,13 +329,13 @@ onBeforeUnmount(() => {
   border-radius: 8px;
   border: none;
   background: transparent;
-  color: var(--text-secondary, #6b7280);
+  color: var(--text-secondary);
   font-size: 0.9rem;
   cursor: pointer;
 }
 
 .btn-ghost:hover {
-  color: var(--primary, #6366f1);
+  color: var(--primary);
 }
 
 .error-banner {
@@ -367,7 +367,7 @@ onBeforeUnmount(() => {
 .history-title {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--text-primary, #1a1a2e);
+  color: var(--text-primary);
   margin: 0 0 12px;
 }
 
@@ -377,13 +377,13 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   padding: 10px 14px;
   border-radius: 8px;
-  background: var(--bg-secondary, #f9fafb);
+  background: var(--bg-surface);
   margin-bottom: 6px;
   transition: background 0.2s;
 }
 
 .history-item:hover {
-  background: var(--bg-tertiary, #f3f4f6);
+  background: var(--bg-elevated);
 }
 
 .history-item-info {
@@ -397,12 +397,12 @@ onBeforeUnmount(() => {
 .history-kp {
   font-size: 0.9rem;
   font-weight: 500;
-  color: var(--text-primary, #1a1a2e);
+  color: var(--text-primary);
 }
 
 .history-time {
   font-size: 0.8rem;
-  color: var(--text-tertiary, #9ca3af);
+  color: var(--text-muted);
 }
 
 .btn-delete {
@@ -411,7 +411,7 @@ onBeforeUnmount(() => {
   border-radius: 50%;
   border: none;
   background: transparent;
-  color: var(--text-tertiary, #9ca3af);
+  color: var(--text-muted);
   font-size: 1.2rem;
   cursor: pointer;
   display: flex;
@@ -425,7 +425,7 @@ onBeforeUnmount(() => {
 }
 
 .derivation-board {
-  background: var(--bg-secondary, #f9fafb);
+  background: var(--bg-surface);
   border-radius: 12px;
   padding: 24px;
 }
@@ -436,13 +436,13 @@ onBeforeUnmount(() => {
   gap: 12px;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .board-kp {
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--text-primary, #1a1a2e);
+  color: var(--text-primary);
 }
 
 .streaming-indicator {
@@ -450,14 +450,14 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 6px;
   font-size: 0.8rem;
-  color: var(--primary, #6366f1);
+  color: var(--primary);
 }
 
 .streaming-indicator .dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--primary, #6366f1);
+  background: var(--primary);
   animation: pulse 1.5s infinite;
 }
 
@@ -468,7 +468,7 @@ onBeforeUnmount(() => {
 
 .step-count {
   font-size: 0.8rem;
-  color: var(--text-tertiary, #9ca3af);
+  color: var(--text-muted);
 }
 
 .steps-timeline {
@@ -494,7 +494,7 @@ onBeforeUnmount(() => {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--primary, #6366f1);
+  background: var(--primary);
   color: #fff;
   display: flex;
   align-items: center;
@@ -507,7 +507,7 @@ onBeforeUnmount(() => {
 .step-line {
   width: 2px;
   flex: 1;
-  background: var(--border-color, #e5e7eb);
+  background: var(--border-subtle);
   margin-top: 4px;
 }
 
@@ -519,14 +519,14 @@ onBeforeUnmount(() => {
 .step-title {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--text-primary, #1a1a2e);
+  color: var(--text-primary);
   margin: 4px 0 10px;
 }
 
 .step-content {
   font-size: 0.9rem;
   line-height: 1.7;
-  color: var(--text-secondary, #4b5563);
+  color: var(--text-secondary);
 }
 
 .step-content :deep(.markdown-renderer) {
@@ -552,7 +552,7 @@ onBeforeUnmount(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--text-tertiary, #9ca3af);
+  background: var(--text-muted);
   animation: bounce 1.4s infinite;
 }
 
@@ -572,7 +572,7 @@ onBeforeUnmount(() => {
 .empty-state {
   text-align: center;
   padding: 60px 20px;
-  color: var(--text-tertiary, #9ca3af);
+  color: var(--text-muted);
 }
 
 .empty-icon {
@@ -587,31 +587,8 @@ onBeforeUnmount(() => {
 
 .empty-hint {
   font-size: 0.8rem !important;
-  color: var(--text-quaternary, #d1d5db);
+  color: var(--text-muted);
 }
 
-/* 深色主题 */
-:global(body.dark) .kp-tag {
-  background: var(--bg-tertiary, #1f2937);
-  border-color: var(--border-color, #374151);
-  color: var(--text-secondary, #9ca3af);
-}
-
-:global(body.dark) .kp-input {
-  background: var(--bg-tertiary, #1f2937);
-  border-color: var(--border-color, #374151);
-  color: var(--text-primary, #f3f4f6);
-}
-
-:global(body.dark) .derivation-board {
-  background: var(--bg-tertiary, #1f2937);
-}
-
-:global(body.dark) .history-item {
-  background: var(--bg-tertiary, #1f2937);
-}
-
-:global(body.dark) .step-line {
-  background: var(--border-color, #374151);
-}
+/* 深色主题：已通过主题变量自动适配，无需额外覆盖 */
 </style>

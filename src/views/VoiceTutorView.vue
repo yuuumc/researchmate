@@ -24,7 +24,7 @@ const {
   stopListening,
   speak,
   stopSpeaking,
-} = useVoiceChat({ lang: 'zh-CN', rate: 1.0 })
+} = useVoiceChat({ lang: 'zh-CN', rate: 0.95 })
 
 // === 对话状态 ===
 const messages = ref([])

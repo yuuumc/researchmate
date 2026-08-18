@@ -65,7 +65,10 @@ export default async function handler(req, res) {
   if (stage === 'explain') {
     return handleExplain(req, res, body)
   }
-  return res.status(400).json({ error: 'invalid_stage', message: 'stage 必须为 recognize 或 explain' })
+  if (stage === 'analyze_text') {
+    return handleAnalyzeText(req, res, body)
+  }
+  return res.status(400).json({ error: 'invalid_stage', message: 'stage 必须为 recognize、explain 或 analyze_text' })
 }
 
 // ============================================================
@@ -134,13 +137,11 @@ async function handleRecognize(req, res, body) {
       console.error('[api/tutor-photo] recognize upstream error:', r.status, errText.slice(0, 300))
       // 400 = 图片无效/太小/格式不支持 → 提示重拍（GWT #4: 不卡死、画像零写入）
       if (r.status === 400 || r.status === 422) {
+        // 视觉模型不可用 → 通知前端走 OCR 文字识别兜底
         return res.status(200).json({
           is_valid: false,
-          message: '图片无法识别，请重新拍摄清晰的考题照片',
-          knowledge_point: '',
-          question_type: '',
-          question_stem: '',
-          correct_answer: '',
+          need_ocr: true,
+          message: '视觉模型暂不可用，正在尝试文字识别...',
         })
       }
       // 429 限流 → 提示稍后重试
@@ -192,6 +193,111 @@ async function handleRecognize(req, res, body) {
     console.error('[api/tutor-photo] recognize failed:', e)
     if (e.name === 'AbortError') {
       return res.status(504).json({ error: 'recognize_timeout', message: '识别超时，请重试' })
+    }
+    return res.status(502).json({ error: 'upstream_error', message: e.message })
+  }
+}
+
+
+// ============================================================
+// Stage 1b: OCR 文字识别兜底（视觉模型不可用时）
+// ============================================================
+async function handleAnalyzeText(req, res, body) {
+  const { ocr_text } = body
+  if (!ocr_text || typeof ocr_text !== 'string' || ocr_text.trim().length < 5) {
+    return res.status(200).json({
+      is_valid: false,
+      message: '文字识别结果为空或过短，请重新拍摄清晰的考题照片',
+    })
+  }
+
+  const providerConfig = getProviderConfig()
+  const { valid, error: providerError } = validateProviderConfig(providerConfig)
+  if (!valid) {
+    return res.status(500).json({ error: 'provider_not_configured', message: providerError })
+  }
+
+  const model = providerConfig.model
+  const systemPrompt = `你是半导体物理与微电子器件考研题目识别专家。用户会提供一道题目的文字内容（由 OCR 识别，可能有少量错误）。请分析文字并输出严格 JSON。
+
+输出字段：
+- is_valid: boolean，文字是否包含可识别的考研题目
+- knowledge_point: string，题目考查的核心知识点名称（考纲术语）
+- question_type: string，题型，取值 choice（选择题）/ fill（填空题）/ essay（简答/计算题）
+- question_stem: string，题目题干完整文本（含选项文本，选择题把选项也写出）
+- correct_answer: string，题目正确答案
+- message: string，当 is_valid=false 时给出原因
+
+只输出一个 JSON 对象，第一个字符是 \`{\`，最后一个字符是 \`}\`。`
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), DEFAULT_MAX_DURATION_MS)
+
+  try {
+    const r = await fetch(providerConfig.chatUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${providerConfig.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `请分析以下 OCR 识别的题目文字并输出 JSON：\n\n${ocr_text}` },
+        ],
+        temperature: 0.2,
+        max_tokens: 1200,
+        stream: false,
+      }),
+      signal: controller.signal,
+    })
+    clearTimeout(timer)
+
+    if (!r.ok) {
+      const errText = await r.text()
+      console.error('[api/tutor-photo] analyze_text upstream error:', r.status, errText.slice(0, 300))
+      if (r.status === 429) {
+        return res.status(429).json({ error: 'rate_limited', message: '请求过于频繁，请稍后重试' })
+      }
+      return res.status(502).json({ error: 'upstream_error', status: r.status })
+    }
+
+    const data = await r.json()
+    const content = data.choices?.[0]?.message?.content || ''
+    const parsed = safeParseJSON(content)
+
+    if (!parsed || typeof parsed.is_valid !== 'boolean') {
+      return res.status(200).json({
+        is_valid: false,
+        message: '无法从文字中识别有效题目，请重新拍摄清晰的照片',
+      })
+    }
+
+    let knowledgePoint = String(parsed.knowledge_point || '').trim()
+    const kpAllowed = isKnowledgeAllowed(knowledgePoint)
+    if (parsed.is_valid && !kpAllowed) {
+      const stem = String(parsed.question_stem || '')
+      const hit = KNOWLEDGE_WHITELIST.find(w => stem.includes(w))
+      if (hit) knowledgePoint = hit
+    }
+
+    return res.status(200).json({
+      is_valid: !!parsed.is_valid,
+      knowledge_point: knowledgePoint,
+      question_type: String(parsed.question_type || '').toLowerCase(),
+      question_stem: String(parsed.question_stem || '').trim(),
+      correct_answer: String(parsed.correct_answer || '').trim(),
+      message: parsed.is_valid ? '' : (String(parsed.message || '无法识别有效题目')),
+      model: data.model || model,
+      provider: providerConfig.provider,
+      ocr_used: true,
+    })
+  } catch (e) {
+    clearTimeout(timer)
+    console.error('[api/tutor-photo] analyze_text failed:', e)
+    if (e.name === 'AbortError') {
+      return res.status(504).json({ error: 'analyze_timeout', message: '分析超时，请重试' })
     }
     return res.status(502).json({ error: 'upstream_error', message: e.message })
   }
