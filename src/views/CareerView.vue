@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useCareerStore } from '@/stores/career'
 import { useProfileStore } from '@/stores/profile'
 import { useMasteryData } from '@/composables/useMasteryData'
@@ -10,7 +11,12 @@ import schoolData from '@/data/employment/school-profiles.json'
 import { SEED_CAREER_PATHS } from '@/data/seedDemo'
 import AiGeneratedBadge from '@/components/AiGeneratedBadge.vue'
 
+const router = useRouter()
 const careerStore = useCareerStore()
+
+function goToDiagnosis() {
+  router.push('/diagnosis')
+}
 const profileStore = useProfileStore()
 // A1: 统一学情数据层 — 已掌握技能 / 弱弱点均直读共享数据源，禁止自行推断
 const mastery = useMasteryData()
@@ -180,6 +186,7 @@ function cleanGap(g) {
           </div>
         </div>
         <p class="seed-hint">以上为示例推荐方向，填写表单生成个性化路径</p>
+        <div class="seed-cta"><button class="seed-cta-btn" @click="goToDiagnosis">先去诊断，获取个性化推荐 →</button></div>
       </section>
       <section v-if="careerPaths.length" class="result-section">
         <div class="section-header">
@@ -225,7 +232,7 @@ function cleanGap(g) {
 </template>
 
 <style scoped>
-.career-view { min-height: calc(100vh - 72px); }
+.career-view { min-height: 100%; }
 .page-content { max-width: 880px; margin: 0 auto; padding: 40px 32px 64px; }
 
 .page-header { margin-bottom: 32px; }
@@ -308,6 +315,9 @@ function cleanGap(g) {
 .detail-label { font-size: 12px; color: var(--color-fg-tertiary); min-width: 64px; }
 .salary-text { font-family: var(--font-mono); font-size: 13px; color: var(--color-node-active); font-weight: 600; }
 .seed-hint { margin-top: 12px; font-size: 12px; color: var(--color-fg-muted); font-style: italic; }
+.seed-cta { margin-top: 8px; }
+.seed-cta-btn { display: inline-flex; align-items: center; gap: 4px; padding: 8px 18px; background: var(--primary); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+.seed-cta-btn:hover { opacity: 0.85; }
 
 @media (max-width: 768px) {
   .page-content { padding: 24px 16px 48px; }

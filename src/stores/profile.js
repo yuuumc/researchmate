@@ -234,7 +234,7 @@ export const useProfileStore = defineStore('profile', {
       }
       this.updateProfile({ ability_stars: next, knowledge_state: ksNext })
 
-      // 联动 weak/mastered：≤2 星入 weak，=5 星入 mastered
+      // 联动 weak/mastered：≤2 星入 weak���=5 星入 mastered
       if (s > 0 && s <= 2 && !this.profile.weak_topics.includes(topic)) {
         this.profile.weak_topics.push(topic)
         this.persist()
@@ -296,6 +296,28 @@ export const useProfileStore = defineStore('profile', {
         topics.push(it.topic)
       }
       this.updateProfile({ knowledge_state: ksNext, ability_stars: starsNext })
+
+      // P1-3: 联动 weak_topics / mastered_topics（与 setAbilityStar 阈值对齐：
+      //        ≤2 星入 weak，==5 星入 mastered 并移出 weak）
+      const weakSet = new Set(this.profile.weak_topics)
+      const masteredSet = new Set(this.profile.mastered_topics)
+      let changed = false
+      for (const it of items) {
+        if (!it.topic) continue
+        const s = starsNext[it.topic]
+        if (s > 0 && s <= 2) {
+          if (!weakSet.has(it.topic)) { weakSet.add(it.topic); changed = true }
+        } else if (s === 5) {
+          if (!masteredSet.has(it.topic)) { masteredSet.add(it.topic); changed = true }
+          if (weakSet.has(it.topic)) { weakSet.delete(it.topic); changed = true }
+        }
+      }
+      if (changed) {
+        this.profile.weak_topics = Array.from(weakSet)
+        this.profile.mastered_topics = Array.from(masteredSet)
+        this.persist()
+      }
+
       profileBus.emit(EVT.PROFILE_UPDATED, { source: 'mastery-snapshot', topics })
     },
 
@@ -325,7 +347,7 @@ export const useProfileStore = defineStore('profile', {
 
     /**
      * 登录后把 profile.user_id 对齐到 auth.users.id
-     * 首次登录用 auth.id 覆盖本地临时 uuid
+     * 首次登录用 auth.id 覆���本地临时 uuid
      * @param {string} authUserId - Supabase auth.users.id (UUID)
      * @param {object} [meta] - 可选 metadata: { phone, name, role, avatar_url }
      */

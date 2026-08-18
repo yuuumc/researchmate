@@ -1,7 +1,6 @@
 <script setup>
 import { ref, computed, nextTick, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import TopBar from '@/components/TopBar.vue'
 import { useFeynmanStore } from '@/stores/feynman'
 import { useProfileStore } from '@/stores/profile'
 
@@ -77,8 +76,6 @@ onUnmounted(() => {
 
 <template>
   <div class="feynman-page">
-    <TopBar active-agent="tutor" />
-
     <main class="feynman-main">
       <!-- 步骤 1：知识点选择 -->
       <section v-if="showTopicPicker" class="pick-section">
@@ -207,7 +204,7 @@ onUnmounted(() => {
 
 <style scoped>
 .feynman-page {
-  min-height: 100vh;
+  min-height: 100%;
   background: var(--color-bg-base, #f4f6fa);
   color: var(--color-ink-900, #1a2332);
 }

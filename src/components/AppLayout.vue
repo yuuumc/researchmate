@@ -60,6 +60,8 @@ const coreNav = [
   { path: '/tutor-photo', label: '拍题讲解', icon: 'photo' },
   // F3: 模拟考试
   { path: '/exam', label: '模考', icon: 'exam' },
+  // F4: 费曼复述（讲给AI听·深度理解）
+  { path: '/feynman', label: '费曼复述', icon: 'flask' },
 
   // T0-3: research 已移除
 ]

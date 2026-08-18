@@ -216,10 +216,14 @@ function adjustmentCount(v) {
       </section>
 
       <!-- 空态 -->
-      <section v-else class="empty-state">
-        <div class="empty-icon">◯</div>
+            <section v-else class="empty-state">
+        <div class="empty-icon">&#9670;</div>
         <div class="empty-title">还没有生成计划</div>
-        <div class="empty-desc">点击上方「生成个性化计划」按钮，AI 规划 Agent 将基于你的诊断结果生成周计划</div>
+        <div class="empty-desc">先完成知识诊断，AI 规划 Agent 将基于诊断结果生成个性化冲刺计划</div>
+        <div class="empty-actions">
+          <button class="empty-cta" @click="goToDiagnosis">去诊断</button>
+          <span class="empty-or">或直接点击上方「生成个性化计划」</span>
+        </div>
       </section>
     </div>
   </div>
@@ -228,7 +232,7 @@ function adjustmentCount(v) {
 <style scoped>
 .plan-view {
   position: relative;
-  min-height: calc(100vh - 72px);
+  min-height: 100%;
   overflow: hidden;
 }
 
@@ -645,6 +649,10 @@ function adjustmentCount(v) {
   .vb-node { padding: 5px 10px; font-size: 10px; }
   .vb-node:not(:last-child)::after { right: -8px; font-size: 10px; }
   .empty-state { padding: 48px 16px; }
+.empty-actions { margin-top: 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.empty-cta { display: inline-flex; align-items: center; gap: 6px; padding: 10px 24px; background: var(--primary); color: #fff; border: none; border-radius: var(--radius-md); font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+.empty-cta:hover { opacity: 0.85; }
+.empty-or { font-size: 13px; color: var(--color-fg-muted); }
   .empty-icon { font-size: 28px; }
   .cycle-complete-banner { flex-direction: column; align-items: flex-start; gap: 12px; }
   .ccb-actions { width: 100%; }
