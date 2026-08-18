@@ -46,10 +46,13 @@ const abilityStars = computed(() => {
 })
 
 const strengths = computed(() => abilityStars.value.filter((a) => a.type === 'strength').slice(0, 3))
-const weakPoints = computed(() => abilityStars.value.filter((a) => a.type === 'weak').slice(0, 2))
+// P2: /diagnosis 薄弱点对齐本次诊断 LLM 评分原始输出（不读历史星级、不过滤已掌握）
+// 与下方 4 层根因链同源（reportData.weak_points），保证 duo-card 与根因链数量/名称一致
+const weakPoints = computed(() => reportData.value?.weak_points || [])
 // 摘要数字用完整计数（不 slice），与星图一致
 const strengthsCount = computed(() => abilityStars.value.filter((a) => a.type === 'strength').length)
-const weakPointsCount = computed(() => abilityStars.value.filter((a) => a.type === 'weak').length)
+// P2: 薄弱计数对齐本次诊断（与 duo-card 同源），非历史星级计数
+const weakPointsCount = computed(() => weakPoints.value.length)
 
 // A1/Bug2: 诊断报告直读统一数据层 rootCauseChain（持久化 structured，离开完成页仍可渲染 4 层根因链）
 const reportData = computed(() => {
@@ -149,7 +152,7 @@ function goJourney() {
           <div class="ov-score">
             <span class="ov-num">{{ overallLevel }}</span><span class="ov-unit">%</span>
           </div>
-          <div class="ov-hint">{{ strengthsCount }} 优势 · {{ weakPointsCount }} 薄弱</div>
+          <div class="ov-hint">{{ strengthsCount }} 优势(累计) · {{ weakPointsCount }} 薄弱(本次)</div>
         </div>
         <div class="overview-card overview-card--subject">
           <div class="ov-label">SUBJECT</div>
@@ -163,6 +166,7 @@ function goJourney() {
           <span class="section-icon">★</span>
           <span class="section-title">能力星图</span>
           <span class="section-en">Ability Radar</span>
+          <span class="section-legend">累计星级 · 含历史诊断与练习数据（非本次诊断输出）</span>
         </div>
         <div class="ability-grid">
           <div
@@ -200,6 +204,7 @@ function goJourney() {
             <span class="duo-icon">▲</span>
             <span class="duo-title">优势项</span>
             <span class="duo-en">Strengths</span>
+            <span class="duo-source">累计星级</span>
           </div>
           <ul class="duo-list">
             <li v-for="s in strengths" :key="s.topic">
@@ -213,11 +218,13 @@ function goJourney() {
             <span class="duo-icon">▼</span>
             <span class="duo-title">薄弱点</span>
             <span class="duo-en">Weak Points</span>
+            <span class="duo-source duo-source--current">本次诊断</span>
           </div>
           <ul class="duo-list">
-            <li v-for="w in weakPoints" :key="w.topic">
-              <span class="duo-name">{{ w.topic }}</span>
-              <span class="duo-meta">{{ w.star }}★ · {{ w.score }}分</span>
+            <li v-if="weakPoints.length === 0" class="duo-empty">本次诊断未识别薄弱点</li>
+            <li v-for="w in weakPoints" :key="w">
+              <span class="duo-name">{{ w }}</span>
+              <span class="duo-meta">本次诊断</span>
             </li>
           </ul>
         </div>
@@ -879,5 +886,33 @@ function goJourney() {
 .empty-state-card .empty-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* P2: 数据源区分标识 */
+.duo-source {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-fg-muted) 14%, transparent);
+  color: var(--color-fg-secondary);
+}
+.duo-source--current {
+  background: color-mix(in srgb, #4d9de0 16%, transparent);
+  color: #2c7da0;
+}
+.duo-empty {
+  font-size: 13px;
+  color: var(--color-fg-tertiary);
+  padding: 8px 0;
+}
+.section-legend {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-fg-tertiary);
+  letter-spacing: 0.3px;
 }
 </style>
