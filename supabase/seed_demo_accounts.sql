@@ -89,8 +89,8 @@ begin
     last_diagnosis_score, last_diagnosis_date, preparation_stage, learning_style
   ) values (
     v_a, '李学霸', '集成电路设计', 2027, true, true,
-    -- 9 个 ≥4★ + 3 个 ≤2★（共 12 知识点，meanStar≈4.33 → advanced）
-    '{"MOSFET I-V":5,"光学性质":4,"单级放大器":5,"CMOS 反相器":5,"超导 BCS":4,"晶体学":5,"MOSFET 电容":4,"频率响应/Miller":5,"PN 结/半导体物理基础":5,"CMOS 时序":2,"CMOS 反相器静态特性":1,"振荡器":2}'::jsonb,
+    -- 9 个 ≥4★ + 3 个 ≤2★（共 12 知识点，meanStar≈4.0 → advanced）
+    '{"MOSFET I-V":5,"光学性质":4,"单级放大器":5,"CMOS 反相器":5,"超导 BCS":4,"晶体学":5,"MOSFET 电容":4,"频率响应/Miller":5,"PN 结/半导体物理基础":5,"CMOS 时序":2,"CMOS 反相器静态特性":2,"振荡器":2}'::jsonb,
     -- mastery 均值 ≈0.80（9 强知识点高 mastery，3 弱知识点低）
     '{"MOSFET I-V":{"mastery":0.95,"attempts":3,"correctRate":0.9},"光学性质":{"mastery":0.85,"attempts":2,"correctRate":0.8},"单级放大器":{"mastery":0.95},"CMOS 反相器":{"mastery":0.9},"超导 BCS":{"mastery":0.85},"晶体学":{"mastery":0.9},"MOSFET 电容":{"mastery":0.85},"频率响应/Miller":{"mastery":0.95},"PN 结/半导体物理基础":{"mastery":0.95},"CMOS 时序":{"mastery":0.3},"CMOS 反相器静态特性":{"mastery":0.2},"振荡器":{"mastery":0.25}}'::jsonb,
     '["CMOS 时序","CMOS 反相器静态特性","振荡器"]'::jsonb,                   -- 3 薄弱点
@@ -111,10 +111,10 @@ begin
     last_diagnosis_score, last_diagnosis_date, preparation_stage, learning_style
   ) values (
     v_b, '李同学', '微电子科学与工程', 2027, true, true,
-    -- 3 个 ≥4★ + 5 个 ≤2★ + 4 个 3★（共 12，meanStar≈2.83 → intermediate）
-    '{"MOSFET I-V":2,"光学性质":1,"单级放大器":3,"CMOS 反相器":2,"超导 BCS":2,"晶体学":1,"MOSFET 电容":3,"PN 结/半导体物理基础":4,"CMOS 时序":2,"频率响应/Miller":1,"振荡器":4,"载流子输运":3}'::jsonb,
-    -- mastery 均值 ≈0.55（3 强高，5 弱低）
-    '{"MOSFET I-V":{"mastery":0.4,"attempts":2,"correctRate":0.4},"光学性质":{"mastery":0.3},"单级放大器":{"mastery":0.6},"CMOS 反相器":{"mastery":0.35},"超导 BCS":{"mastery":0.25},"晶体学":{"mastery":0.2},"MOSFET 电容":{"mastery":0.55},"PN 结/半导体物理基础":{"mastery":0.85},"CMOS 时序":{"mastery":0.3},"频率响应/Miller":{"mastery":0.2},"振荡器":{"mastery":0.8},"载流子输运":{"mastery":0.6}}'::jsonb,
+    -- 3 个 ≥4★ + 5 个 ≤2★ + 4 个 3★（共 12，meanStar≈2.67 → intermediate）
+    '{"MOSFET I-V":2,"光学性质":1,"单级放大器":3,"CMOS 反相器":2,"超导 BCS":2,"晶体学":1,"MOSFET 电容":3,"PN 结/半导体物理基础":4,"CMOS 时序":3,"频率响应/Miller":3,"振荡器":4,"载流子输运":4}'::jsonb,
+    -- mastery 均值 ≈0.50（3 强高，5 弱低）
+    '{"MOSFET I-V":{"mastery":0.4,"attempts":2,"correctRate":0.4},"光学性质":{"mastery":0.3},"单级放大器":{"mastery":0.7},"CMOS 反相器":{"mastery":0.35},"超导 BCS":{"mastery":0.25},"晶体学":{"mastery":0.2},"MOSFET 电容":{"mastery":0.65},"PN 结/半导体物理基础":{"mastery":0.85},"CMOS 时序":{"mastery":0.45},"频率响应/Miller":{"mastery":0.35},"振荡器":{"mastery":0.8},"载流子输运":{"mastery":0.75}}'::jsonb,
     -- 5 薄弱点，MOSFET I-V 在列（演示「故意做错」目标题）
     '["MOSFET I-V","光学性质","CMOS 反相器","超导 BCS","晶体学"]'::jsonb,
     '["PN 结/半导体物理基础","振荡器","载流子输运"]'::jsonb,                 -- 3 已掌握
@@ -265,7 +265,7 @@ end $$;
 -- from profiles p where p.is_demo=true order by p.last_diagnosis_score desc;
 --
 -- 预期：
---   李学霸  80 | mean≈4.33 | weak 3 | mastered 9 | diag 3 | wrong 3
---   李同学  57 | mean≈2.83 | weak 5 | mastered 3 | diag 3 | wrong 5   ← 主演示账号
+--   李学霸  80 | mean≈4.0  | weak 3 | mastered 9 | diag 3 | wrong 3
+--   李同学  57 | mean≈2.67 | weak 5 | mastered 3 | diag 3 | wrong 5   ← 主演示账号
 --   李基础  31 | mean≈2.00 | weak 9 | mastered 3 | diag 3 | wrong 9
 -- ============================================================
