@@ -10,11 +10,13 @@
 // ============================================================
 
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
 import { useDerivationStore } from '@/stores/derivation'
 import { useMasteryData } from '@/composables/useMasteryData'
 import { useProfileStore } from '@/stores/profile'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 
+const router = useRouter()
 const store = useDerivationStore()
 const mastery = useMasteryData()
 const profileStore = useProfileStore()
@@ -89,6 +91,17 @@ function togglePlay() {
   } else {
     store.play(6000)
   }
+}
+
+// ---- 推导完成态：跳转变式题（P2② 白板推导→变式推荐入口）----
+const isDerivationComplete = computed(() =>
+  store.currentSteps.length > 0 && store.currentIndex + 1 >= store.stepCount
+)
+
+function goVariant() {
+  const kp = activeKP.value
+  if (!kp) return
+  router.push({ name: 'variant-practice', params: { topic: kp } })
 }
 
 // ---- 生命周期 ----
@@ -253,6 +266,18 @@ onBeforeUnmount(() => {
           title="重播"
         >
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+        </button>
+      </div>
+
+      <!-- 推导完成：变式推荐入口（P2②）-->
+      <div v-if="isDerivationComplete" class="variant-cta">
+        <div class="variant-cta-text">
+          <span class="variant-cta-title">推导完成 🎉</span>
+          <span class="variant-cta-desc">做一道变式题巩固刚学的「{{ activeKP }}」</span>
+        </div>
+        <button class="btn-variant" @click="goVariant">
+          去做变式题
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </button>
       </div>
     </div>
@@ -697,6 +722,57 @@ onBeforeUnmount(() => {
 .empty-hint {
   font-size: 0.8rem !important;
   color: var(--text-muted);
+}
+
+/* 变式推荐 CTA（P2②）*/
+.variant-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 20px;
+  padding: 16px 20px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(0, 212, 170, 0.12), rgba(0, 212, 170, 0.04));
+  border: 1px solid rgba(0, 212, 170, 0.35);
+}
+
+.variant-cta-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.variant-cta-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.variant-cta-desc {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.btn-variant {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.2s;
+  white-space: nowrap;
+}
+
+.btn-variant:hover {
+  opacity: 0.92;
+  transform: translateX(2px);
 }
 
 /* 深色主题：已通过主题变量自动适配，无需额外覆盖 */
