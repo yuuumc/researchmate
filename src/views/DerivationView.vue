@@ -1,21 +1,23 @@
 <script setup>
 // ============================================================
-// DerivationView.vue — AI 白板推导（B2）
+// DerivationView.vue — AI 白板推导（B2 v1.0 · 步进播放器）
 // ============================================================
 // 功能：
-//   1. 选择/输入薄弱知识点发起推导
-//   2. 推导过程逐步流式呈现（时间线/卡片流）
-//   3. 每步 LaTeX 公式经 MarkdownRenderer 渲染
+//   1. 选择/输入薄弱知识点发起推导（一次性 JSON）
+//   2. 步进播放器：前进/后退/重播/进度/自动播放
+//   3. 每步公式与图件经 B1 渲染管线（MarkdownRenderer）
 //   4. 推导历史可回放
 // ============================================================
 
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useDerivationStore } from '@/stores/derivation'
 import { useMasteryData } from '@/composables/useMasteryData'
+import { useProfileStore } from '@/stores/profile'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 
 const store = useDerivationStore()
 const mastery = useMasteryData()
+const profileStore = useProfileStore()
 
 // ---- 状态 ----
 const selectedKP = ref('')
@@ -31,7 +33,6 @@ const KNOWLEDGE_PRESETS = [
 ]
 
 const knowledgePoints = computed(() => {
-  // 从 mastery 获取薄弱知识点，合并预设
   const weak = mastery.weakPoints.value || []
   const weakNames = weak.map(w => w.name || w.topic || w).filter(Boolean)
   const all = [...new Set([...weakNames, ...KNOWLEDGE_PRESETS])]
@@ -40,19 +41,22 @@ const knowledgePoints = computed(() => {
 
 const activeKP = computed(() => selectedKP.value || customKP.value.trim())
 
+// ---- 档位（从 profile store 获取）----
+const tier = computed(() => profileStore.studentMasteryLevel || 'intermediate')
+
 // ---- 推导控制 ----
 async function startDerivation() {
-  if (!activeKP.value || store.isStreaming) return
+  if (!activeKP.value || store.isLoading) return
 
   store.clearCurrent()
   abortController.value = new AbortController()
 
   try {
-    await store.startDerivation(
-      activeKP.value,
-      {},
-      abortController.value.signal
-    )
+    await store.startDerivation(activeKP.value, {
+      tier: tier.value,
+      context: (mastery.weakPoints.value || []).map(w => w.name || w).join('、') || '',
+      signal: abortController.value.signal,
+    })
   } catch (e) {
     console.error('[DerivationView] derivation failed:', e)
   }
@@ -74,6 +78,19 @@ async function deleteHistory(id) {
   await store.deleteHistory(id)
 }
 
+// ---- 步进播放器 ----
+function nextStep() { store.nextStep() }
+function prevStep() { store.prevStep() }
+function gotoStep(idx) { store.gotoStep(idx) }
+function replay() { store.replay() }
+function togglePlay() {
+  if (store.isPlaying) {
+    store.stop()
+  } else {
+    store.play(6000)
+  }
+}
+
 // ---- 生命周期 ----
 onMounted(async () => {
   await store.loadFromDB()
@@ -83,6 +100,7 @@ onBeforeUnmount(() => {
   if (abortController.value) {
     abortController.value.abort()
   }
+  store.stop()
 })
 </script>
 
@@ -119,20 +137,20 @@ onBeforeUnmount(() => {
         <div class="kp-actions">
           <button
             class="btn-primary"
-            :disabled="!activeKP || store.isStreaming"
+            :disabled="!activeKP || store.isLoading"
             @click="startDerivation"
           >
-            {{ store.isStreaming ? '推导中...' : '开始推导' }}
+            {{ store.isLoading ? '推导中...' : '开始推导' }}
           </button>
           <button
-            v-if="store.isStreaming"
+            v-if="store.isLoading"
             class="btn-secondary"
             @click="cancelDerivation"
           >
             取消
           </button>
           <button
-            v-if="store.hasHistory && !store.isStreaming"
+            v-if="store.hasHistory && !store.isLoading"
             class="btn-ghost"
             @click="showHistory = !showHistory"
           >
@@ -143,8 +161,8 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- 错误提示 -->
-    <div v-if="store.streamError" class="error-banner">
-      <span>推导出错：{{ store.streamError }}</span>
+    <div v-if="store.loadingError" class="error-banner">
+      <span>推导出错：{{ store.loadingError }}</span>
       <button class="btn-retry" @click="startDerivation">重试</button>
     </div>
 
@@ -164,51 +182,96 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- 推导步骤展示 -->
-    <div v-if="store.currentSteps.length > 0 || store.isStreaming" class="derivation-board">
-      <div class="board-header">
-        <span class="board-kp">{{ store.currentKnowledgePoint }}</span>
-        <span v-if="store.isStreaming" class="streaming-indicator">
-          <span class="dot"></span>
-          推导中 · 第 {{ store.stepCount }} 步
-        </span>
-        <span v-else class="step-count">{{ store.stepCount }} 步</span>
+    <!-- 步进播放器 -->
+    <div v-if="store.currentSteps.length > 0 && !store.isLoading" class="player-container">
+      <!-- 进度条 -->
+      <div class="progress-bar">
+        <div class="progress-fill" :style="{ width: (store.progress * 100) + '%' }"></div>
       </div>
 
-      <div class="steps-timeline">
-        <div
+      <!-- 步骤指示器 -->
+      <div class="step-indicators">
+        <button
           v-for="(step, idx) in store.currentSteps"
           :key="idx"
-          class="step-card"
-          :class="{ streaming: store.isStreaming && idx === store.currentSteps.length - 1 }"
+          class="step-dot"
+          :class="{
+            active: idx === store.currentIndex,
+            done: idx < store.currentIndex,
+          }"
+          @click="gotoStep(idx)"
+          :title="step.title"
         >
-          <div class="step-marker">
-            <span class="step-number">{{ step.index }}</span>
-            <div v-if="idx < store.currentSteps.length - 1" class="step-line"></div>
-          </div>
+          {{ idx + 1 }}
+        </button>
+      </div>
 
-          <div class="step-body">
-            <h4 class="step-title">{{ step.title }}</h4>
-            <div class="step-content">
-              <MarkdownRenderer :content="step.content" />
-            </div>
-          </div>
+      <!-- 当前步骤内容 -->
+      <div class="step-display">
+        <div class="step-header">
+          <span class="step-badge">第 {{ store.currentIndex + 1 }} 步 / 共 {{ store.stepCount }} 步</span>
+          <h3 class="step-title">{{ store.currentStep?.title }}</h3>
         </div>
 
-        <!-- 流式中的加载指示器 -->
-        <div v-if="store.isStreaming" class="step-loading">
-          <div class="loading-dots">
-            <span></span><span></span><span></span>
-          </div>
+        <div class="step-content">
+          <MarkdownRenderer :content="store.currentStepMarkdown" />
         </div>
+      </div>
+
+      <!-- 播放控制 -->
+      <div class="player-controls">
+        <button
+          class="ctrl-btn"
+          :disabled="!store.canPrev"
+          @click="prevStep"
+          title="上一步"
+        >
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg>
+        </button>
+
+        <button
+          class="ctrl-btn ctrl-play"
+          @click="togglePlay"
+          :title="store.isPlaying ? '暂停' : '自动播放'"
+        >
+          <svg v-if="!store.isPlaying" viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <svg v-else viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+        </button>
+
+        <button
+          class="ctrl-btn"
+          :disabled="!store.canNext"
+          @click="nextStep"
+          title="下一步"
+        >
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+        </button>
+
+        <button
+          class="ctrl-btn ctrl-replay"
+          @click="replay"
+          title="重播"
+        >
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+        </button>
       </div>
     </div>
 
+    <!-- 加载状态 -->
+    <div v-if="store.isLoading" class="loading-state">
+      <div class="loading-dots">
+        <span></span><span></span><span></span>
+      </div>
+      <p>正在生成推导步骤...</p>
+    </div>
+
     <!-- 空状态 -->
-    <div v-else-if="!store.isStreaming" class="empty-state">
-      <div class="empty-icon"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13l4 0 2.5 6L15 5h5"/></svg></div>
+    <div v-else-if="store.currentSteps.length === 0 && !store.loadingError" class="empty-state">
+      <div class="empty-icon">
+        <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13l4 0 2.5 6L15 5h5"/></svg>
+      </div>
       <p>选择一个知识点开始 AI 逐步推导</p>
-      <p class="empty-hint">推导过程将逐步呈现，公式自动渲染</p>
+      <p class="empty-hint">推导过程将分步呈现，公式自动渲染，支持前进/后退/重播</p>
     </div>
   </div>
 </template>
@@ -424,108 +487,102 @@ onBeforeUnmount(() => {
   color: #ef4444;
 }
 
-.derivation-board {
+/* ==== 步进播放器 ==== */
+.player-container {
   background: var(--bg-surface);
   border-radius: 12px;
   padding: 24px;
 }
 
-.board-header {
+/* 进度条 */
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background: var(--border-subtle);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* 步骤指示器 */
+.step-indicators {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  gap: 8px;
   margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
 }
 
-.board-kp {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.streaming-indicator {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.8rem;
-  color: var(--primary);
-}
-
-.streaming-indicator .dot {
-  width: 8px;
-  height: 8px;
+.step-dot {
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  background: var(--primary);
-  animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
-
-.step-count {
-  font-size: 0.8rem;
+  border: 2px solid var(--border-subtle);
+  background: transparent;
   color: var(--text-muted);
-}
-
-.steps-timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.step-card {
-  display: flex;
-  gap: 16px;
-  padding-bottom: 24px;
-}
-
-.step-marker {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.step-number {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--primary);
-  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.85rem;
-  font-weight: 600;
-  flex-shrink: 0;
 }
 
-.step-line {
-  width: 2px;
-  flex: 1;
-  background: var(--border-subtle);
-  margin-top: 4px;
+.step-dot:hover {
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
-.step-body {
-  flex: 1;
-  min-width: 0;
+.step-dot.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.step-dot.done {
+  background: var(--bg-elevated);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+/* 当前步骤内容 */
+.step-display {
+  min-height: 300px;
+}
+
+.step-header {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.step-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: var(--primary);
+  background: rgba(0, 212, 170, 0.08);
+  padding: 2px 10px;
+  border-radius: 12px;
+  margin-bottom: 8px;
 }
 
 .step-title {
-  font-size: 1rem;
+  font-size: 1.15rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin: 4px 0 10px;
+  margin: 0;
 }
 
 .step-content {
   font-size: 0.9rem;
-  line-height: 1.7;
+  line-height: 1.75;
   color: var(--text-secondary);
 }
 
@@ -533,26 +590,77 @@ onBeforeUnmount(() => {
   font-size: 0.9rem;
 }
 
-.step-card.streaming .step-number {
-  animation: pulse 1.5s infinite;
-}
-
-.step-loading {
+/* 播放控制 */
+.player-controls {
   display: flex;
   justify-content: center;
-  padding: 12px;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.ctrl-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ctrl-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.ctrl-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ctrl-play {
+  width: 48px;
+  height: 48px;
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.ctrl-play:hover {
+  opacity: 0.9;
+}
+
+.ctrl-replay {
+  width: 36px;
+  height: 36px;
+}
+
+/* 加载状态 */
+.loading-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
 }
 
 .loading-dots {
   display: flex;
+  justify-content: center;
   gap: 4px;
+  margin-bottom: 12px;
 }
 
 .loading-dots span {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--text-muted);
+  background: var(--primary);
   animation: bounce 1.4s infinite;
 }
 
@@ -569,6 +677,7 @@ onBeforeUnmount(() => {
   30% { transform: translateY(-8px); opacity: 1; }
 }
 
+/* 空状态 */
 .empty-state {
   text-align: center;
   padding: 60px 20px;

@@ -1,27 +1,129 @@
 // ============================================================
-// 推导步骤解析纯函数（B2 · 可契约测试）
+// 推导步骤解析纯函数（B2 v1.0 · 结构化 JSON）
 // ============================================================
-// 将 LLM 流式输出的 markdown 文本解析为结构化步骤数组
-// 每步含 index / title / content，content 可直接喂给 MarkdownRenderer
+// 将 LLM 返回的结构化 JSON 解析为步骤数组
+// 每步含 index / title / text / formulas / figure / key_insight
+// 步骤可转为 markdown 喂给 MarkdownRenderer 渲染
 // ============================================================
 
 /**
- * 步骤标题正则：匹配 "### 步骤 N：标题" 或 "### 步骤N: 标题" 等变体
+ * 解析 LLM 返回的 JSON 为步骤数组
+ * @param {string|object} data - JSON 字符串或已解析对象
+ * @returns {Array<{index:number, title:string, text:string, formulas:Array, figure:object|null, key_insight:string}>}
  */
+export function parseDerivationJSON(data) {
+  let parsed = data
+  if (typeof data === 'string') {
+    try {
+      parsed = JSON.parse(data)
+    } catch {
+      return []
+    }
+  }
+  if (!parsed || typeof parsed !== 'object') return []
+  if (!Array.isArray(parsed.steps)) return []
+
+  return parsed.steps.map((s, i) => ({
+    index: i + 1,
+    title: s.title || `步骤 ${i + 1}`,
+    text: s.text || '',
+    formulas: Array.isArray(s.formulas) ? s.formulas.filter(f => typeof f === 'string' && f.trim()) : [],
+    figure: s.figure || null,
+    key_insight: s.key_insight || '',
+  }))
+}
+
+/**
+ * 将结构化步骤转为 markdown 字符串（供 MarkdownRenderer 渲染）
+ * @param {object} step - { title, text, formulas, figure, key_insight }
+ * @returns {string} markdown 字符串
+ */
+export function stepToMarkdown(step) {
+  if (!step) return ''
+  const parts = []
+
+  // 标题
+  if (step.title) {
+    parts.push(`### ${step.title}`)
+    parts.push('')
+  }
+
+  // 说明文字
+  if (step.text) {
+    parts.push(step.text)
+    parts.push('')
+  }
+
+  // 公式（行间 $$...$$）
+  if (step.formulas && step.formulas.length > 0) {
+    for (const f of step.formulas) {
+      const trimmed = (f || '').trim()
+      if (trimmed) {
+        parts.push(`$$${trimmed}$$`)
+        parts.push('')
+      }
+    }
+  }
+
+  // 图件（svg-spec 围栏）
+  if (step.figure && typeof step.figure === 'object') {
+    try {
+      const json = JSON.stringify(step.figure)
+      parts.push('```svg-spec')
+      parts.push(json)
+      parts.push('```')
+      parts.push('')
+    } catch (_) {
+      // JSON 序列化失败，跳过图件
+    }
+  }
+
+  // 关键洞见
+  if (step.key_insight) {
+    parts.push(`> **关键洞见**：${step.key_insight}`)
+  }
+
+  return parts.join('\n').trim()
+}
+
+/**
+ * 校验步骤数组是否满足 B2 验收口径
+ * @param {Array} steps
+ * @returns {{ valid: boolean, errors: Array<string> }}
+ */
+export function validateStepStructure(steps) {
+  const errors = []
+  if (!Array.isArray(steps)) {
+    return { valid: false, errors: ['steps_not_array'] }
+  }
+  if (steps.length < 3 || steps.length > 8) {
+    errors.push(`step_count_${steps.length}_out_of_range_3_8`)
+  }
+  for (let i = 0; i < steps.length; i++) {
+    const s = steps[i]
+    if (!s.formulas?.length && !s.figure) {
+      errors.push(`step_${i + 1}_no_formula_or_figure`)
+    }
+  }
+  return { valid: errors.length === 0, errors }
+}
+
+// ============================================================
+// 兼容旧版：从 markdown 文本解析步骤（历史数据回放用）
+// ============================================================
+
 const STEP_HEADER_RE = /^###\s*步骤\s*(\d+)\s*[:：：]\s*(.+)$/gm
 
 /**
- * 将完整推导文本解析为步骤数组
- * @param {string} fullText - LLM 输出的完整 markdown 文本
- * @returns {Array<{index:number, title:string, content:string}>}
+ * 旧版 markdown 解析（兼容历史数据）
+ * @param {string} fullText
+ * @returns {Array<{index:number, title:string, text:string, formulas:[], figure:null, key_insight:''}>}
  */
 export function parseSteps(fullText) {
   if (!fullText || typeof fullText !== 'string') return []
-
   const text = fullText.trim()
   if (!text) return []
 
-  // 收集所有步骤标题的位置
   const headers = []
   let match
   const re = new RegExp(STEP_HEADER_RE.source, 'gm')
@@ -34,141 +136,62 @@ export function parseSteps(fullText) {
     })
   }
 
-  // 没有匹配到步骤标题 → 整段作为单步
   if (headers.length === 0) {
     return [{
       index: 1,
       title: '推导内容',
-      content: text,
+      text: text,
+      formulas: [],
+      figure: null,
+      key_insight: '',
     }]
   }
 
-  // 提取每个步骤的内容（从标题结束到下一个标题开始）
-  const steps = []
-  for (let i = 0; i < headers.length; i++) {
-    const h = headers[i]
-    const contentStart = h.headerEnd
+  return headers.map((h, i) => {
     const contentEnd = i + 1 < headers.length ? headers[i + 1].start : text.length
-    const rawContent = text.slice(contentStart, contentEnd).trim()
-    steps.push({
+    const rawContent = text.slice(h.headerEnd, contentEnd).trim()
+    return {
       index: h.index,
       title: h.title,
-      content: rawContent,
-    })
-  }
-
-  return steps
-}
-
-/**
- * 从流式累积文本中提取当前已完成的步骤数
- * 用于 UI 实时显示 "推导中... 第 N 步"
- * @param {string} accumulated - 当前累积的文本
- * @returns {number} 已出现的步骤标题数
- */
-export function countSteps(accumulated) {
-  if (!accumulated) return 0
-  const matches = accumulated.match(STEP_HEADER_RE)
-  return matches ? matches.length : 0
-}
-
-/**
- * 获取当前正在流式的步骤内容（最后一个步骤标题之后的部分）
- * 用于 UI 实时渲染当前正在生成的步骤
- * @param {string} accumulated - 当前累积的文本
- * @returns {{index:number, title:string, content:string}|null}
- */
-export function getCurrentStep(accumulated) {
-  if (!accumulated) return null
-  const steps = parseSteps(accumulated)
-  if (steps.length === 0) return null
-  return steps[steps.length - 1]
-}
-
-/**
- * 归一化步骤数组（排序、去重、补缺）
- * @param {Array} steps - parseSteps 输出
- * @returns {Array} 归一化后的步骤数组
- */
-export function normalizeSteps(steps) {
-  if (!Array.isArray(steps)) return []
-
-  // 按 index 排序
-  const sorted = [...steps].sort((a, b) => a.index - b.index)
-
-  // 去重（同 index 保留第一个非空 content 的）
-  const seen = new Map()
-  for (const s of sorted) {
-    const key = s.index
-    if (!seen.has(key)) {
-      seen.set(key, s)
-    } else {
-      const existing = seen.get(key)
-      if (!existing.content && s.content) {
-        seen.set(key, s)
-      }
+      text: rawContent,
+      formulas: [],
+      figure: null,
+      key_insight: '',
     }
-  }
-
-  // 重新编号（1, 2, 3...）
-  return Array.from(seen.values()).map((s, i) => ({
-    index: i + 1,
-    title: s.title || `步骤 ${i + 1}`,
-    content: s.content || '',
-  }))
-}
-
-/**
- * 从步骤数组中提取所有 LaTeX 公式（用于校验渲染链路）
- * @param {Array} steps
- * @returns {Array<string>} 公式文本列表
- */
-export function extractFormulas(steps) {
-  if (!Array.isArray(steps)) return []
-  const formulas = []
-  for (const s of steps) {
-    const content = s.content || ''
-    // 行间公式 $$...$$
-    const blockMatches = content.match(/\$\$([^$]+)\$\$/g)
-    if (blockMatches) formulas.push(...blockMatches)
-    // 行内公式 $...$（排除 $$）
-    const inlineMatches = content.match(/(?<!\$)\$(?!\$)([^$]+)\$/g)
-    if (inlineMatches) formulas.push(...inlineMatches)
-  }
-  return formulas
-}
-
-/**
- * 校验步骤数组是否包含源码残留（LaTeX 未渲染的原始文本）
- * 用于契约测试：parseSteps 输出的 content 应保留 $...$ 标记（由 MarkdownRenderer 渲染）
- * @param {Array} steps
- * @returns {boolean} true = 有公式标记（正常），false = 无公式
- */
-export function hasFormulaMarkers(steps) {
-  if (!Array.isArray(steps)) return false
-  return steps.some(s => {
-    const c = s.content || ''
-    return /\$[^$]+\$/.test(c)
   })
 }
 
 /**
+ * 归一化步骤数组（排序、补 index）
+ */
+export function normalizeSteps(steps) {
+  if (!Array.isArray(steps)) return []
+  return steps.map((s, i) => ({
+    index: s.index || i + 1,
+    title: s.title || `步骤 ${i + 1}`,
+    text: s.text || s.content || '',
+    formulas: s.formulas || [],
+    figure: s.figure || null,
+    key_insight: s.key_insight || '',
+  }))
+}
+
+/**
  * 序列化步骤数组为可持久化的 JSON
- * @param {Array} steps
- * @returns {string} JSON 字符串
  */
 export function serializeSteps(steps) {
   return JSON.stringify(steps.map(s => ({
     index: s.index,
     title: s.title,
-    content: s.content,
+    text: s.text,
+    formulas: s.formulas || [],
+    figure: s.figure || null,
+    key_insight: s.key_insight || '',
   })))
 }
 
 /**
- * 反序列化步骤数组
- * @param {string|Array} data - JSON 字符串或数组
- * @returns {Array} 步骤数组
+ * 反序列化步骤数组（兼容新结构化 JSON 和旧 markdown 格式）
  */
 export function deserializeSteps(data) {
   if (!data) return []
@@ -180,10 +203,16 @@ export function deserializeSteps(data) {
       return []
     }
   }
-  if (!Array.isArray(parsed)) return []
-  return parsed.map((s, i) => ({
-    index: s.index || i + 1,
-    title: s.title || `步骤 ${i + 1}`,
-    content: s.content || '',
-  }))
+
+  // 新格式：数组 of { index, title, text, formulas, figure, key_insight }
+  if (Array.isArray(parsed)) {
+    return normalizeSteps(parsed)
+  }
+
+  // 新格式：{ steps: [...] }
+  if (parsed && Array.isArray(parsed.steps)) {
+    return normalizeSteps(parsed.steps)
+  }
+
+  return []
 }

@@ -1,11 +1,11 @@
 // ============================================================
-// Vercel serverless function - AI 白板推导（B2 · SSE 流式）
+// Vercel serverless function - AI 白板推导（B2 v1.0 · 一次性 JSON）
 // ============================================================
 // POST /api/derivation
-// Body: { knowledge_point: string }
-// Response: text/event-stream (SSE)
+// Body: { knowledge_point: string, tier?: string, context?: string }
+// Response: { ok: true, steps: [...] } | { ok: false, error: string }
 //
-// 复用 chat.js 的 LLM provider 抽象 + CORS + 限流中间件
+// 复用 llm-provider / prompt-loader / _middleware（CORS + 限流）
 // 推导 prompt 从 prompts/derivation.md 加载
 // ============================================================
 
@@ -13,47 +13,130 @@ import { getProviderConfig, validateProviderConfig } from './llm-provider.js'
 import { loadPrompt, substitute } from '../lib/prompt-loader.js'
 import { applyCors, getClientIp, checkRateLimit, RATE_LIMIT_WINDOW_MS } from './_middleware.js'
 
-const DEFAULT_MAX_DURATION_MS = 58000
-const STREAM_FIRST_TOKEN_TIMEOUT_MS = 30000
-const RETRY_MAX_TOKENS_RATIO = 0.5
+const REQUEST_TIMEOUT_MS = 55000 // Vercel Hobby 60s 留余量
 
-// 知识点白名单（B2 扩展：覆盖考纲全部知识点 + 宽泛匹配 + 中文兜底）
+// 知识点白名单（与 prompt 一致，服务端校验）
 const KNOWLEDGE_WHITELIST = [
-  // 半导体物理基础
-  '半导体', '载流子', '本征', '掺杂', '杂质', '费米', '能带',
-  '漂移', '扩散', '迁移率', '电导率', '连续性', '泊松',
-  '玻尔兹曼', '统计', '分布', '平衡',
-  // PN结 & 二极管
-  'PN结', 'PN', '耗尽', '内建电势', '整流', '击穿', '雪崩', '齐纳', '隧穿',
-  // MOS结构 & MOSFET
-  'MOS', 'MOSFET', '阈值电压', 'C-V', 'I-V',
-  '跨导', '亚阈值', '短沟道', '沟道', '夹断', '氧化层', '电容',
-  // CMOS & 数字电路
-  'CMOS', '反相器', '时序', '逻辑', '组合', '触发器',
-  // 双极型晶体管
-  '双极型', 'BJT', '晶体管', '微电子',
-  // JFET & 其他器件
-  'JFET', '结型', '场效应',
-  // 放大器 & 模拟电路
-  '放大器', '放大', '差分', '运算放大', '频率响应', '反馈', '稳定性', '噪声',
-  // 功耗 & 设计
-  '低功耗', '功耗', '版图', '工艺', '设计',
-  // 制造工艺
-  '制造', '光刻', '刻蚀', '氧化', '沉积', '金属化', '互连', '封装',
-  // 可靠性
-  'ESD', '可靠性', '寄生', '闩锁', 'latch',
-  // 异质结 & 其他
-  '异质结', '半导体物理', '微电子器件', '半导体器件', '器件',
+  '载流子统计', '载流子输运', 'PN结', 'MOS结构', 'MOSFET',
+  '本征载流子浓度', '掺杂载流子浓度', '费米能级',
+  '漂移', '扩散', '迁移率', '电导率',
+  '内建电势', '耗尽层', '伏安特性', '电容',
+  '能带', '阈值电压', 'C-V特性',
+  'I-V特性', '跨导', '亚阈值特性',
+]
+
+// svg-spec figure 白名单
+const FIGURE_TYPES = ['circuit', 'waveform', 'band', 'structure']
+const FIGURE_TEMPLATES = [
+  'diode-rectifier', 'bridge-rectifier', 'rc-lowpass', 'voltage-divider',
+  'common-source', 'cmos-inverter', 'opamp-inverting', 'opamp-noninverting',
+  'sine', 'piecewise-linear', 'energy-band', 'mos-cross-section',
 ]
 
 function isKnowledgeAllowed(kp) {
   if (!kp || typeof kp !== 'string') return false
-  if (kp.length > 100) return false
-  const lower = kp.toLowerCase()
-  if (KNOWLEDGE_WHITELIST.some(w => lower.includes(w.toLowerCase()))) return true
-  // 兜底：包含中文字符且长度合理（覆盖白名单未穷举的考纲知识点）
-  if (/[\u4e00-\u9fa5]/.test(kp) && kp.length >= 2 && kp.length <= 50) return true
-  return false
+  return KNOWLEDGE_WHITELIST.some(w => kp.includes(w))
+}
+
+/**
+ * 从 LLM 响应文本中提取 JSON 对象
+ * 处理：去围栏 ```json...```、截取首个 { 到末尾 }、JSON.parse
+ */
+function extractJsonObject(text) {
+  if (!text || typeof text !== 'string') return null
+  let s = text.trim()
+
+  // 去除 markdown 代码围栏
+  s = s.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '')
+
+  // 截取首个 { 到最后一个 }
+  const first = s.indexOf('{')
+  const last = s.lastIndexOf('}')
+  if (first === -1 || last === -1 || last <= first) return null
+
+  const jsonStr = s.slice(first, last + 1)
+
+  try {
+    return JSON.parse(jsonStr)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 校验步骤数组
+ * @returns {{ valid: boolean, steps: Array, error?: string }}
+ */
+function validateSteps(parsed) {
+  if (!parsed || typeof parsed !== 'object') {
+    return { valid: false, steps: [], error: 'invalid_response' }
+  }
+
+  const steps = parsed.steps
+  if (!Array.isArray(steps)) {
+    return { valid: false, steps: [], error: 'no_steps_array' }
+  }
+
+  if (steps.length < 3 || steps.length > 8) {
+    return { valid: false, steps: [], error: 'step_count_out_of_range' }
+  }
+
+  let figureCount = 0
+  const validated = []
+
+  for (let i = 0; i < steps.length; i++) {
+    const s = steps[i]
+    if (!s || typeof s !== 'object') {
+      return { valid: false, steps: [], error: `step_${i}_invalid` }
+    }
+
+    const title = typeof s.title === 'string' ? s.title.trim() : ''
+    const text = typeof s.text === 'string' ? s.text.trim() : ''
+    const formulas = Array.isArray(s.formulas) ? s.formulas.filter(f => typeof f === 'string' && f.trim()) : []
+    const figure = s.figure || null
+    const keyInsight = typeof s.key_insight === 'string' ? s.key_insight.trim() : ''
+
+    if (!title) {
+      return { valid: false, steps: [], error: `step_${i}_missing_title` }
+    }
+    if (!text) {
+      return { valid: false, steps: [], error: `step_${i}_missing_text` }
+    }
+
+    // 每步 ≥1 公式或图件
+    if (formulas.length === 0 && !figure) {
+      return { valid: false, steps: [], error: `step_${i}_no_formula_or_figure` }
+    }
+
+    // 图件校验
+    if (figure) {
+      if (typeof figure !== 'object') {
+        return { valid: false, steps: [], error: `step_${i}_figure_not_object` }
+      }
+      if (!FIGURE_TYPES.includes(figure.type)) {
+        return { valid: false, steps: [], error: `step_${i}_figure_bad_type` }
+      }
+      if (figure.template && !FIGURE_TEMPLATES.includes(figure.template)) {
+        return { valid: false, steps: [], error: `step_${i}_figure_bad_template` }
+      }
+      figureCount++
+    }
+
+    if (figureCount > 2) {
+      return { valid: false, steps: [], error: 'too_many_figures' }
+    }
+
+    validated.push({
+      index: i + 1,
+      title,
+      text,
+      formulas,
+      figure,
+      key_insight: keyInsight,
+    })
+  }
+
+  return { valid: true, steps: validated }
 }
 
 export default async function handler(req, res) {
@@ -64,24 +147,24 @@ export default async function handler(req, res) {
   const clientIp = getClientIp(req)
   if (!checkRateLimit(clientIp)) {
     res.setHeader('Retry-After', String(Math.ceil(RATE_LIMIT_WINDOW_MS / 1000)))
-    return res.status(429).json({ error: 'rate_limited' })
+    return res.status(429).json({ ok: false, error: 'rate_limited' })
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'method_not_allowed' })
+    return res.status(405).json({ ok: false, error: 'method_not_allowed' })
   }
 
-  const { knowledge_point } = req.body || {}
+  const { knowledge_point, tier, context } = req.body || {}
 
   if (!knowledge_point || typeof knowledge_point !== 'string') {
-    return res.status(400).json({ error: 'missing_knowledge_point' })
+    return res.status(400).json({ ok: false, error: 'missing_knowledge_point' })
   }
 
   if (!isKnowledgeAllowed(knowledge_point)) {
     return res.status(400).json({
+      ok: false,
       error: 'knowledge_point_not_allowed',
       message: '知识点不在白名单内',
-      allowed: KNOWLEDGE_WHITELIST,
     })
   }
 
@@ -89,212 +172,87 @@ export default async function handler(req, res) {
   const template = loadPrompt('derivation')
   if (!template) {
     console.error('[api/derivation] prompt file not found: prompts/derivation.md')
-    return res.status(500).json({ error: 'prompt_not_found' })
+    return res.status(500).json({ ok: false, error: 'prompt_not_found' })
   }
 
-  const systemPrompt = substitute(template, { knowledge_point })
+  const systemPrompt = substitute(template, {
+    knowledge_point,
+    tier: tier || 'intermediate',
+    context: context || '暂无',
+  })
 
   // LLM provider 配置
   const providerConfig = getProviderConfig()
   const { valid, error: providerError } = validateProviderConfig(providerConfig)
   if (!valid) {
     console.error('[api/derivation] ' + providerError)
-    return res.status(500).json({ error: 'provider_not_configured', message: providerError })
+    return res.status(500).json({ ok: false, error: 'provider_not_configured', message: providerError })
   }
 
-  const model = providerConfig.model
-  const temperature = 0.5 // 推导需要严谨，降低温度
-  const maxTokens = 3000
-
-  return handleStream(req, res, {
-    chatUrl: providerConfig.chatUrl,
-    apiKey: providerConfig.apiKey,
-    provider: providerConfig.provider,
-    model,
-    temperature,
-    maxTokens,
-    prompt: systemPrompt,
-    userInput: `请对知识点「${knowledge_point}」进行逐步推导讲解。`,
-  })
-}
-
-// ============================================================
-// SSE 流式模式
-// ============================================================
-async function handleStream(req, res, { chatUrl, apiKey, provider, model, temperature, maxTokens, prompt, userInput }) {
-  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8')
-  res.setHeader('Cache-Control', 'no-cache, no-transform')
-  res.setHeader('Connection', 'keep-alive')
-  res.setHeader('X-Accel-Buffering', 'no')
-  res.status(200)
-
-  const sendEvent = (event, data) => {
-    if (res.writableEnded || res.destroyed) return
-    if (event === 'token') {
-      const delta = typeof data === 'object' && data ? data.delta : ''
-      if (delta) {
-        res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: delta } }] })}\n\n`)
-      }
-      return
-    }
-    if (event === 'done') {
-      res.write(`data: [DONE]\n\n`)
-      return
-    }
-    if (event === 'error') {
-      const errObj = typeof data === 'object' && data ? data : { error: 'unknown', message: String(data) }
-      res.write(`data: ${JSON.stringify({ error: errObj.error, message: errObj.message || errObj.error })}\n\n`)
-      return
-    }
-    res.write(`data: ${JSON.stringify(data)}\n\n`)
-  }
-
-  if (typeof res.flushHeaders === 'function') res.flushHeaders()
-
-  const startTime = Date.now()
-  let firstTokenSent = false
-  let retryUsed = false
-  let totalContent = ''
-
-  const streamOnce = async (mt) => {
-    const ctrl = new AbortController()
-    const timer = setTimeout(() => ctrl.abort(), DEFAULT_MAX_DURATION_MS)
-    try {
-      const r = await fetch(chatUrl, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          Accept: 'text/event-stream',
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: prompt },
-            { role: 'user', content: userInput },
-          ],
-          temperature,
-          max_tokens: mt,
-          stream: true,
-        }),
-        signal: ctrl.signal,
-      })
-      clearTimeout(timer)
-      return r
-    } catch (e) {
-      clearTimeout(timer)
-      throw e
-    }
-  }
-
-  const attemptWithRetry = async (mt) => {
-    let r = await streamOnce(mt)
-    if (!r.ok && isRetryable(r.status) && !retryUsed) {
-      const fallbackMt = Math.max(256, Math.floor(mt * RETRY_MAX_TOKENS_RATIO))
-      console.warn(`[api/derivation] ${provider} stream upstream ${r.status}，降级重试 (max_tokens ${mt} → ${fallbackMt})`)
-      retryUsed = true
-      r = await streamOnce(fallbackMt)
-    }
-    return r
-  }
+  // 一次性 fetch（非流式）
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS)
 
   try {
-    const r = await attemptWithRetry(maxTokens)
+    const r = await fetch(providerConfig.chatUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${providerConfig.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: providerConfig.model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `请对知识点「${knowledge_point}」进行逐步推导讲解。` },
+        ],
+        temperature: 0.5,
+        max_tokens: 4000,
+        stream: false,
+      }),
+      signal: ctrl.signal,
+    })
+
+    clearTimeout(timer)
 
     if (!r.ok) {
-      const errText = await r.text()
-      console.error(`[api/derivation] ${provider} stream upstream error:`, r.status, errText)
-      sendEvent('error', { error: 'upstream_error', status: r.status })
-      return res.end()
+      const errText = await r.text().catch(() => '')
+      console.error(`[api/derivation] ${providerConfig.provider} upstream error:`, r.status, errText.slice(0, 200))
+      return res.status(502).json({ ok: false, error: 'upstream_error', status: r.status })
     }
 
-    if (!r.body) {
-      sendEvent('error', { error: 'no_response_body' })
-      return res.end()
+    const data = await r.json()
+    const content = data.choices?.[0]?.message?.content || ''
+
+    if (!content) {
+      return res.status(502).json({ ok: false, error: 'empty_response' })
     }
 
-    const reader = r.body.getReader()
-    const decoder = new TextDecoder('utf-8')
-    let buffer = ''
-
-    const firstTokenTimer = setTimeout(() => {
-      if (!firstTokenSent) {
-        console.error(`[api/derivation] 首 token 超时 (${STREAM_FIRST_TOKEN_TIMEOUT_MS}ms)`)
-        sendEvent('error', {
-          error: 'first_token_timeout',
-          message: `首 token 超过 ${STREAM_FIRST_TOKEN_TIMEOUT_MS}ms 未到达`,
-        })
-        try { reader.cancel() } catch (_) {}
-        if (!res.writableEnded) res.end()
-      }
-    }, STREAM_FIRST_TOKEN_TIMEOUT_MS)
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const events = buffer.split('\n\n')
-        buffer = events.pop() || ''
-
-        for (const evt of events) {
-          const lines = evt.split('\n')
-          for (const line of lines) {
-            const trimmed = line.trim()
-            if (!trimmed || !trimmed.startsWith('data:')) continue
-            const payload = trimmed.slice(5).trim()
-            if (payload === '[DONE]') {
-              clearTimeout(firstTokenTimer)
-              sendEvent('done', {
-                content: totalContent,
-                model,
-                provider,
-                latencyMs: Date.now() - startTime,
-              })
-              if (!res.writableEnded) res.end()
-              return
-            }
-            try {
-              const parsed = JSON.parse(payload)
-              const delta = parsed.choices?.[0]?.delta?.content || ''
-              if (delta) {
-                if (!firstTokenSent) {
-                  firstTokenSent = true
-                  clearTimeout(firstTokenTimer)
-                }
-                totalContent += delta
-                sendEvent('token', { delta, latencyMs: Date.now() - startTime })
-              }
-            } catch (_) {
-              // 忽略心跳等非 JSON 行
-            }
-          }
-        }
-      }
-      clearTimeout(firstTokenTimer)
-      if (!res.writableEnded) {
-        sendEvent('done', {
-          content: totalContent,
-          model,
-          provider,
-          latencyMs: Date.now() - startTime,
-        })
-        res.end()
-      }
-    } catch (e) {
-      clearTimeout(firstTokenTimer)
-      console.error(`[api/derivation] ${provider} stream read error:`, e)
-      sendEvent('error', { error: 'stream_read_error' })
-      if (!res.writableEnded) res.end()
+    // 提取并校验 JSON
+    const parsed = extractJsonObject(content)
+    if (!parsed) {
+      console.error('[api/derivation] failed to extract JSON from response:', content.slice(0, 200))
+      return res.status(502).json({ ok: false, error: 'json_parse_failed' })
     }
+
+    const { valid: stepsValid, steps, error: stepsError } = validateSteps(parsed)
+    if (!stepsValid) {
+      console.error('[api/derivation] steps validation failed:', stepsError)
+      return res.status(502).json({ ok: false, error: 'steps_validation_failed', detail: stepsError })
+    }
+
+    return res.status(200).json({
+      ok: true,
+      steps,
+      model: providerConfig.model,
+      provider: providerConfig.provider,
+    })
   } catch (e) {
-    console.error(`[api/derivation] ${provider} stream failed:`, e)
-    sendEvent('error', { error: 'upstream_error' })
-    if (!res.writableEnded) res.end()
+    clearTimeout(timer)
+    if (e.name === 'AbortError') {
+      return res.status(504).json({ ok: false, error: 'request_timeout' })
+    }
+    console.error('[api/derivation] fetch failed:', e)
+    return res.status(500).json({ ok: false, error: 'internal_error', message: e.message })
   }
-}
-
-function isRetryable(status) {
-  return [408, 429, 500, 502, 503, 504, 524].includes(status)
 }
