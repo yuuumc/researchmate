@@ -362,6 +362,89 @@ export function getNodeMastery(node, profile) {
   return { status: 'unknown', stars: 0 }
 }
 
+// ============================================================
+// B4：热力着色（mastery 值直接驱动，0-1 三档）
+// ============================================================
+// backlog① 后 mastery 全仓统一 0-1：knowledge_state[ks].mastery 即掌握度。
+// getNodeHeat 优先读 knowledge_state.mastery（精确到知识点名）；
+// 缺失时兜底 ability_stars 星值 / 5（复用 getNodeMastery 的精确+模糊+科目匹配），
+// 保证图谱不会因 knowledge_state 稀疏而全灰；星值阈值与旧着色一致（4★=0.8 绿 /
+// 3★=0.6 黄 / ≤2★≤0.4 红），平滑过渡、零视觉回退。
+// 着色阈值：mastery<0.5→红(薄弱) / 0.5–0.8→黄(学习中) / ≥0.8→绿(已掌握) / null→灰(未诊断)
+// ============================================================
+
+export const HEAT_COLORS = {
+  weak:         '#ff6b6b',
+  intermediate: '#ffd166',
+  mastered:     '#00d4aa',
+  unknown:      '#9ca3af'
+}
+
+export const HEAT_LEVELS = {
+  weak:         '薄弱',
+  intermediate: '学习中',
+  mastered:     '已掌握',
+  unknown:      '未诊断'
+}
+
+/**
+ * mastery 值 → 热力档（确定性，可机械判）
+ * @param {number|null} m - 0-1 掌握度
+ * @returns {{level:'weak'|'intermediate'|'mastered'|'unknown', mastery:number|null, color:string}}
+ */
+export function classifyHeat(m) {
+  if (m == null || typeof m !== 'number' || Number.isNaN(m)) {
+    return { level: 'unknown', mastery: null, color: HEAT_COLORS.unknown }
+  }
+  if (m < 0.5) return { level: 'weak', mastery: m, color: HEAT_COLORS.weak }
+  if (m < 0.8) return { level: 'intermediate', mastery: m, color: HEAT_COLORS.intermediate }
+  return { level: 'mastered', mastery: m, color: HEAT_COLORS.mastered }
+}
+
+/**
+ * 节点热力状态（mastery 驱动，star 兜底）
+ * @param {object} node - 知识节点
+ * @param {object} profile - 学生画像
+ * @returns {{level:'weak'|'intermediate'|'mastered'|'unknown', mastery:number|null, color:string}}
+ */
+export function getNodeHeat(node, profile) {
+  if (!node) return classifyHeat(null)
+  const topic = node.name
+
+  // 1) 优先 knowledge_state.mastery（0-1，backlog① 统一刻度）
+  const ks = profile?.knowledge_state?.[topic]
+  if (ks && typeof ks.mastery === 'number' && !Number.isNaN(ks.mastery)) {
+    return classifyHeat(ks.mastery)
+  }
+
+  // 2) 兜底：ability_stars 星值 / 5 → mastery（复用 getNodeMastery 匹配：精确+模糊+科目 fallback）
+  const starMastery = starsToMasteryFallback(node, profile)
+  if (starMastery !== null) return classifyHeat(starMastery)
+
+  // 3) 旧字段 mastered_topics / weak_topics 兼容
+  if (Array.isArray(profile?.mastered_topics) && profile.mastered_topics.includes(topic)) {
+    return classifyHeat(1)
+  }
+  if (Array.isArray(profile?.weak_topics) && profile.weak_topics.includes(topic)) {
+    return classifyHeat(0)
+  }
+
+  return classifyHeat(null)
+}
+
+/**
+ * 复用 getNodeMastery 的匹配逻辑取星值，转 mastery（stars/5）
+ * getNodeMastery 返回 unknown/stars=0 时无可兜底，返回 null
+ * @param {object} node
+ * @param {object} profile
+ * @returns {number|null} 0-1 mastery 或 null
+ */
+function starsToMasteryFallback(node, profile) {
+  const result = getNodeMastery(node, profile)
+  if (!result || result.status === 'unknown' || !result.stars || result.stars <= 0) return null
+  return result.stars / 5
+}
+
 /**
  * 生成学习路径上下文（供 Tutor Agent 注入 Prompt）
  * @param {object} graph

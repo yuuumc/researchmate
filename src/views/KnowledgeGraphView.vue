@@ -3,21 +3,40 @@
 // KnowledgeGraphView.vue — B4 知识图谱可视化
 // ============================================================
 // 功能：
-//   1. ECharts 力导向图展示全部知识点节点 + 掌握度着色
-//   2. 点击节点 → 详情面板 + 联动入口（AI辅导/练习题/白板推导/变式练习）
-//   3. 节点大小按连接数加权，边显示前置依赖关系
-//   4. 顶部统计 + 图例
+//   1. ECharts 力导向图展示全部知识点节点 + 掌握度热力着色（mastery 驱动）
+//   2. 薄弱点脉冲呼吸光晕（视觉强化）
+//   3. 点击节点 → 详情面板 + 联动入口（AI辅导/练习题/白板推导/变式练习）
+//      薄弱节点额外提供「立即诊断」CTA
+//   4. 节点大小按连接数加权，边显示前置依赖关系
+//   5. 顶部统计 + 图例
 // 验收口径：
-//   ① 全部知识点节点 + 掌握度着色（绿/黄/红/灰四档）
-//   ② 点击节点可跳转该知识点错题/练习入口
-//   ③ 力导向布局合理不重叠
+//   ① getNodeHeat 三档热力着色（mastery→rgba 色值区间，机械可判）
+//   ② 薄弱节点 CTA + 面板按钮跳诊断/练习
+//   ③ ECharts force draggable + roam（既有）
+//   ④ 空数据态全灰不报错
+//   ⑤ vite build 零错（无新依赖）
 // ============================================================
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import { useProfileStore } from '@/stores/profile'
 import { useMasteryData } from '@/composables/useMasteryData'
-import { loadGraph, getNodeMastery, getPrerequisiteChain } from '@/utils/knowledgeGraph'
+import { loadGraph, getNodeHeat, getPrerequisiteChain, HEAT_COLORS, HEAT_LEVELS } from '@/utils/knowledgeGraph'
+import { getCurrentTheme } from '@/composables/useTheme'
+
+// === 主题色映射（app 默认 dark，ECharts 硬编码暗色在暗背景不可读）===
+function getChartTheme() {
+  const dark = getCurrentTheme() === 'dark'
+  return {
+    labelColor:    dark ? '#e5e7eb' : '#374151',
+    edgeColor:     dark ? '#4b5563' : '#cbd5e1',
+    legendColor:   dark ? '#9ca3af' : '#6b7280',
+    tooltipBg:     dark ? 'rgba(31,41,55,0.96)' : 'rgba(255,255,255,0.96)',
+    tooltipBorder: dark ? '#374151' : '#e5e7eb',
+    tooltipText:   dark ? '#f3f4f6' : '#1f2937',
+    tooltipSub:    dark ? '#9ca3af' : '#6b7280'
+  }
+}
 
 const router = useRouter()
 const profileStore = useProfileStore()
@@ -26,6 +45,7 @@ const mastery = useMasteryData()
 // === DOM ref ===
 const chartRef = ref(null)
 let chartInstance = null
+let pulseTimer = null
 
 // === 数据 ===
 const graphData = ref(null)
@@ -34,37 +54,23 @@ const selectedNode = ref(null)
 const loading = ref(true)
 const error = ref(null)
 
-// === 掌握度配色（与 KnowledgePathCard.vue 一致）===
-const MASTERY_COLORS = {
-  mastered:  '#00d4aa',
-  weak:      '#ff6b6b',
-  learning:  '#ffd166',
-  unknown:   '#9ca3af'
+// === B4 热力图标（HEAT_COLORS / HEAT_LEVELS 从 knowledgeGraph 引入，单一数据源）===
+const HEAT_ICONS = {
+  mastered:     '✓',
+  intermediate: '◐',
+  weak:         '✗',
+  unknown:      '○'
 }
 
-const MASTERY_LABELS = {
-  mastered:  '已掌握',
-  weak:      '薄弱',
-  learning:  '学习中',
-  unknown:   '未诊断'
-}
-
-const MASTERY_ICONS = {
-  mastered:  '✓',
-  weak:      '✗',
-  learning:  '◐',
-  unknown:   '○'
-}
-
-// === 统计 ===
+// === 统计（按热力档计数，与节点着色同源）===
 const stats = computed(() => {
-  if (!graphEngine.value) return { total: 0, mastered: 0, weak: 0, learning: 0, unknown: 0 }
-  const counts = { total: 0, mastered: 0, weak: 0, learning: 0, unknown: 0 }
+  if (!graphEngine.value) return { total: 0, mastered: 0, weak: 0, intermediate: 0, unknown: 0 }
+  const counts = { total: 0, mastered: 0, weak: 0, intermediate: 0, unknown: 0 }
   const profile = profileStore.profile
   for (const node of graphEngine.value.nodes.values()) {
     counts.total++
-    const m = getNodeMastery(node, profile)
-    counts[m.status]++
+    const h = getNodeHeat(node, profile)
+    counts[h.level]++
   }
   return counts
 })
@@ -76,10 +82,10 @@ const selectedPrerequisites = computed(() => {
   return chain.slice(0, 5) // 最多展示 5 个前置
 })
 
-// === 选中节点的掌握状态 ===
-const selectedMastery = computed(() => {
+// === 选中节点的热力状态 ===
+const selectedHeat = computed(() => {
   if (!selectedNode.value) return null
-  return getNodeMastery(selectedNode.value, profileStore.profile)
+  return getNodeHeat(selectedNode.value, profileStore.profile)
 })
 
 // === 加载图数据 ===
@@ -109,7 +115,8 @@ async function loadGraphData() {
 function renderChart() {
   if (!chartRef.value || !graphEngine.value) return
 
-  // 销毁旧实例
+  // 销毁旧实例 + 清理脉冲
+  if (pulseTimer) { clearInterval(pulseTimer); pulseTimer = null }
   if (chartInstance) {
     chartInstance.dispose()
     chartInstance = null
@@ -119,11 +126,12 @@ function renderChart() {
 
   const engine = graphEngine.value
   const profile = profileStore.profile
+  const t = getChartTheme()
 
-  // 构建 ECharts 节点数据
+  // 构建 ECharts 节点数据（B4：热力着色 mastery 驱动）
   const nodes = []
   for (const node of engine.nodes.values()) {
-    const m = getNodeMastery(node, profile)
+    const h = getNodeHeat(node, profile)
     // 计算连接数（入度+出度）作为节点大小权重
     let connections = 0
     for (const edge of engine.edges) {
@@ -133,26 +141,26 @@ function renderChart() {
       id: node.id,
       name: node.name,
       symbolSize: 28 + connections * 4,
-      category: MASTERY_LABELS[m.status],
-      value: m.stars,
+      category: HEAT_LEVELS[h.level],
+      value: h.mastery != null ? Number((h.mastery * 100).toFixed(0)) : 0,
       itemStyle: {
-        color: MASTERY_COLORS[m.status],
-        borderColor: m.status === 'unknown' ? '#d1d5db' : MASTERY_COLORS[m.status],
-        borderWidth: m.status === 'unknown' ? 1.5 : 0,
-        shadowBlur: m.status === 'weak' ? 12 : 6,
-        shadowColor: m.status === 'weak' ? 'rgba(255,107,107,0.4)' : 'rgba(0,0,0,0.15)'
+        color: h.color,
+        borderColor: h.level === 'unknown' ? '#d1d5db' : h.color,
+        borderWidth: h.level === 'unknown' ? 1.5 : 0,
+        shadowBlur: h.level === 'weak' ? 12 : 6,
+        shadowColor: h.level === 'weak' ? 'rgba(255,107,107,0.4)' : 'rgba(0,0,0,0.15)'
       },
       label: {
         show: true,
         position: 'bottom',
         fontSize: 11,
-        color: '#374151',
-        fontWeight: m.status === 'weak' || m.status === 'mastered' ? 600 : 400,
+        color: t.labelColor,
+        fontWeight: h.level === 'weak' || h.level === 'mastered' ? 600 : 400,
         formatter: () => node.name
       },
       // 自定义数据
       _nodeData: node,
-      _mastery: m
+      _heat: h
     })
   }
 
@@ -164,7 +172,7 @@ function renderChart() {
       show: false
     },
     lineStyle: {
-      color: '#cbd5e1',
+      color: t.edgeColor,
       width: 1.5,
       curveness: 0.15,
       opacity: 0.6
@@ -173,41 +181,41 @@ function renderChart() {
 
   // 分类（图例）
   const categories = [
-    { name: '已掌握', itemStyle: { color: MASTERY_COLORS.mastered } },
-    { name: '薄弱',   itemStyle: { color: MASTERY_COLORS.weak } },
-    { name: '学习中', itemStyle: { color: MASTERY_COLORS.learning } },
-    { name: '未诊断', itemStyle: { color: MASTERY_COLORS.unknown } }
+    { name: HEAT_LEVELS.mastered,     itemStyle: { color: HEAT_COLORS.mastered } },
+    { name: HEAT_LEVELS.weak,         itemStyle: { color: HEAT_COLORS.weak } },
+    { name: HEAT_LEVELS.intermediate, itemStyle: { color: HEAT_COLORS.intermediate } },
+    { name: HEAT_LEVELS.unknown,      itemStyle: { color: HEAT_COLORS.unknown } }
   ]
 
   const option = {
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'item',
-      backgroundColor: 'rgba(255,255,255,0.96)',
-      borderColor: '#e5e7eb',
+      backgroundColor: t.tooltipBg,
+      borderColor: t.tooltipBorder,
       borderWidth: 1,
       padding: [10, 14],
-      textStyle: { fontSize: 12, color: '#1f2937' },
+      textStyle: { fontSize: 12, color: t.tooltipText },
       formatter: (params) => {
         if (params.dataType === 'node') {
           const node = params.data._nodeData
-          const m = params.data._mastery
+          const h = params.data._heat
           if (!node) return params.name
-          const stars = m.stars > 0 ? `${'★'.repeat(m.stars)}${'☆'.repeat(5 - m.stars)}` : '—'
+          const masteryTxt = h.mastery != null ? `${Math.round(h.mastery * 100)}%` : '—'
           return `
             <div style="font-weight:600;font-size:13px;margin-bottom:4px;">${node.name}</div>
-            <div style="color:#6b7280;font-size:11px;margin-bottom:2px;">${node.chapter || ''}</div>
-            <div style="color:#6b7280;font-size:11px;margin-bottom:6px;max-width:220px;">${node.description || ''}</div>
+            <div style="color:${t.tooltipSub};font-size:11px;margin-bottom:2px;">${node.chapter || ''}</div>
+            <div style="color:${t.tooltipSub};font-size:11px;margin-bottom:6px;max-width:220px;">${node.description || ''}</div>
             <div style="display:flex;align-items:center;gap:6px;">
-              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${MASTERY_COLORS[m.status]};"></span>
-              <span style="font-size:12px;font-weight:600;color:${MASTERY_COLORS[m.status]};">${MASTERY_LABELS[m.status]}</span>
-              <span style="font-size:11px;color:#9ca3af;margin-left:4px;">${stars}</span>
+              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${h.color};"></span>
+              <span style="font-size:12px;font-weight:600;color:${h.color};">${HEAT_LEVELS[h.level]}</span>
+              <span style="font-size:11px;color:${t.tooltipSub};margin-left:4px;">掌握度 ${masteryTxt}</span>
             </div>
           `
         }
         if (params.dataType === 'edge') {
           const edge = engine.edges.find(e => e.from === params.data.source && e.to === params.data.target)
-          return edge ? `<div style="font-size:11px;color:#6b7280;max-width:200px;">${edge.reason || '前置依赖'}</div>` : '前置依赖'
+          return edge ? `<div style="font-size:11px;color:${t.tooltipSub};max-width:200px;">${edge.reason || '前置依赖'}</div>` : '前置依赖'
         }
         return params.name
       }
@@ -215,7 +223,7 @@ function renderChart() {
     legend: {
       data: categories.map(c => c.name),
       bottom: 10,
-      textStyle: { fontSize: 12, color: '#6b7280' },
+      textStyle: { fontSize: 12, color: t.legendColor },
       itemWidth: 12,
       itemHeight: 12,
       itemGap: 16
@@ -233,12 +241,12 @@ function renderChart() {
         show: true,
         position: 'bottom',
         fontSize: 11,
-        color: '#374151'
+        color: t.labelColor
       },
       edgeLabel: {
         show: false,
         fontSize: 10,
-        color: '#9ca3af',
+        color: t.legendColor,
         formatter: (params) => {
           const edge = engine.edges.find(e => e.from === params.data.source && e.to === params.data.target)
           return edge ? edge.reason : ''
@@ -266,7 +274,7 @@ function renderChart() {
         }
       },
       lineStyle: {
-        color: '#cbd5e1',
+        color: t.edgeColor,
         width: 1.5,
         curveness: 0.15,
         opacity: 0.5
@@ -282,6 +290,41 @@ function renderChart() {
       selectedNode.value = params.data._nodeData
     }
   })
+
+  // B4：薄弱点脉冲（呼吸光晕，仅 weak 节点 shadowBlur 周期切换，不扰动布局）
+  startPulse(nodes)
+}
+
+// === B4：薄弱点脉冲 ===
+// 全量数组下发（同序 + id 匹配）：无论 ECharts graph data merge 按 id 还是按 index
+// 都能正确命中 weak 节点；id 匹配同时保留力导向位置，避免脉冲触发布局抖动。
+// 非薄弱节点传 {id}（merge 保留既有 itemStyle），薄弱节点覆盖 shadowBlur/shadowColor。
+function startPulse(nodes) {
+  if (pulseTimer) { clearInterval(pulseTimer); pulseTimer = null }
+  const hasWeak = nodes.some(n => n._heat && n._heat.level === 'weak')
+  if (!hasWeak) return
+  let phase = false
+  pulseTimer = setInterval(() => {
+    if (!chartInstance) { clearInterval(pulseTimer); pulseTimer = null; return }
+    phase = !phase
+    const patchData = nodes.map(n => {
+      if (!n._heat || n._heat.level !== 'weak') return { id: n.id }
+      return {
+        id: n.id,
+        itemStyle: {
+          ...n.itemStyle,
+          shadowBlur: phase ? 26 : 12,
+          shadowColor: 'rgba(255,107,107,0.65)'
+        }
+      }
+    })
+    try {
+      chartInstance.setOption({ series: [{ data: patchData }] })
+    } catch (e) {
+      // 脉冲失败不阻断主图渲染
+      console.warn('[KnowledgeGraphView] pulse setOption failed:', e)
+    }
+  }, 850)
 }
 
 // === 联动跳转 ===
@@ -312,8 +355,20 @@ function goVariant() {
   })
 }
 
+// B4：薄弱节点立即诊断（诊断为会话级做题模式，无 per-topic 预填入口，跳诊断页）
+function goDiagnose() {
+  router.push('/diagnosis/session')
+}
+
 function closeDetail() {
   selectedNode.value = null
+}
+
+// === 主题切换重渲染 ===
+function handleThemeChange() {
+  if (graphEngine.value) {
+    renderChart()
+  }
 }
 
 // === 响应式 ===
@@ -323,9 +378,10 @@ function handleResize() {
   }
 }
 
-// === 主题变化重渲染（掌握度可能更新）===
+// === 主题变化重渲染（mastery 变更：诊断/练习/衰减即时刷新热力）===
+// B4：knowledge_state 为主、ability_stars 为兜底源，任一变更即重渲染
 watch(
-  () => profileStore.profile.ability_stars,
+  () => [profileStore.profile?.knowledge_state, profileStore.profile?.ability_stars],
   () => {
     if (graphEngine.value) {
       renderChart()
@@ -338,10 +394,13 @@ onMounted(async () => {
   await nextTick()
   await loadGraphData()
   window.addEventListener('resize', handleResize)
+  window.addEventListener('theme-changed', handleThemeChange)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
+  window.removeEventListener('theme-changed', handleThemeChange)
+  if (pulseTimer) { clearInterval(pulseTimer); pulseTimer = null }
   if (chartInstance) {
     chartInstance.dispose()
     chartInstance = null
@@ -367,7 +426,7 @@ onBeforeUnmount(() => {
           <span class="kg-stat-label">已掌握</span>
         </div>
         <div class="kg-stat-item kg-stat--learning">
-          <span class="kg-stat-num">{{ stats.learning }}</span>
+          <span class="kg-stat-num">{{ stats.intermediate }}</span>
           <span class="kg-stat-label">学习中</span>
         </div>
         <div class="kg-stat-item kg-stat--weak">
@@ -405,15 +464,15 @@ onBeforeUnmount(() => {
             <div class="kg-detail-title-row">
               <span
                 class="kg-detail-mastery-dot"
-                :style="{ background: selectedMastery ? MASTERY_COLORS[selectedMastery.status] : '#9ca3af' }"
+                :style="{ background: selectedHeat ? selectedHeat.color : '#9ca3af' }"
               ></span>
               <h2 class="kg-detail-name">{{ selectedNode.name }}</h2>
               <span
-                v-if="selectedMastery"
+                v-if="selectedHeat"
                 class="kg-detail-mastery-tag"
-                :style="{ color: MASTERY_COLORS[selectedMastery.status], background: MASTERY_COLORS[selectedMastery.status] + '15' }"
+                :style="{ color: selectedHeat.color, background: selectedHeat.color + '15' }"
               >
-                {{ MASTERY_ICONS[selectedMastery.status] }} {{ MASTERY_LABELS[selectedMastery.status] }}
+                {{ HEAT_ICONS[selectedHeat.level] }} {{ HEAT_LEVELS[selectedHeat.level] }}
               </span>
             </div>
             <button class="kg-detail-close" @click="closeDetail" aria-label="关闭">×</button>
@@ -425,9 +484,10 @@ onBeforeUnmount(() => {
               <div class="kg-detail-meta">
                 <span class="kg-detail-chapter">{{ selectedNode.chapter }}</span>
                 <span
-                  v-if="selectedMastery && selectedMastery.stars > 0"
-                  class="kg-detail-stars"
-                >{{ '★'.repeat(selectedMastery.stars) }}{{ '☆'.repeat(5 - selectedMastery.stars) }}</span>
+                  v-if="selectedHeat && selectedHeat.mastery != null"
+                  class="kg-detail-mastery-pct"
+                  :style="{ color: selectedHeat.color }"
+                >掌握度 {{ Math.round(selectedHeat.mastery * 100) }}%</span>
               </div>
               <p class="kg-detail-desc">{{ selectedNode.description }}</p>
               <div v-if="selectedNode.keywords && selectedNode.keywords.length" class="kg-detail-keywords">
@@ -437,6 +497,14 @@ onBeforeUnmount(() => {
                   class="kg-keyword-chip"
                 >{{ kw }}</span>
               </div>
+            </div>
+
+            <!-- B4：薄弱节点立即诊断 CTA -->
+            <div v-if="selectedHeat && selectedHeat.level === 'weak'" class="kg-detail-section">
+              <button class="kg-weak-cta" @click="goDiagnose">
+                <span class="kg-weak-cta-icon">⚡</span>
+                <span>立即诊断此知识点</span>
+              </button>
             </div>
 
             <!-- 前置知识链 -->
@@ -455,9 +523,9 @@ onBeforeUnmount(() => {
                   <span class="kg-prereq-name">{{ item.node.name }}</span>
                   <span
                     class="kg-prereq-status"
-                    :style="{ color: MASTERY_COLORS[getNodeMastery(item.node, profileStore.profile).status] }"
+                    :style="{ color: getNodeHeat(item.node, profileStore.profile).color }"
                   >
-                    {{ MASTERY_ICONS[getNodeMastery(item.node, profileStore.profile).status] }}
+                    {{ HEAT_ICONS[getNodeHeat(item.node, profileStore.profile).level] }}
                   </span>
                 </div>
               </div>
@@ -735,10 +803,10 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-sm, 4px);
 }
 
-.kg-detail-stars {
-  font-size: 12px;
-  color: #ffd166;
-  letter-spacing: 1px;
+.kg-detail-mastery-pct {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .kg-detail-desc {
@@ -777,6 +845,35 @@ onBeforeUnmount(() => {
 
 .kg-detail-section-icon {
   color: var(--color-fg-muted, #9ca3af);
+}
+
+/* === B4 薄弱节点立即诊断 CTA === */
+.kg-weak-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #ff6b6b, #ff8e53);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md, 8px);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 14px rgba(255, 107, 107, 0.35);
+}
+
+.kg-weak-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.45);
+}
+
+.kg-weak-cta-icon {
+  font-size: 16px;
 }
 
 /* === 前置知识链 === */
