@@ -25,7 +25,9 @@ export const useDiagnosisStore = defineStore('diagnosis', {
     // v3.1: Agent API 调用状态
     loading: false,
     error: null,
-    lastReport: null  // { content, structured } 最近一次 Agent 返回
+    lastReport: null,  // { content, structured } 最近一次 Agent 返回
+    // P0-1/P0-2: 会话级按用户去重，避免每次路由 mount 重复拉取（登录态切换自动重拉）
+    _dbLoadedFor: null
   }),
 
   getters: {
@@ -103,6 +105,8 @@ export const useDiagnosisStore = defineStore('diagnosis', {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
+        // P0-1/P0-2: 同一用户会话内只拉一次（路由多次 mount 不重复请求）
+        if (this._dbLoadedFor === user.id) return
         const { data, error } = await supabase
           .from('diagnoses')
           .select('id, structured, score, created_at')
@@ -113,6 +117,8 @@ export const useDiagnosisStore = defineStore('diagnosis', {
           console.warn('[diagnosis] loadFromDB error:', error.message)
           return
         }
+        // P0-1/P0-2: 标记本用户已加载（含空结果场景，避免反复空查）
+        this._dbLoadedFor = user.id
         if (data && data.length > 0) {
           const dbRecords = data.map(row => {
             const s = row.structured || {}

@@ -5,6 +5,7 @@ import { usePracticeStore } from '@/stores/practice'
 import { useProfileStore } from '@/stores/profile'
 import { useMasteryData } from '@/composables/useMasteryData'
 import { useWrongBookStore } from '@/stores/wrongBook'
+import { useDiagnosisStore } from '@/stores/diagnosis'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { SEED_QUESTIONS } from '@/data/seedDemo'
 import { useAuthStore } from '@/stores/auth'
@@ -13,6 +14,7 @@ import AiGeneratedBadge from '@/components/AiGeneratedBadge.vue'
 const practiceStore = usePracticeStore()
 const profileStore = useProfileStore()
 const wbStore = useWrongBookStore()
+const diagStore = useDiagnosisStore()
 // A1: 薄弱点抽题源直读统一学情数据层（诊断唯一源），杜绝职业技能标签污染（Bug1）
 const mastery = useMasteryData()
 const route = useRoute()
@@ -35,6 +37,8 @@ const questionTypes = ['选择题', '填空题', '简答题', '计算题']
 const weakPoints = computed(() => mastery.weakPoints.value)
 
 onMounted(async () => {
+  // P0-1: 先从 DB 拉诊断历史，填充 latestDiagnosis/薄弱点（旧版 seeded 数据兜底）
+  try { await diagStore.loadFromDB() } catch (e) { /* silent */ }
   // F5/GWT#3: 支持从 /practice?topic=xxx 预填知识点（画像页薄弱/优势知识点跳转入口）
   const topicFromRoute = route.query.topic
   if (typeof topicFromRoute === 'string' && topicFromRoute.trim()) {

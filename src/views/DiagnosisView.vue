@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProfileStore } from '@/stores/profile'
 import { useDiagnosisStore } from '@/stores/diagnosis'
@@ -16,6 +16,11 @@ const diagnosisStore = useDiagnosisStore()
 const authStore = useAuthStore()
 // A1: 统一学情数据层 — 星图 / 根因链 / 分数均直读共享数据源（Bug2/A1-b）
 const mastery = useMasteryData()
+
+// P0-1: 进入诊断页先从 DB 拉历史，填充 latestDiagnosis（旧版 seeded 数据兜底加载链路）
+onMounted(async () => {
+  try { await diagnosisStore.loadFromDB() } catch (e) { /* silent */ }
+})
 
 // 是否有真实诊断数据（API 结果 / profile 能力星图 / 诊断历史记录）
 // 已登录用户无数据时显示空状态，不回退到种子 mock
