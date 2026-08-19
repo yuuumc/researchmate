@@ -48,7 +48,7 @@ const abilityStars = computed(() => {
 const strengths = computed(() => abilityStars.value.filter((a) => a.type === 'strength').slice(0, 3))
 // P2: /diagnosis 薄弱点对齐本次诊断 LLM 评分原始输出（不读历史星级、不过滤已掌握）
 // 与下方 4 层根因链同源（reportData.weak_points），保证 duo-card 与根因链数量/名称一致
-const weakPoints = computed(() => reportData.value?.weak_points || [])
+const weakPoints = computed(() => abilityStars.value.filter((a) => a.type === 'weak'))
 // 摘要数字用完整计数（不 slice），与星图一致
 const strengthsCount = computed(() => abilityStars.value.filter((a) => a.type === 'strength').length)
 // P2: 薄弱计数对齐本次诊断（与 duo-card 同源），非历史星级计数
@@ -152,7 +152,7 @@ function goJourney() {
           <div class="ov-score">
             <span class="ov-num">{{ overallLevel }}</span><span class="ov-unit">%</span>
           </div>
-          <div class="ov-hint">{{ strengthsCount }} 优势(累计) · {{ weakPointsCount }} 薄弱(本次)</div>
+          <div class="ov-hint">{{ strengthsCount }} 优势(累计) · {{ weakPointsCount }} 薄弱(累计)</div>
         </div>
         <div class="overview-card overview-card--subject">
           <div class="ov-label">SUBJECT</div>
@@ -218,13 +218,13 @@ function goJourney() {
             <span class="duo-icon">▼</span>
             <span class="duo-title">薄弱点</span>
             <span class="duo-en">Weak Points</span>
-            <span class="duo-source duo-source--current">本次诊断</span>
+            <span class="duo-source">累计星级</span>
           </div>
           <ul class="duo-list">
-            <li v-if="weakPoints.length === 0" class="duo-empty">本次诊断未识别薄弱点</li>
-            <li v-for="w in weakPoints" :key="w">
-              <span class="duo-name">{{ w }}</span>
-              <span class="duo-meta">本次诊断</span>
+            <li v-if="weakPoints.length === 0" class="duo-empty">暂无薄弱知识点</li>
+            <li v-for="w in weakPoints" :key="w.topic">
+              <span class="duo-name">{{ w.topic }}</span>
+              <span class="duo-meta">{{ w.star }}★ · {{ w.score }}分</span>
             </li>
           </ul>
         </div>
