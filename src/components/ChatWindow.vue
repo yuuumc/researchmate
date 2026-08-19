@@ -1,5 +1,5 @@
 <script setup>
-import { ref, nextTick, watch, computed, onMounted } from 'vue'
+import { ref, nextTick, watch, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { route } from '@/core/router'
 import { callChatWithMode } from '@/api/agent'
@@ -26,6 +26,7 @@ import AgentIcon from './AgentIcon.vue'
 import AgentTrace from './AgentTrace.vue'
 import AgentBootSequence from './AgentBootSequence.vue'
 import { bootShown, markBootShown } from '@/utils/bootOnce'
+import { consumePendingChatFocus, CHAT_FOCUS_EVENT } from '@/composables/useChatShortcut'
 
 const vueRoute = useRoute()
 
@@ -129,6 +130,22 @@ onMounted(() => {
   }
   refreshMonths()
   loadFeedback()
+
+  // 快捷键 `/`：跨页导航进入 /chat 时自动聚焦输入框
+  if (consumePendingChatFocus()) {
+    nextTick(() => textareaRef.value?.focus())
+  }
+})
+
+// 快捷键 `/`：已在本页时，AppLayout 派发事件 → 立即聚焦
+function _onChatFocusEvent() {
+  nextTick(() => textareaRef.value?.focus())
+}
+onMounted(() => {
+  window.addEventListener(CHAT_FOCUS_EVENT, _onChatFocusEvent)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener(CHAT_FOCUS_EVENT, _onChatFocusEvent)
 })
 
 // Agent Trace

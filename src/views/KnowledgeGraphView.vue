@@ -17,7 +17,7 @@
 //   ⑤ vite build 零错（无新依赖）
 // ============================================================
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import * as echarts from 'echarts'
 import { useProfileStore } from '@/stores/profile'
 import { useMasteryData } from '@/composables/useMasteryData'
@@ -39,6 +39,7 @@ function getChartTheme() {
 }
 
 const router = useRouter()
+const kgRoute = useRoute()
 const profileStore = useProfileStore()
 const mastery = useMasteryData()
 
@@ -108,6 +109,33 @@ async function loadGraphData() {
   if (graphEngine.value && !error.value) {
     await nextTick()
     renderChart()
+    applyDeepLinkFocus()
+  }
+}
+
+// === 全局搜索深链：从 ?focus=<nodeId> 选中并聚焦该知识点 ===
+function applyDeepLinkFocus() {
+  const focusId = kgRoute.query.focus
+  if (!focusId || !graphEngine.value || !chartInstance) return
+  // ECharts focusNodeAdjacency 需要节点在 data 数组中的数字索引
+  let dataIndex = -1
+  let idx = 0
+  for (const id of graphEngine.value.nodes.keys()) {
+    if (id === focusId) { dataIndex = idx; break }
+    idx++
+  }
+  const node = graphEngine.value.nodes.get(focusId)
+  if (!node || dataIndex < 0) return
+  selectedNode.value = node
+  try {
+    chartInstance.dispatchAction({
+      type: 'focusNodeAdjacency',
+      seriesIndex: 0,
+      dataIndex
+    })
+  } catch (e) {
+    // 深链聚焦失败不影响主图
+    console.warn('[KnowledgeGraphView] deep-link focus failed:', e)
   }
 }
 

@@ -8,11 +8,38 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useSyncStore } from '@/stores/sync'
 import { toggleTheme, getCurrentTheme } from '@/composables/useTheme'
+import GlobalSearchModal from '@/components/GlobalSearchModal.vue'
+import { triggerChatFocus } from '@/composables/useChatShortcut'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const syncStore = useSyncStore()
+
+// ---- 全局快捷键：Ctrl+K 全局搜索 ----
+const searchOpen = ref(false)
+function openSearch() {
+  searchOpen.value = true
+}
+function onSearchNavigate(to) {
+  searchOpen.value = false
+  if (!to) return
+  if (typeof to === 'string') {
+    router.push(to)
+  } else {
+    router.push(to)
+  }
+}
+
+// 判断当前事件目标是否为可输入元素（输入框内打 / 不应触发聚焦）
+function isTypingTarget(e) {
+  const t = e.target
+  if (!t) return false
+  const tag = t.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
+  if (t.isContentEditable) return true
+  return false
+}
 
 // ---- Sidebar collapse ----
 const COLLAPSE_KEY = 'yx-sidebar-collapsed'
@@ -45,6 +72,18 @@ function closeMobile() {
 }
 
 function onKeydown(e) {
+  // Ctrl+K / Cmd+K → 全局搜索
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+    e.preventDefault()
+    searchOpen.value = !searchOpen.value
+    return
+  }
+  // `/` → 聚焦聊天输入框（输入框内打 / 不触发；带修饰键不触发；搜索面板开启时不触发）
+  if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey && !searchOpen.value && !isTypingTarget(e)) {
+    e.preventDefault()
+    triggerChatFocus(router)
+    return
+  }
   if (e.key === 'Escape' && mobileOpen.value) {
     closeMobile()
   }
@@ -359,5 +398,8 @@ onBeforeUnmount(() => {
         ✦ 本平台内容由人工智能生成，仅供学习参考，请以官方信息为准
       </div>
     </div>
+
+    <!-- 全局搜索面板（Ctrl+K） -->
+    <GlobalSearchModal v-model:open="searchOpen" @navigate="onSearchNavigate" />
   </div>
 </template>
