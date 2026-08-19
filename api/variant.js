@@ -1,14 +1,16 @@
 // ============================================================
-// Vercel serverless function - 变式题生成（B3）
+// Vercel serverless function - 变式题生成（B3 v1.1 · prompt 模板化）
 // ============================================================
 // POST /api/variant
-// Body: { original_stem, knowledge_point, question_type, correct_answer, variant_count? }
-// Response: { variants: [{ stem, question_type, options, correct_answer, explanation, knowledge_point }] }
+// Body: { original_stem, knowledge_point, question_type, correct_answer, variant_count?, tier? }
+// Response: { variants: [{ stem, question_type, options, correct_answer, answer_numeric, answer_unit, explanation, knowledge_point, tier }] }
 //
 // 复用 chat.js 的 LLM provider 抽象 + CORS + 限流中间件
+// 变式 prompt 从 prompts/variant.md 加载（与 derivation.md 同模式，lib/prompt-loader.js）
 // ============================================================
 
 import { getProviderConfig, validateProviderConfig } from './llm-provider.js'
+import { loadPrompt, substitute } from '../lib/prompt-loader.js'
 import { applyCors, getClientIp, checkRateLimit, RATE_LIMIT_WINDOW_MS } from './_middleware.js'
 
 const DEFAULT_MAX_DURATION_MS = 55000
@@ -65,7 +67,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'method_not_allowed' })
   }
 
-  const { original_stem, knowledge_point, question_type, correct_answer, variant_count = 1 } = req.body || {}
+  const {
+    original_stem,
+    knowledge_point,
+    question_type,
+    correct_answer,
+    variant_count = 1,
+    tier = 'intermediate',
+  } = req.body || {}
 
   // 参数校验
   if (!original_stem || !knowledge_point || !question_type || !correct_answer) {
@@ -76,9 +85,29 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'invalid_question_type', message: 'question_type 必须为 fill 或 choice' })
   }
 
+  if (!['foundational', 'intermediate', 'advanced'].includes(tier)) {
+    return res.status(400).json({ error: 'invalid_tier', message: 'tier 必须为 foundational / intermediate / advanced' })
+  }
+
   if (!isKnowledgeAllowed(knowledge_point)) {
     return res.status(400).json({ error: 'knowledge_point_not_allowed', message: '知识点不在白名单内' })
   }
+
+  // 加载变式 prompt（从 prompts/variant.md，与 derivation 同模式）
+  const template = loadPrompt('variant')
+  if (!template) {
+    console.error('[api/variant] prompt file not found: prompts/variant.md')
+    return res.status(500).json({ error: 'prompt_not_found' })
+  }
+
+  const systemPrompt = substitute(template, {
+    original_stem,
+    knowledge_point,
+    question_type,
+    correct_answer,
+    variant_count,
+    tier,
+  })
 
   // LLM provider 配置
   const providerConfig = getProviderConfig()
@@ -86,9 +115,6 @@ export default async function handler(req, res) {
   if (!valid) {
     return res.status(500).json({ error: 'provider_not_configured', message: providerError })
   }
-
-  // 构建 prompt
-  const prompt = buildVariantPrompt({ original_stem, knowledge_point, question_type, correct_answer, variant_count })
 
   try {
     const controller = new AbortController()
@@ -103,8 +129,8 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: providerConfig.model,
         messages: [
-          { role: 'system', content: '你是半导体物理与器件考研命题专家。严格按 JSON 格式输出，不要输出任何其他内容。' },
-          { role: 'user', content: prompt },
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `请根据原题生成 ${variant_count} 道同知识点的变式题。` },
         ],
         temperature: 0.7,
         max_tokens: 2000,
@@ -159,54 +185,6 @@ export default async function handler(req, res) {
 
 // ---- 内联工具函数（避免 import 路径问题） ----
 
-function buildVariantPrompt(params) {
-  const {
-    original_stem = '',
-    knowledge_point = '',
-    question_type = '',
-    correct_answer = '',
-    variant_count = 1,
-  } = params
-
-  return `你是一名「半导体物理与器件」考研命题专家。你的任务：根据一道原题，生成 ${variant_count} 道考查**同一知识点**的变式题，供学生巩固练习。
-
-## 输入
-
-- 原题题干：${original_stem}
-- 知识点：${knowledge_point}
-- 题型：${question_type}（choice=选择题 / fill=填空题）
-- 原题正确答案：${correct_answer}
-- 生成数量：${variant_count}
-
-## 变式要求
-
-1. **同知识点**：变式题考查的知识点与原题一致，且必须属于考纲白名单。
-2. **非复述**：至少使用一种变换——换材料/情境、换数值参数、换设问角度。
-3. **同题型**：输出的 question_type 必须与原题完全相同。
-4. **答案与解析**：每题给出确定无误的 correct_answer 与 explanation。
-
-## 题型专属规则
-
-- **fill**：correct_answer 必须是唯一确定的数值或短语。
-- **choice**：提供 4 个选项；correct_answer 为 A/B/C/D。
-
-## 输出格式
-
-只输出一个 JSON 对象，第一个字符是 \`{\`，最后一个字符是 \`}\`。不输出 markdown 围栏或多余文字。
-
-{"variant_questions":[{"stem":"题干","question_type":"${question_type}","options":["A. ...","B. ...","C. ...","D. ..."],"correct_answer":"...","explanation":"...","knowledge_point":"${knowledge_point}"}]}
-
-fill 题的 options 输出 null。
-
-## 现在开始
-
-原题题干：${original_stem}
-知识点：${knowledge_point}
-题型：${question_type}
-正确答案：${correct_answer}
-生成数量：${variant_count}`
-}
-
 function extractVariants(content) {
   if (!content || typeof content !== 'string') return []
 
@@ -248,13 +226,20 @@ function extractVariants(content) {
     const question_type = String(v.question_type || '').trim().toLowerCase()
     const correct_answer = String(v.correct_answer || '').trim()
     if (!stem || !question_type || !correct_answer) return null
+    // B3 v1.1：透传 answer_numeric / answer_unit / tier，供 grading.js 数值判分与档位校验
+    const answer_numeric = v.answer_numeric != null ? String(v.answer_numeric).trim() : null
+    const answer_unit = v.answer_unit != null ? String(v.answer_unit).trim() : null
+    const vTier = v.tier != null ? String(v.tier).trim().toLowerCase() : null
     return {
       stem,
       question_type,
       options: question_type === 'choice' ? (Array.isArray(v.options) ? v.options.map(o => String(o).trim()) : []) : null,
       correct_answer,
+      answer_numeric,
+      answer_unit,
       explanation: String(v.explanation || '').trim(),
       knowledge_point: String(v.knowledge_point || '').trim(),
+      tier: vTier,
     }
   }).filter(Boolean)
 }

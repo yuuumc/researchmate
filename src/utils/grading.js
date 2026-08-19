@@ -2,6 +2,8 @@
 // 共享判分工具（T0-1 题库答案硬伤 + T0-2 填空判定宽松化）
 // ============================================================
 // practice.js / diagnosisSession.js 共用，确保诊断与练习判分一致
+// B3 升级：gradeObjective 优先读 question.answer_numeric 做数值判分，
+//         容差改为 abs_tol=1 / rel_tol=0.05（替换原 round 启发式）
 // ============================================================
 
 // #5 题库答案订正：已知的错误题（客户端覆盖，待 DB 修正后移除）
@@ -79,7 +81,25 @@ export function normalizeFillText(s) {
 }
 
 /**
+ * 从文本中提取首个数值（支持科学计数法，如 2.4e13 / -3.0E-5）
+ * B3 修复：原 /[^0-9.\-]/g 会把 'e'/'E' 当非数字删掉，2.5e13→2.513 导致数值失真。
+ * @param {string} s
+ * @returns {number}
+ */
+function extractNumber(s) {
+  const m = String(s).match(/[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?/)
+  return m ? parseFloat(m[0]) : NaN
+}
+
+/**
  * 客观题判分（选择题 + 填空题）
+ *
+ * B3 升级（fill 路径）：
+ * 1. 优先读 question.answer_numeric（v1.1 契约）做数值判分，跳过文本正则提取；
+ * 2. 容差改为 abs_tol=1 || rel_tol=0.05（abs|c-u|≤1 || abs|c-u|/max(|c|,1e-10)≤0.05），
+ *    替换原 Math.round 启发式（round 对大数值和小数值都不准）。
+ * 3. 数值提取改用科学计数法感知的 extractNumber（修复 2.5e13 被截断为 2.513 的 bug）。
+ * 向后兼容：answer_numeric 缺失时回退到从 correct_answer 文本提取数值（原 v1.0 行为）。
  */
 export function gradeObjective(question, userAnswer) {
   if (!userAnswer || !question.correct_answer) return false
@@ -99,11 +119,16 @@ export function gradeObjective(question, userAnswer) {
   const nu = normalizeFillText(user)
   if (nc === nu) return true
 
-  const numC = parseFloat(nc.replace(/[^0-9.\-]/g, ''))
-  const numU = parseFloat(nu.replace(/[^0-9.\-]/g, ''))
+  // B3: 优先用 answer_numeric 做数值判分（v1.1 契约），缺失则从文本提取
+  const ansNum = question.answer_numeric != null ? parseFloat(String(question.answer_numeric)) : NaN
+  const numC = !isNaN(ansNum) ? ansNum : extractNumber(nc)
+  const numU = extractNumber(nu)
   if (!isNaN(numC) && !isNaN(numU)) {
-    if (Math.abs(numC - numU) <= 1) return true
-    if (Math.round(numC) === Math.round(numU)) return true
+    const absDiff = Math.abs(numC - numU)
+    // abs_tol=1
+    if (absDiff <= 1) return true
+    // rel_tol=0.05：abs|c-u| / max(|c|, 1e-10) ≤ 0.05
+    if (absDiff / Math.max(Math.abs(numC), 1e-10) <= 0.05) return true
   }
   return false
 }
