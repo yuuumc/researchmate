@@ -2,9 +2,12 @@
 // ============================================================
 // B5 架构看板 — 多 Agent 架构透明化展示页
 // 数据源：GET /api/agent/traces（agent_traces 表，真实任务流落库，非 mock）
-// 展示：全览统计 + Agent 角色卡 + 任务流转时间线（产出物可点击/内联展开）
+// 展示：全览统计 + 学情分析四卡片 + Agent 角色卡 + 任务流转时间线
+// B5 增强：新增「学情分析」区段（掌握度雷达 / 活跃度趋势 / 薄弱点分布 / 进步轨迹）
+//   四卡片各自独立加载（defineAsyncComponent 懒加载，不进主 bundle）
+//   深色模式与 B4 主题同源（useChartTheme 消费全局 CSS 变量）
 // ============================================================
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
 import { fetchAgentTraces } from '@/api/agent'
 import {
   normalizeTrace,
@@ -17,6 +20,12 @@ import {
   roleMeta,
   extractLinks
 } from '@/utils/architecture'
+
+// B5 学情分析四卡片——懒加载，不进主 bundle
+const MasteryRadarCard = defineAsyncComponent(() => import('@/components/dashboard/MasteryRadarCard.vue'))
+const ActivityTrendCard = defineAsyncComponent(() => import('@/components/dashboard/ActivityTrendCard.vue'))
+const WeakPointCard = defineAsyncComponent(() => import('@/components/dashboard/WeakPointCard.vue'))
+const ProgressTrajectoryCard = defineAsyncComponent(() => import('@/components/dashboard/ProgressTrajectoryCard.vue'))
 
 const loading = ref(false)
 const error = ref('')
@@ -116,6 +125,15 @@ onMounted(load)
           <div class="stat-value stat-value--sm">{{ stats.lastCallAt ? fmtTime(stats.lastCallAt) : '—' }}</div>
           <div class="stat-label">最近一次调用</div>
         </div>
+      </div>
+
+      <!-- B5 学情分析四卡片 -->
+      <h2 class="arch-section-title">学情分析</h2>
+      <div class="dash-grid">
+        <Suspense><MasteryRadarCard /><template #fallback><div class="dash-card dash-card--loading"><span class="dash-card__skeleton-text">加载掌握度雷达…</span></div></template></Suspense>
+        <Suspense><ActivityTrendCard /><template #fallback><div class="dash-card dash-card--loading"><span class="dash-card__skeleton-text">加载活跃度趋势…</span></div></template></Suspense>
+        <Suspense><WeakPointCard /><template #fallback><div class="dash-card dash-card--loading"><span class="dash-card__skeleton-text">加载薄弱点分布…</span></div></template></Suspense>
+        <Suspense><ProgressTrajectoryCard /><template #fallback><div class="dash-card dash-card--loading"><span class="dash-card__skeleton-text">加载进步轨迹…</span></div></template></Suspense>
       </div>
 
       <!-- Agent 角色卡 -->
@@ -507,6 +525,35 @@ onMounted(load)
   border: 1px solid var(--color-border-subtle, #e5e7eb);
   color: var(--text-secondary, #6b7280);
   font-family: var(--font-mono, monospace);
+}
+
+/* === B5 学情分析栅格 === */
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 28px;
+}
+@media (max-width: 640px) {
+  .dash-grid { grid-template-columns: 1fr; }
+}
+.dash-card--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  border: 1px solid var(--color-border-subtle, #e5e7eb);
+  border-radius: 12px;
+  background: var(--color-bg-elevated, #ffffff);
+}
+.dash-card__skeleton-text {
+  font-size: 13px;
+  color: var(--text-secondary, #94a3b8);
+  animation: dash-pulse 1.5s ease-in-out infinite;
+}
+@keyframes dash-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
 }
 
 /* === 页脚 === */
