@@ -24,7 +24,7 @@ const SEGMENTS = 30            // segments 网格列数（demo 量级，晶粒�
 const MAX_VERT_DEG = 9         // 垂直旋转钳制（对齐演示版 9°）
 const DRAG_SENS = 20           // dragSensitivity
 const DRAG_DAMP = 3.2          // dragDampening（对齐演示版 3.2，0-5 量纲）
-const CLICK_SLOP_PX = 5        // 点击/拖拽判定阈值：位移 < 5px 视为静止点击
+const CLICK_SLOP_PX = 8        // 点击/拖拽判定阈值：位移 < 8px 视为静止点击（放宽，桌面端更容错）
 const FIT = 0.8                // 充盈度（demo 口径）
 const FIT_BASIS = 'width'      // fitBasis：按容器宽度算半径，让球左右近满幅
 const MIN_RADIUS = 400         // minRadius 调大，小球也饱满（demo 口径）
@@ -45,6 +45,7 @@ let inertiaRAF: number | null = null
 let autoRAF: number | null = null
 let lastDragEndAt = 0
 let moveBuf: { t: number; x: number; y: number }[] = []
+let pointerDownTarget: HTMLElement | null = null  // C2 fix: pointerdown actual hit element
 let resizeObserver: ResizeObserver | null = null
 let radius = 400
 
@@ -120,19 +121,19 @@ function label(topic: string) {
   s = s.split(/[：:]/)[0].trim()
   // 去填充词「的」
   s = s.replace(/的/g, '')
-  // 5 字以内整体保留（载流子输运）
-  if (s.length <= 5) return s
+  // 6 字以内整体保留（载流子输运、载流子统计、PN结、MOS结构）
+  if (s.length <= 6) return s
   // 并列结构取首段：PN结能带图与内建电场 → PN结能带图；BJT 电流增益与频率特性 → BJT 电流增益
   s = s.split(/[与和及、]/)[0].trim()
-  if (s.length <= 8) return s
+  if (s.length <= 10) return s
   // 去尾部通用词以压缩（补「输运」「特性」「图」「结」等）
-  const stripped = s.replace(/(基础|原理|理论|性质|电路|效应|物理|技术|方法|分析|设计|系统|结构|模型|定律|定理|方程|函数|信号|器件|工艺|材料|特性|输运|图|结)$/, '')
+  const stripped = s.replace(/(基础|原理|理论|性质|电路|效应|物理|技术|方法|分析|设计|系统|结构|模型|定律|定理|方程|函数|信号|器件|工艺|材料|特性|输运|图|结|曲线|工作区|区|参数|计算|测量|测试|性能|指标|条件|状态|模式)$/, '')
   if (stripped.length >= 2) s = stripped
-  if (s.length <= 8) return s
-  // 中英混合：保留英文 token + 中文核心（最多 4 字）
+  if (s.length <= 10) return s
+  // 中英混合：保留英文 token + 中文核心（最多 6 字，放宽 4→6）
   const m = s.match(/^([A-Za-z][A-Za-z0-9]*)\s*(.+)$/)
-  if (m) return m[1] + ' ' + m[2].replace(/\s+/g, '').slice(0, 4)
-  return s.slice(0, 8)
+  if (m) return m[1] + ' ' + m[2].replace(/\s+/g, '').slice(0, 6)
+  return s.slice(0, 10)
 }
 
 function masteryText(type: string) {
@@ -218,6 +219,7 @@ function onPointerDown(e: PointerEvent) {
   startRotRef.y = rotationRef.y
   startPosRef = { x: e.clientX, y: e.clientY }
   moveBuf = [{ t: performance.now(), x: e.clientX, y: e.clientY }]
+  pointerDownTarget = e.target as HTMLElement | null
   try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId) } catch (_) { /* noop */ }
 }
 function onPointerMove(e: PointerEvent) {
@@ -253,14 +255,15 @@ function onPointerUp(e: PointerEvent) {
   // 静止点击：位移 < 阈值视为点击，命中晶粒则跳转 /practice?topic=xxx
   // pointer capture 把 pointerup 重定向到 main，故用 elementFromPoint 取实际命中元素
   if (isClick) {
-    const hit = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null
-    const itemEl = hit?.closest?.('.item') as HTMLElement | null
+    const hitEl = pointerDownTarget || (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)
+    const itemEl = hitEl?.closest?.('.item') as HTMLElement | null
     const topic = itemEl?.getAttribute('data-src') || ''
     if (topic && itemEl && !itemEl.classList.contains('is-empty')) {
       emit('tile-click', topic)
       router.push({ path: '/practice', query: { topic } })
     }
   }
+  pointerDownTarget = null
   startPosRef = null
 }
 function startInertia(vx: number, vy: number) {

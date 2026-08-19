@@ -150,7 +150,7 @@ watch(activityData, () => nextTick(() => renderChart()), { deep: true })
       <span class="dash-card__icon">📈</span>
       <div>
         <div class="dash-card__title">学习活跃度趋势</div>
-        <div class="dash-card__sub">⚠️ 降级：诊断活动频率 + 练习次数</div>
+        <div class="dash-card__sub">学习活动频率（诊断+练习）</div>
       </div>
     </div>
     <div v-if="hasData" ref="chartRef" class="dash-card__chart"></div>
