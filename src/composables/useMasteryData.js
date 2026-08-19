@@ -132,15 +132,20 @@ export function useMasteryData() {
       return null
     }
 
+    // P0-1 compat: old seed data may use weak_topics instead of weak_points, and lack chain layers
+    const normalizedWeakPoints = (s.weak_points || s.weak_topics || d?.weak_points || [])
+      .map((p) => (typeof p === 'object' ? p.knowledge_point || p.reason || p.topic || JSON.stringify(p) : p))
+      .filter(Boolean)
+    const hasChainData = (s.direct_causes?.length || 0) + (s.middle_causes?.length || 0) + (s.root_causes?.length || 0) > 0
+
     return {
       score: typeof s.score === 'number' ? s.score : (d?.score ?? '—'),
       subject: s.subject || d?.subject || '—',
-      weak_points: (s.weak_points || d?.weak_points || [])
-        .map((p) => (typeof p === 'object' ? p.knowledge_point || p.reason || JSON.stringify(p) : p)),
-      direct_causes: s.direct_causes || [],
-      middle_causes: s.middle_causes || [],
-      root_causes: s.root_causes || d?.root_causes || [],
-      remediation: s.remediation_path || ''
+      weak_points: normalizedWeakPoints,
+      direct_causes: hasChainData ? (s.direct_causes || []) : normalizedWeakPoints.map((t) => `${t}相关知识点掌握不牢`),
+      middle_causes: hasChainData ? (s.middle_causes || []) : normalizedWeakPoints.map((t) => `${t}上游基础概念断层`),
+      root_causes: hasChainData ? (s.root_causes || d?.root_causes || []) : normalizedWeakPoints.map((t) => `${t}底层概念薄弱`),
+      remediation: s.remediation_path || (hasChainData ? '' : '建议针对以上薄弱知识点进行专项复习与推导练习')
     }
   })
 

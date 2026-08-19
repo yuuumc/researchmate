@@ -121,7 +121,9 @@ export const useDiagnosisStore = defineStore('diagnosis', {
               timestamp: row.created_at,
               score: row.score ?? s.score ?? null,
               subject: s.subject || '',
-              weak_points: Array.isArray(s.weak_points) ? s.weak_points : [],
+              weak_points: Array.isArray(s.weak_points) ? s.weak_points : (Array.isArray(s.weak_topics) ? s.weak_topics : []),
+              direct_causes: Array.isArray(s.direct_causes) ? s.direct_causes : [],
+              middle_causes: Array.isArray(s.middle_causes) ? s.middle_causes : [],
               root_causes: s.root_causes || s.direct_causes || [],
               raw_report: '',
               topics_snapshot: [],
@@ -137,6 +139,25 @@ export const useDiagnosisStore = defineStore('diagnosis', {
           // OB-1: 按时间升序排列，确保 latest getter（末位）= 最新诊断记录（修复 RC-2 顺序倒置）
           this.history.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
           this.persist()
+
+          // P0-2: Backfill vector_memory from loaded diagnosis records (seeded data doesn't write to localStorage)
+          for (const rec of dbRecords) {
+            try {
+              const subject = rec.subject || '未指定学科'
+              const scorePart = typeof rec.score === 'number' ? `考了${rec.score}分` : '诊断'
+              const wps = Array.isArray(rec.weak_points) ? rec.weak_points : []
+              const weakPart = wps.length > 0 ? `薄弱点:${wps.join('、')}` : '无明显薄弱'
+              const memoryText = `${subject}${scorePart}，${weakPart}`
+              addMemory('diagnosis', memoryText, {
+                score: rec.score,
+                subject: rec.subject,
+                weak_points: wps,
+                root_causes: rec.root_causes
+              })
+            } catch (e) {
+              console.warn('[diagnosis] addMemory backfill failed:', e.message)
+            }
+          }
         }
       } catch (e) {
         console.warn('[diagnosis] loadFromDB failed:', e)
