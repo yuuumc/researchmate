@@ -20,6 +20,7 @@ import { realListClasses } from '@/services/teacher'
 import { storage } from '@/utils/storage'
 import { useProfileStore } from '@/stores/profile'
 import { useDiagnosisStore } from '@/stores/diagnosis'
+import { useSyncStore } from '@/stores/sync'
 import { loadProfile } from '@/services/profileService'
 
 const GUEST_STORAGE_KEY = 'researchmate.guest'
@@ -279,6 +280,9 @@ export const useAuthStore = defineStore('auth', {
             console.info('[auth] profile hydrated from latest diagnosis')
           }
         }
+
+        // P0-fix: pullProfile success = device in sync with cloud, mark synced
+        useSyncStore().markSynced()
       } catch (e) {
         console.warn('[auth] pullProfile failed:', e)
       }
