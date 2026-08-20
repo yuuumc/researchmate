@@ -134,6 +134,7 @@ async function handleComplete() {
     // 保存 profile + 标记向导完成
     const profileData = {
       nickname: form.value.nickname.trim(),
+      name: form.value.nickname.trim(),
       target_school: form.value.target_school.trim(),
       target_major: form.value.target_major,
       exam_year: Number(form.value.exam_year),
@@ -245,6 +246,8 @@ onMounted(async () => {
           <input
             v-model="form.nickname"
             class="yx-input"
+            name="nickname"
+            autocomplete="nickname"
             placeholder="如：小明"
             maxlength="20"
           />
@@ -263,6 +266,7 @@ onMounted(async () => {
             v-model="form.target_school"
             class="yx-input"
             name="target_school"
+            autocomplete="off"
             placeholder="如：东南大学"
             list="school-list"
           />
