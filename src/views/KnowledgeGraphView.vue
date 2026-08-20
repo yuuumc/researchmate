@@ -110,7 +110,8 @@ async function loadGraphData() {
     await nextTick()
     renderChart()
     applyDeepLinkFocus()
-    loading.value = false       // 图表绘制完成后再隐藏骨架屏
+    // layoutAnimation: true 时力导向会动画收敛，等初步收敛后再隐藏骨架屏
+    setTimeout(() => { if (!error.value) loading.value = false }, 600)
   }
 }
 
@@ -169,10 +170,7 @@ function renderChart() {
     nodes.push({
       id: node.id,
       name: node.name,
-      // 节点尺寸放大到可清晰辨认：薄弱/已掌握更醒目，其余保证最小可见尺寸
-      symbolSize: (h.level === 'weak' || h.level === 'mastered')
-        ? Math.max(48, 38 + connections * 6)
-        : Math.max(40, 30 + connections * 5),
+      symbolSize: 28 + connections * 4,
       category: HEAT_LEVELS[h.level],
       value: h.mastery != null ? Number((h.mastery * 100).toFixed(0)) : 0,
       itemStyle: {
@@ -291,7 +289,7 @@ function renderChart() {
         edgeLength: [80, 140],
         gravity: 0.08,
         friction: 0.6,
-        layoutAnimation: false
+        layoutAnimation: true
       },
       emphasis: {
         focus: 'adjacency',
