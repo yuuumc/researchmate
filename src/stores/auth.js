@@ -142,6 +142,7 @@ export const useAuthStore = defineStore('auth', {
       }
       // 状态同步由 onAuthStateChange → bindAuthUser 触发；这里额外主动拉一次班级
       if (data && data.user) {
+        this.setSession(data.user)  // FIX(8/20): set user before pullProfile to avoid race condition
         await this.loadTeacherClasses()
         await this.pullProfile()
       }
@@ -165,6 +166,7 @@ export const useAuthStore = defineStore('auth', {
       }
       // 状态同步由 onAuthStateChange → bindAuthUser 触发；这里额外主动拉一次班级
       if (data && data.user) {
+        this.setSession(data.user)  // FIX(8/20): set user before pullProfile to avoid race condition
         await this.loadTeacherClasses()
         await this.pullProfile()
       }

@@ -39,6 +39,7 @@ async function bootstrapAuth() {
       auth.loadTeacherClasses().catch((e) => {
         console.warn('[main] bootstrap loadTeacherClasses 失败：', e)
       })
+      auth.pullProfile().catch((e) => console.warn('[main] bootstrap pullProfile 失败：', e))
     }
   } catch (e) {
     console.error('[main] bootstrap getSession 失败：', e)
@@ -46,13 +47,16 @@ async function bootstrapAuth() {
     setAuthReady()
   }
 
-  supabase.auth.onAuthStateChange((_event, session) => {
+  supabase.auth.onAuthStateChange((event, session) => {
     const u = session?.user || null
     auth.setSession(u)
     if (auth.isAuthenticated) {
       auth.loadTeacherClasses().catch((e) => {
         console.warn('[main] onAuthStateChange loadTeacherClasses 失败：', e)
       })
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+        auth.pullProfile().catch((e) => console.warn('[main] onAuthStateChange pullProfile 失败：', e))
+      }
     } else {
       auth.clearSession()
     }
