@@ -37,7 +37,7 @@ import { safeParseJSON } from '@/utils/validator'
 import { useTraceStore } from '@/stores/trace'
 import { callTool, getToolSchemas } from './tools'
 import { parseIntentResult } from './tools/intentParser'
-import { detectEmotionSignal } from './emotionGuard'
+import { detectEmotionSignal, CRISIS_SAFETY_RESPONSE } from './emotionGuard'
 
 // 意图识别 Prompt（P0-2 D3：可选工具调用 + 解析兜底）
 // 动态注入工具 schema，LLM 可选返回 {intent, tool, tool_args}
@@ -176,6 +176,41 @@ export async function route(userInput, options = {}) {
     console.warn('[router] memory recall failed:', e.message)
     profile.recent_memories = []
     traceStore.updateStep(memoryStepIdx, 'error', { error: e.message })
+  }
+
+  // P0 危机短路（8/20）：crisis 信号命中时，绕过 LLM（intent 识别 + tutor 预热全部跳过），
+  // 直接返回 prompt 5.3 固定安全话术。
+  // 根因：DeepSeek 安全过滤拦截自残/自杀内容 → upstream_error 2/2 失败，
+  //       emotionGuard 正确拦截了但 tutor LLM 调用直接失败。危机回复必须硬编码。
+  if (emotionSignal.hit && emotionSignal.level === 'crisis') {
+    const crisisStepIdx = traceStore.addStep('router', '危机安全协议（硬编码话术，绕过 LLM）')
+    // 流式输出（保持 SSE UI 逐字效果，chunk 格式 { delta: string }）
+    if (onToken) {
+      const _chunks = CRISIS_SAFETY_RESPONSE.match(/[^。\n]*[。\n]?/g)?.filter(Boolean) || [CRISIS_SAFETY_RESPONSE]
+      for (const _chunk of _chunks) {
+        onToken({ delta: _chunk })
+        await new Promise(r => setTimeout(r, 30))
+      }
+    }
+    traceStore.updateStep(crisisStepIdx, 'done', {
+      detail: `危机信号「${emotionSignal.keyword}」-> 硬编码安全话术（4 条热线）`
+    })
+    // 画像更新（安全为先，记录危机交互）
+    const crisisUpdateIdx = traceStore.addStep('profile_update', '更新学生画像…')
+    try {
+      updateProfileAfterResponse('concept', { content: CRISIS_SAFETY_RESPONSE, crisis: true }, profile)
+      traceStore.updateStep(crisisUpdateIdx, 'done', { detail: '画像已同步（危机安全协议）' })
+    } catch (e) {
+      traceStore.updateStep(crisisUpdateIdx, 'error', { error: e.message })
+    }
+    traceStore.endSession()
+    return {
+      intent: 'concept',
+      agent: 'tutor',
+      content: CRISIS_SAFETY_RESPONSE,
+      crisis: true,
+      error: false
+    }
   }
 
   // 2. v1.5 升级：意图识别 + tutor 预热 并行

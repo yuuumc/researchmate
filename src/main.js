@@ -19,6 +19,7 @@ import { useAuthStore } from './stores/auth'
 import { supabase, isSupabaseConfigured } from './services/supabase'
 import { setAuthReady } from './utils/authReady'
 import { injectSeedData } from './data/seedDemo'
+import { seedDemoMemories } from '@/utils/vectorMemory'
 import { initTheme } from './composables/useTheme'
 import { migrateStorageKeys, migrateIndexedDB } from './utils/migrateStorage'
 
@@ -78,6 +79,8 @@ async function bootstrap() {
   migrateIndexedDB().catch((e) => console.error('[main] IndexedDB migration failed:', e))
   initTheme()
   await bootstrapAuth()
+  // P0 种入 MOSFET 演示记忆（幂等，全用户，已存在则跳过）
+  try { seedDemoMemories() } catch (e) { console.warn('[main] demo memory seed failed:', e) }
   // T0-4: 仅未登录用户注入种子数据，防止跨账号缓存泄漏
   if (!auth.isAuthenticated) {
     try { injectSeedData() } catch (e) { console.warn('[main] 种子数据注入失败：', e) }

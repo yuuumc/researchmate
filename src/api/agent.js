@@ -12,6 +12,7 @@
 
 import axios from 'axios'
 import { recordAgentTrace, fetchAgentTraces as fetchTracesFromDB } from '@/services/agentTrace'
+import { detectEmotionSignal, CRISIS_SAFETY_RESPONSE } from '@/core/emotionGuard'
 
 const client = axios.create({
   headers: { 'Content-Type': 'application/json' },
@@ -68,6 +69,19 @@ export async function callAgent(action, input = {}) {
  */
 export async function callChatWithMode(userInput, opts = {}) {
   const { mode, profile = {}, onToken = null, signal = null, history = [] } = opts
+
+  // P0 危机短路（8/20）：crisis 信号命中时，绕过 /api/chat + LLM，直接返回固定安全话术
+  const _emotionSignal = detectEmotionSignal(userInput)
+  if (_emotionSignal.hit && _emotionSignal.level === 'crisis') {
+    if (onToken) {
+      const _chunks = CRISIS_SAFETY_RESPONSE.match(/[^。\n]*[。\n]?/g)?.filter(Boolean) || [CRISIS_SAFETY_RESPONSE]
+      for (const _chunk of _chunks) {
+        onToken({ delta: _chunk })
+        await new Promise(r => setTimeout(r, 30))
+      }
+    }
+    return CRISIS_SAFETY_RESPONSE
+  }
 
   const body = { userInput, options: { stream: true } }
   if (mode) {

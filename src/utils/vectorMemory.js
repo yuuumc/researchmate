@@ -241,3 +241,24 @@ export function getMemoryStats() {
     newest
   }
 }
+
+
+// ============================================================
+// P0 演示记忆种入（8/20）：为演示场景种入 MOSFET 相关情景记忆
+// 让 "MOS 管的开启电压" 查询能召回个人记忆（三层记忆创新性展示）
+// 幂等：已存在 MOSFET 记忆时不重复种入
+// ============================================================
+export function seedDemoMemories() {
+  if (!hasLocalStorage()) return false
+
+  const memories = loadRaw()
+  const hasMOSFET = memories.some(m => m && m.text && m.text.includes('MOSFET'))
+  if (hasMOSFET) return false  // 已种入，跳过
+
+  // PM 指定记忆文本（与演示查询 "MOS 管的开启电压" 有充分 bigram 重叠）
+  addMemory('concept', '学习 MOSFET 阈值电压时卡在氧化层电容计算，Cox = εox/tox 公式推导不熟', { source: 'demo_seed' })
+  addMemory('diagnosis', 'MOS 管开启电压 Vth 与衬底掺杂浓度关系掌握薄弱，需要加强练习', { source: 'demo_seed' })
+
+  console.info('[vectorMemory] Demo MOSFET memories seeded (2 items)')
+  return true
+}

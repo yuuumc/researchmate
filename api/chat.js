@@ -47,6 +47,37 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'missing_userInput' })
   }
 
+  // P0 危机短路（8/20 服务端安全网）：检测到危机信号时，不调 LLM，直接返回固定安全话术
+  // 根因：DeepSeek 安全过滤拦截自残/自杀内容 → upstream_error。emotionGuard 客户端
+  //       已做短路，此处为 callChatWithMode / 直接调 /api/chat 的服务端兜底。
+  //       话术与 src/prompts/v2/tutor/student.md §5.3 逐字一致。
+  const _CRISIS_KW = [
+    "不想活","想死","想消失","活着没意思","活着没什么意思","想伤害自己",
+    "不想存在","了结自己","自杀","自残","自伤","撑不下去","撑不下去了",
+    "没有希望","没希望了","没有人在意","没有意义","一切都没意义",
+    "想解脱","不如消失","不想醒来"
+  ]
+  const _CRISIS_RESP = '我听到你了。你现在愿意说出来，这本身就很勇敢。你的感受很重要，此刻的情绪不是软弱，也不是你一个人该独自扛的事。\n\n我只是一个学习助手，没办法代替专业的人陪着你，但有人可以。请你现在就联系下面任意一条热线，他们 24 小时都在，免费、保密：\n- 全国心理援助热线：12356\n- 北京市心理援助热线：010-82951332（手机）/ 800-810-1117（座机），24 小时\n- 也可以拨打当地 12320 卫生热线转心理援助，或前往学校心理咨询中心 / 最近医院的精神心理科。\n\n如果你觉得此刻就有危险，请立刻拨打 120 或 110，或告诉身边一个你信任的人。你不是麻烦，他们会帮你。'
+  const _crisisKw = _CRISIS_KW.find(kw => userInput.includes(kw))
+  if (_crisisKw) {
+    console.warn('[api/chat] crisis signal detected (' + _crisisKw + '), returning hardcoded safety response')
+    if (options.stream === true) {
+      res.setHeader('Content-Type', 'text/event-stream; charset=utf-8')
+      res.setHeader('Cache-Control', 'no-cache, no-transform')
+      res.setHeader('Connection', 'keep-alive')
+      res.setHeader('X-Accel-Buffering', 'no')
+      res.status(200)
+      if (typeof res.flushHeaders === 'function') res.flushHeaders()
+      const _chunks = _CRISIS_RESP.match(/[^。\n]*[。\n]?/g) || [_CRISIS_RESP]
+      for (const _ch of _chunks) {
+        if (_ch) res.write('data: ' + JSON.stringify({ choices: [{ delta: { content: _ch } }] }) + '\n\n')
+      }
+      res.write('data: [DONE]\n\n')
+      return res.end()
+    }
+    return res.status(200).json({ content: _CRISIS_RESP, model: 'crisis-safety', provider: 'hardcoded' })
+  }
+
   // ---- v3.1: mode 自动加载 prompt ----
   let systemPrompt = prompt
   if (mode && MODE_PROMPT_MAP[mode]) {

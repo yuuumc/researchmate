@@ -20,6 +20,20 @@ const EMOTION_KEYWORDS = [
   "没状态","状态不好","情绪低落","低落","好累","跟不上","学不动"
 ]
 
+// P0 危机短路（8/20）：prompt 5.3 固定安全话术，原样输出，不调 LLM。
+// 根因：DeepSeek 安全过滤拦截自残/自杀内容 → upstream_error 2/2 失败。
+//       emotionGuard 正确拦截了危机信号，但 router 仍会调 tutorAgent → LLM，
+//       DeepSeek 直接拒绝。修复：危机命中时绕过 LLM，硬编码返回此话术。
+//       话术与 src/prompts/v2/tutor/student.md §5.3 逐字一致。
+export const CRISIS_SAFETY_RESPONSE = `我听到你了。你现在愿意说出来，这本身就很勇敢。你的感受很重要，此刻的情绪不是软弱，也不是你一个人该独自扛的事。
+
+我只是一个学习助手，没办法代替专业的人陪着你，但有人可以。请你现在就联系下面任意一条热线，他们 24 小时都在，免费、保密：
+- 全国心理援助热线：12356
+- 北京市心理援助热线：010-82951332（手机）/ 800-810-1117（座机），24 小时
+- 也可以拨打当地 12320 卫生热线转心理援助，或前往学校心理咨询中心 / 最近医院的精神心理科。
+
+如果你觉得此刻就有危险，请立刻拨打 120 或 110，或告诉身边一个你信任的人。你不是麻烦，他们会帮你。`
+
 export function detectEmotionSignal(userInput) {
   if (!userInput || typeof userInput !== "string") {
     return { hit: false, level: null, keyword: null }
@@ -34,4 +48,4 @@ export function detectEmotionSignal(userInput) {
   return { hit: false, level: null, keyword: null }
 }
 
-export default { detectEmotionSignal, CRISIS_KEYWORDS, EMOTION_KEYWORDS }
+export default { detectEmotionSignal, CRISIS_KEYWORDS, EMOTION_KEYWORDS, CRISIS_SAFETY_RESPONSE }
