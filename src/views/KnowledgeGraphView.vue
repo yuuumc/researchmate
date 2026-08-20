@@ -46,7 +46,6 @@ const mastery = useMasteryData()
 // === DOM ref ===
 const chartRef = ref(null)
 let chartInstance = null
-let pulseTimer = null
 
 // === 数据 ===
 const graphData = ref(null)
@@ -104,14 +103,13 @@ async function loadGraphData() {
     loading.value = false       // 错误态：立即收起骨架屏
     return
   }
-  // 成功：先 init+setOption 把图画完，再收起骨架屏，
-  // 避免容器 display:none→visible 期间闪现空图/旧图
+  // 成功：init+setOption 把图画完即收起骨架屏。chart 容器常驻 DOM（骨架屏为绝对定位
+  // 覆盖层），init 时已有真实尺寸；pulse 已移除，初始渲染后不再有二次 setOption 覆盖 symbolSize。
   if (graphEngine.value && !error.value) {
     await nextTick()
     renderChart()
     applyDeepLinkFocus()
-    // layoutAnimation: true 时力导向会动画收敛，等初步收敛后再隐藏骨架屏
-    setTimeout(() => { if (!error.value) loading.value = false }, 600)
+    loading.value = false
   }
 }
 
@@ -145,8 +143,7 @@ function applyDeepLinkFocus() {
 function renderChart() {
   if (!chartRef.value || !graphEngine.value) return
 
-  // 销毁旧实例 + 清理脉冲
-  if (pulseTimer) { clearInterval(pulseTimer); pulseTimer = null }
+  // 销毁旧实例
   if (chartInstance) {
     chartInstance.dispose()
     chartInstance = null
@@ -177,8 +174,8 @@ function renderChart() {
         color: h.color,
         borderColor: h.level === 'unknown' ? '#d1d5db' : h.color,
         borderWidth: h.level === 'unknown' ? 1.5 : 0,
-        shadowBlur: h.level === 'weak' ? 12 : 6,
-        shadowColor: h.level === 'weak' ? 'rgba(255,107,107,0.4)' : 'rgba(0,0,0,0.15)'
+        shadowBlur: h.level === 'weak' ? 22 : 6,
+        shadowColor: h.level === 'weak' ? 'rgba(255,107,107,0.55)' : 'rgba(0,0,0,0.15)'
       },
       label: {
         show: true,
@@ -321,40 +318,6 @@ function renderChart() {
     }
   })
 
-  // B4：薄弱点脉冲（呼吸光晕，仅 weak 节点 shadowBlur 周期切换，不扰动布局）
-  startPulse(nodes)
-}
-
-// === B4：薄弱点脉冲 ===
-// 全量数组下发（同序 + id 匹配）：无论 ECharts graph data merge 按 id 还是按 index
-// 都能正确命中 weak 节点；id 匹配同时保留力导向位置，避免脉冲触发布局抖动。
-// 非薄弱节点传 {id}（merge 保留既有 itemStyle），薄弱节点覆盖 shadowBlur/shadowColor。
-function startPulse(nodes) {
-  if (pulseTimer) { clearInterval(pulseTimer); pulseTimer = null }
-  const hasWeak = nodes.some(n => n._heat && n._heat.level === 'weak')
-  if (!hasWeak) return
-  let phase = false
-  pulseTimer = setInterval(() => {
-    if (!chartInstance) { clearInterval(pulseTimer); pulseTimer = null; return }
-    phase = !phase
-    const patchData = nodes.map(n => {
-      if (!n._heat || n._heat.level !== 'weak') return { id: n.id }
-      return {
-        id: n.id,
-        itemStyle: {
-          ...n.itemStyle,
-          shadowBlur: phase ? 26 : 12,
-          shadowColor: 'rgba(255,107,107,0.65)'
-        }
-      }
-    })
-    try {
-      chartInstance.setOption({ series: [{ data: patchData }] })
-    } catch (e) {
-      // 脉冲失败不阻断主图渲染
-      console.warn('[KnowledgeGraphView] pulse setOption failed:', e)
-    }
-  }, 850)
 }
 
 // === 联动跳转 ===
@@ -430,7 +393,6 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
   window.removeEventListener('theme-changed', handleThemeChange)
-  if (pulseTimer) { clearInterval(pulseTimer); pulseTimer = null }
   if (chartInstance) {
     chartInstance.dispose()
     chartInstance = null
