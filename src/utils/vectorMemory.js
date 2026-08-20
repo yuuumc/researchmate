@@ -19,7 +19,7 @@ import { textToVector, cosineSimilarity, isZeroVector } from './vector.js'
 // ============================================================
 const STORAGE_KEY = 'vector_memory'
 const MAX_CAPACITY = 200
-const DEFAULT_MIN_SCORE = 0.12
+const DEFAULT_MIN_SCORE = 0.06
 
 // ============================================================
 // SSR / 环境检测
@@ -41,7 +41,25 @@ function loadRaw() {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return []
     const arr = JSON.parse(raw)
-    return Array.isArray(arr) ? arr : []
+    if (!Array.isArray(arr)) return []
+
+    // v2 migration: re-vectorize memories stored with type-prefix vectors
+    // (old addMemory used `${type} ${text}`, new uses `text` only)
+    let needsMigration = false
+    for (const m of arr) {
+      if (m && m.text && !m._v2) { needsMigration = true; break }
+    }
+    if (needsMigration) {
+      for (const m of arr) {
+        if (m && m.text) {
+          m.vector = Array.from(textToVector(m.text))
+          m._v2 = true
+        }
+      }
+      saveRaw(arr)
+    }
+
+    return arr
   } catch (e) {
     console.warn('[vectorMemory] load failed, resetting:', e.message)
     return []
@@ -97,9 +115,8 @@ export function addMemory(type, text, meta = {}) {
 
   const memories = loadRaw()
 
-  // 向量化（type + text 聚合，提升类型区分度）
-  const compositeText = `${type} ${text}`
-  const vector = textToVector(compositeText)
+  // 向量化（仅 text，不加 type 前缀——type 前缀会稀释 query 向量的余弦相似度）
+  const vector = textToVector(text)
   if (isZeroVector(vector)) {
     // query 全停用词或空 → 不写入
     return null
