@@ -10,8 +10,8 @@ function assert(cond, msg) {
   else { fail++; console.log('  ❌ ' + msg) }
 }
 
-// ---- P1-2: 合法选择题含「宽长比」不被 Bug4 正则误伤 ----
-console.log('\n--- P1-2: 合法选择题不误伤 ---')
+// ---- B3 裁定 2026-08-20: Wp/Wn 订正对 choice 题也生效（移除 P1-2 限制）----
+console.log('\n--- B3: Wp/Wn 订正对 choice 题生效 ---')
 
 const legitChoiceQ = {
   id: 201,
@@ -23,7 +23,7 @@ const legitChoiceQ = {
 // P1-2: 题干含「宽长比」和「沟道宽度比」但不含 Wp/Wn → 正则不命中
 const corr = ANSWER_CORRECTIONS.find(c => c.match.test(legitChoiceQ.stem))
 assert(!corr, '含「宽长比」但不含 Wp/Wn 的选择题：正则不命中')
-// 但这道题同时含 Wp/Wn → 会命中，检查守卫
+// 含 Wp/Wn → 订正生效（B3 裁定：choice 题也走订正路径）
 const legitChoiceQ2 = {
   id: 202,
   question_type: 'choice',
@@ -31,12 +31,13 @@ const legitChoiceQ2 = {
   options: ['A. 1', 'B. 2.5', 'C. 3', 'D. 5'],
   correct_answer: 'A',
 }
-// P1-2: 命中 Wp/Wn 正则，但因为是 choice + 有 options → getCorrectedAnswer 回退到 DB 答案
+// B3 裁定 2026-08-20：移除 P1-2 choice 限制，Wp/Wn 订正对 choice 题也生效
 const correctedAns = getCorrectedAnswer(legitChoiceQ2)
-assert(correctedAns === 'A', 'choice + 有 options + 数字修正答案：getCorrectedAnswer 回退到 DB 答案 A')
-assert(!isCorrectedQuestion(legitChoiceQ2), 'choice + 有 options + 数字修正答案：isCorrectedQuestion 返回 false')
-// 判分正确
-assert(gradeObjective(legitChoiceQ2, 'A') === true, '合法选择题作答正确选项 A → 判对')
+assert(correctedAns === '2.5', 'choice + Wp/Wn：getCorrectedAnswer 返回订正答案 2.5')
+assert(isCorrectedQuestion(legitChoiceQ2), 'choice + Wp/Wn：isCorrectedQuestion 返回 true')
+// 订正后走填空判分路径
+assert(gradeObjective(legitChoiceQ2, '2.5') === true, 'Wp/Wn choice 题作答 2.5 → 判对')
+assert(gradeObjective(legitChoiceQ2, 'A') === false, 'Wp/Wn choice 题作答 A → 判错（订正后走数值判分）')
 
 // ---- P2-4: 单字母订正条目走选择题路径 ----
 console.log('\n--- P2-4: 单字母订正走选择题路径 ---')
