@@ -487,7 +487,7 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- ECharts 容器 -->
-      <div v-show="!loading && !error" ref="chartRef" class="kg-chart"></div>
+      <div ref="chartRef" class="kg-chart"></div>
 
       <!-- 节点详情面板 -->
       <transition name="kg-detail-slide">
@@ -704,6 +704,7 @@ onBeforeUnmount(() => {
   gap: 12px;
   color: var(--color-fg-muted, #9ca3af);
   font-size: 14px;
+  background: var(--color-bg-elevated, #fff);
 }
 
 .kg-spinner {
