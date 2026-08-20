@@ -8,7 +8,7 @@
 //   3. 置信度因子：attempts 越多置信度越高，单次学习影响幅度越小
 //
 // knowledge_state[topic] 结构：
-//   { mastery:0-100, confidence:0-1, lastStudied:ISO, attempts:int,
+//   { mastery:0-1, confidence:0-1, lastStudied:ISO, attempts:int,
 //     correctRate:0-1, errorTypes:{ [type]:int } }
 // ============================================================
 

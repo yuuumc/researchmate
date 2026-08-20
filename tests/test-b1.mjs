@@ -4,12 +4,16 @@
 // 含 SVG 的题干、代码块保护、纯文本无副作用、混合 markdown+公式
 // ============================================================
 import {
+  ensureKatex,
   renderMathExpression,
   extractMath,
   injectMath,
   extractSvg,
   injectSvg
 } from '../src/utils/renderMath.js'
+
+// B1 fix: initialize KaTeX engine before rendering assertions
+await ensureKatex()
 
 let pass = 0, fail = 0
 function assert (cond, msg) {
