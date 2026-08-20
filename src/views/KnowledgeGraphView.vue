@@ -101,15 +101,16 @@ async function loadGraphData() {
   } catch (e) {
     error.value = e.message || '加载知识图谱失败'
     console.error('[KnowledgeGraphView] loadGraphData error:', e)
-  } finally {
-    loading.value = false
+    loading.value = false       // 错误态：立即收起骨架屏
+    return
   }
-  // loading=false 后 chartRef 才解除 display:none，必须等 nextTick 再 init ECharts，
-  // 否则 echarts.init 在 display:none 容器上读到 0×0 尺寸，画布渲染为空
+  // 成功：先 init+setOption 把图画完，再收起骨架屏，
+  // 避免容器 display:none→visible 期间闪现空图/旧图
   if (graphEngine.value && !error.value) {
     await nextTick()
     renderChart()
     applyDeepLinkFocus()
+    loading.value = false       // 图表绘制完成后再隐藏骨架屏
   }
 }
 
@@ -168,7 +169,10 @@ function renderChart() {
     nodes.push({
       id: node.id,
       name: node.name,
-      symbolSize: 28 + connections * 4,
+      // 节点尺寸放大到可清晰辨认：薄弱/已掌握更醒目，其余保证最小可见尺寸
+      symbolSize: (h.level === 'weak' || h.level === 'mastered')
+        ? Math.max(48, 38 + connections * 6)
+        : Math.max(40, 30 + connections * 5),
       category: HEAT_LEVELS[h.level],
       value: h.mastery != null ? Number((h.mastery * 100).toFixed(0)) : 0,
       itemStyle: {
@@ -181,7 +185,7 @@ function renderChart() {
       label: {
         show: true,
         position: 'bottom',
-        fontSize: 11,
+        fontSize: 12,
         color: t.labelColor,
         fontWeight: h.level === 'weak' || h.level === 'mastered' ? 600 : 400,
         formatter: () => node.name
@@ -268,7 +272,7 @@ function renderChart() {
       label: {
         show: true,
         position: 'bottom',
-        fontSize: 11,
+        fontSize: 12,
         color: t.labelColor
       },
       edgeLabel: {
@@ -287,7 +291,7 @@ function renderChart() {
         edgeLength: [80, 140],
         gravity: 0.08,
         friction: 0.6,
-        layoutAnimation: true
+        layoutAnimation: false
       },
       emphasis: {
         focus: 'adjacency',

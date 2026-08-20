@@ -1,7 +1,6 @@
 <script setup>
 import { ref, computed, nextTick, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import TopBar from '@/components/TopBar.vue'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { useVoiceChat } from '@/composables/useVoiceChat'
 import { callChatWithMode } from '@/api/agent'
@@ -100,6 +99,32 @@ function writebackProfile(userQuestion) {
   })
 }
 
+// === 剥离 LLM 末尾结构化评测 JSON（mode/scores/total_score 等） ===
+function looksLikeEvalJson(str) {
+  try {
+    const o = JSON.parse(str)
+    return o && typeof o === 'object'
+      && ('mode' in o || 'scores' in o || 'total_score' in o || 'knowledge_points' in o)
+  } catch { return false }
+}
+
+function stripTrailingStructuredJson(text) {
+  if (!text) return text
+  let s = String(text).trimEnd()
+  // 1) 末尾 ```json ... ``` 或 ``` ... ``` 围栏块
+  const fence = s.match(/\n+```(?:json)?\s*\n([\s\S]*?)\n```\s*$/i)
+  if (fence && looksLikeEvalJson(fence[1])) {
+    s = s.slice(0, fence.index).trimEnd()
+    return s
+  }
+  // 2) 末尾裸 { ... } JSON 对象（无围栏）
+  const bare = s.match(/\n*(\{[\s\S]*\})\s*$/)
+  if (bare && looksLikeEvalJson(bare[1])) {
+    s = s.slice(0, bare.index).trimEnd()
+  }
+  return s
+}
+
 // === 滚动 ===
 async function scrollToBottom() {
   await nextTick()
@@ -161,11 +186,15 @@ async function sendQuestion(text) {
       history,
     })
 
+    // 剥离 LLM 末尾追加的结构化评测 JSON 块（student-taoyan prompt 第二部分），
+    // 用户界面只展示教学正文，不裸露评分 JSON
+    const cleanReply = stripTrailingStructuredJson(replyContent || '')
+
     const finalMsg = messages.value[assistantIdx] || {}
     messages.value[assistantIdx] = {
       ...finalMsg,
       role: 'assistant',
-      content: replyContent || finalMsg.content || '（无回复）',
+      content: cleanReply || finalMsg.content || '（无回复）',
       streaming: false,
       timestamp: finalMsg.timestamp,
     }
@@ -173,8 +202,8 @@ async function sendQuestion(text) {
     // === 写回画像（GWT#2） ===
     writebackProfile(content)
 
-    // === 自动 TTS 播报（GWT#1） ===
-    speak(replyContent)
+    // === 自动 TTS 播报（GWT#1，传入清洗后文本，避免念符号） ===
+    speak(cleanReply)
   } catch (e) {
     const finalMsg = messages.value[assistantIdx] || {}
     if (e.name === 'AbortError' || /aborted/.test(String(e.message || ''))) {
@@ -274,8 +303,6 @@ onMounted(() => {
 
 <template>
   <div class="voice-tutor-page">
-    <TopBar active-agent="tutor" />
-
     <main class="voice-main">
       <!-- === 不支持降级 === -->
       <section v-if="!isSupported || isMobile" class="unsupported-section">
@@ -586,6 +613,7 @@ onMounted(() => {
   min-height: 320px;
   max-height: 52vh;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 16px;

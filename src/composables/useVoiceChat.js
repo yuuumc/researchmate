@@ -8,6 +8,34 @@
 
 import { ref, onUnmounted } from 'vue'
 
+/**
+ * 清洗 Markdown / LaTeX / 代码块 / 结构化 JSON，TTS 只播自然语言。
+ * 去除井号、星号、反引号、公式记号、评测 JSON 块等会被逐字念出的符号。
+ */
+function stripMarkdownForTTS(text) {
+  if (!text) return ''
+  let s = String(text)
+  // 1) 代码围栏 ```...```（含 LLM 末尾追加的评测 JSON 块）
+  s = s.replace(/```[\s\S]*?```/g, ' ')
+  // 2) 行内代码 `...`
+  s = s.replace(/`[^`\n]+`/g, ' ')
+  // 3) 块级公式 $$...$$ 与 \[...\]
+  s = s.replace(/\$\$[\s\S]*?\$\$/g, ' ').replace(/\\\[[\s\S]*?\\\]/g, ' ')
+  // 4) 行内公式 $...$ 与 \(...\)
+  s = s.replace(/\$[^$\n]+\$/g, ' ').replace(/\\\([\s\S]*?\\\)/g, ' ')
+  // 5) LLM 误写的 ((...)) 记号
+  s = s.replace(/\(\([^()]*\)\)/g, ' ')
+  // 6) Markdown 标题井号、强调符号（保留文字）
+  s = s.replace(/^#{1,6}\s+/gm, '')
+  s = s.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/__([^_]+)__/g, '$1')
+  s = s.replace(/\*([^*]+)\*/g, '$1').replace(/_([^_]+)_/g, '$1')
+  // 7) 图片/链接语法（保留链接文字）
+  s = s.replace(/!\[[^\]]*\]\([^)]*\)/g, ' ').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+  // 8) 多余空白
+  s = s.replace(/\s+/g, ' ').trim()
+  return s
+}
+
 export function useVoiceChat(options = {}) {
   const { lang = 'zh-CN', rate = 0.95, pitch = 1.05 } = options
 
@@ -133,10 +161,16 @@ export function useVoiceChat(options = {}) {
       if (onEnd) onEnd()
       return
     }
+    // 清洗 Markdown / LaTeX / 代码块 / 评测 JSON，TTS 只播自然语言
+    const cleanText = stripMarkdownForTTS(text)
+    if (!cleanText) {
+      if (onEnd) onEnd()
+      return
+    }
     // 取消正在进行的播报
     speechSynthesis.cancel()
 
-    const utterance = new SpeechSynthesisUtterance(text)
+    const utterance = new SpeechSynthesisUtterance(cleanText)
     utterance.lang = lang
     utterance.rate = rate
     utterance.pitch = pitch

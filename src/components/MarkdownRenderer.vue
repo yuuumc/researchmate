@@ -48,7 +48,7 @@ const SVG_SANITIZE_CONFIG = Object.freeze({
 // CSS 与 JS 同步动态 import（renderMath.ensureKatex 内完成）。
 const katexReady = ref(isKatexReady())
 // 公式标记探测：$ 后跟非空白非 $（覆盖行内 $x$ 与块级 $$x$$）
-const hasMathMarker = (s) => /\$[^\s$]|\$\$/.test(s || '')
+const hasMathMarker = (s) => /\$[^\s$]|\$\$|\\\(|\\\[|\(\([^)]*[_^\\+\-]/.test(s || '')
 watch(
   () => props.content,
   (c) => {

@@ -101,6 +101,14 @@ export function extractMath(text) {
     return `${CODE_PH_PREFIX}${i}${CODE_PH_SUFFIX}`
   })
 
+  // 1.5) 归一化非 $ 定界符 → $ / $$（LLM 常见输出：\(...\) 行内、\[...\] 块级，以及误写的 ((...)) ）
+  //      先于 math 提取，使下游 $...$ / $$...$$ 规则统一命中
+  work = work
+    .replace(/\\\[([\s\S]+?)\\\]/g, (_, e) => '$$' + e + '$$')
+    .replace(/\\\(([\s\S]+?)\\\)/g, (_, e) => '$' + e + '$')
+    // LLM 误写双括号 ((...)) 当作行内公式（仅当内容含数学符号 _ ^ \ 或电荷号 + - 时）
+    .replace(/\(\(([^()]{1,60}?[_^\\+\-][^()]{0,60}?)\)\)/g, (_, e) => '$' + e + '$')
+
   // 2) 块级公式 $$...$$
   work = work.replace(/\$\$([\s\S]+?)\$\$/g, (_, expr) => {
     const html = renderMathExpression(expr, true)

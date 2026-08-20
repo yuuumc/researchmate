@@ -36,7 +36,12 @@ const FIGURE_TEMPLATES = [
 
 function isKnowledgeAllowed(kp) {
   if (!kp || typeof kp !== 'string') return false
-  return KNOWLEDGE_WHITELIST.some(w => kp.includes(w))
+  if (kp.length > 100) return false
+  const lower = kp.toLowerCase()
+  if (KNOWLEDGE_WHITELIST.some(w => lower.includes(w.toLowerCase()))) return true
+  // 兜底：包含中文字符且长度合理（覆盖白名单未穷举的考纲知识点，与 api/variant.js 对齐）
+  if (/[\u4e00-\u9fa5]/.test(kp) && kp.length >= 2 && kp.length <= 50) return true
+  return false
 }
 
 /**
